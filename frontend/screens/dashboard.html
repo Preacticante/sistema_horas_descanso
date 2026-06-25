@@ -7,17 +7,48 @@
     <link rel="stylesheet" href="../style.css">
 </head>
 <body>
-
     <header>
-        <h1>Panel de Control - Horas Extra</h1>
+        <h1>Sistema de Control de Horas Extra</h1>
     </header>
 
     <main class="container">
         <section class="card">
-            <h2>¡Bienvenido al Panel de Administración!</h2>
-            <p>Has iniciado sesión correctamente en el sistema corporativo.</p>
-            <div style="margin-top: 20px;">
-                <a href="../index.html" style="color: #340C51; font-weight: bold; text-decoration: none;">← Cerrar Sesión</a>
+            <h2>Registrar Horas Extra / Descanso</h2>
+            <form id="horas-form">
+                <div class="form-group">
+                    <label for="num-empleado">Número de Empleado:</label>
+                    <input type="text" id="num-empleado" required placeholder="Ej. EMP001">
+                </div>
+                <div class="form-group">
+                    <label for="cantidad-horas">Cantidad de Horas:</label>
+                    <input type="number" id="cantidad-horas" step="0.5" required placeholder="Ej. 2.5">
+                </div>
+                <button type="submit" class="btn">Guardar Registro</button>
+            </form>
+        </section>
+
+        <section class="card">
+            <h2>Panel de Balance de Horas</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre Completo</th>
+                        <th>Análisis / Núm. Empleado</th>
+                        <th>Saldo de Horas</th>
+                    </tr>
+                </thead>
+                <tbody id="tabla-empleados">
+                    <tr>
+                        <td colspan="4" style="text-align: center;">Cargando datos del servidor...</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <div style="margin-top: 25px; text-align: right;">
+                <a href="../index.html" style="color: var(--primary-color); font-weight: bold; text-decoration: none; font-size: 14px;">
+                    ← Cerrar Sesión
+                </a>
             </div>
         </section>
     </main>
