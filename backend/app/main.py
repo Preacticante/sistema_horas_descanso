@@ -17,3 +17,5 @@ def inicio():
         "status": "online",
         "mensaje": "Bienvenido al Sistema de Banco de Horas Extra API (Modo Local)"
     }
+
+
