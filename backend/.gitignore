@@ -1,7 +1,4 @@
 
-python_portable/
-__pycache__/
-*.pyc
 
 
 .env

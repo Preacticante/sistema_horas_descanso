@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Acceso - Control de Horas Extra</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body style="display: flex; justify-content: center; align-items: center; min-height: 100vh; background-color: #f7f5f9;">
+
+    <div class="card" style="width: 100%; max-width: 400px; padding: 40px; box-sizing: border-box;">
+        <div style="text-align: center; margin-bottom: 30px;">
+            <h2 style="border-bottom: none; margin: 0; font-size: 24px; font-weight: 700;">Iniciar Sesión</h2>
+            <p style="color: #666; margin-top: 5px; font-size: 14px;">Sistema de Banco de Horas Extra</p>
+        </div>
+
+        <form id="login-form">
+            <div class="form-group">
+                <label for="username">Usuario o Correo:</label>
+                <input type="text" id="username" required placeholder="ejemplo@empresa.com">
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 25px;">
+                <label for="password">Contraseña:</label>
+                <input type="password" id="password" required placeholder="••••••••">
+            </div>
+
+            <button type="submit" class="btn" style="width: 100%; padding: 14px; font-size: 15px;">
+                Ingresar al Sistema
+            </button>
+        </form>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
