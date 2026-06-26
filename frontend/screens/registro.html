@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - Control de Horas Extra</title>
+    <link rel="stylesheet" href="../style.css">
+</head>
+<body>
+
+    <header>
+        <h1>Módulo de Registro de Tiempos</h1>
+    </header>
+
+    <main class="container" style="max-width: 600px;">
+        <section class="card">
+            <h2>Registrar Horas Extra / Descanso</h2>
+            <p style="color: #666; font-size: 14px; margin-bottom: 20px;">
+                Introduce tu número de empleado asignado y la cantidad de horas a reportar al banco.
+            </p>
+            
+            <form id="registro-horas-form">
+                <div class="form-group">
+                    <label for="num-empleado">Número de Empleado:</label>
+                    <input type="text" id="num-empleado" required placeholder="Ej. EMP001">
+                </div>
+                <div class="form-group" style="margin-bottom: 25px;">
+                    <label for="cantidad-horas">Cantidad de Horas (Usa valores negativos para descansos):</label>
+                    <input type="number" id="cantidad-horas" step="0.5" required placeholder="Ej. 2.5">
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <a href="dashboard.html" style="color: var(--primary-color); font-weight: bold; text-decoration: none; font-size: 14px;">
+                        ← Volver al Inicio
+                    </a>
+                    <button type="submit" class="btn">Guardar Registro</button>
+                </div>
+            </form>
+        </section>
+    </main>
+
+    <script src="registro.js"></script>
+</body>
+</html>
