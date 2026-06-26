@@ -1,27 +1,52 @@
 const API_URL = "http://127.0.0.1:8000";
 
 async function obtenerDatosDashboard() {
+    const tabla = document.getElementById("tabla-empleados");
+
     try {
-        // Hacemos la petición a tu FastAPI en segundo plano
-        const respuesta = await fetch(`${API_URL}/`);
-        const datos = await respuesta.json();
+        // Hacemos la petición a la nueva ruta real del Backend
+        const respuesta = await fetch(`${API_URL}/api/empleados`);
         
-        // Colocamos un renglón real usando los datos recibidos
-        const tabla = document.getElementById("tabla-empleados");
-        tabla.innerHTML = `
-            <tr>
-                <td>1</td>
-                <td>Empleado de Prueba (Conectado)</td>
-                <td>EMP001</td>
-                <td style="color: #124416; font-weight: bold;">${datos.mensaje}</td>
-            </tr>
-        `;
+        if (!respuesta.ok) {
+            throw new Error("No se pudo obtener la lista de empleados");
+        }
+
+        const empleados = await respuesta.json();
+        
+        // Limpiamos la tabla (quitamos el mensaje de "Cargando datos...")
+        tabla.innerHTML = "";
+
+        // Si la base de datos está vacía, mostramos una alerta sutil
+        if (empleados.length === 0) {
+            tabla.innerHTML = `
+                <tr>
+                    <td colspan="4" style="text-align: center;">No hay empleados registrados en el sistema.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        // Recorremos cada empleado y creamos su fila dinámicamente con etiquetas reales
+        empleados.forEach(emp => {
+            // Ponemos el saldo en verde si es positivo, o rojo si es menor o igual a cero
+            const colorSaldo = emp.saldo_horas > 0 ? "#124416" : "#c0392b";
+            
+            tabla.innerHTML += `
+                <tr>
+                    <td>${emp.id}</td>
+                    <td>${emp.nombre}</td>
+                    <td><strong>${emp.numero_empleado}</strong></td>
+                    <td style="color: ${colorSaldo}; font-weight: bold;">${emp.saldo_horas} hrs</td>
+                </tr>
+            `;
+        });
+
     } catch (error) {
         console.error("Error al conectar con la API:", error);
-        document.getElementById("tabla-empleados").innerHTML = `
+        tabla.innerHTML = `
             <tr>
                 <td colspan="4" style="color: red; text-align: center; font-weight: bold;">
-                    Error de conexión: Enciende el backend con uvicorn.
+                    Error de conexión: Asegúrate de que el backend de Python esté encendido.
                 </td>
             </tr>
         `;

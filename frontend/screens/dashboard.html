@@ -3,55 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard - Control de Horas Extra</title>
+    <title>Dashboard - Sistema de Horas Extra</title>
     <link rel="stylesheet" href="../style.css">
 </head>
 <body>
-    <header>
-        <h1>Sistema de Control de Horas Extra</h1>
-    </header>
-
-    <main class="container">
-        <section class="card">
-            <h2>Registrar Horas Extra / Descanso</h2>
-            <form id="horas-form">
-                <div class="form-group">
-                    <label for="num-empleado">Número de Empleado:</label>
-                    <input type="text" id="num-empleado" required placeholder="Ej. EMP001">
-                </div>
-                <div class="form-group">
-                    <label for="cantidad-horas">Cantidad de Horas:</label>
-                    <input type="number" id="cantidad-horas" step="0.5" required placeholder="Ej. 2.5">
-                </div>
-                <button type="submit" class="btn">Guardar Registro</button>
-            </form>
-        </section>
-
-        <section class="card">
-            <h2>Panel de Balance de Horas</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre Completo</th>
-                        <th>Análisis / Núm. Empleado</th>
-                        <th>Saldo de Horas</th>
-                    </tr>
-                </thead>
-                <tbody id="tabla-empleados">
-                    <tr>
-                        <td colspan="4" style="text-align: center;">Cargando datos del servidor...</td>
-                    </tr>
-                </tbody>
-            </table>
-            
-            <div style="margin-top: 25px; text-align: right;">
-                <a href="../index.html" style="color: var(--primary-color); font-weight: bold; text-decoration: none; font-size: 14px;">
-                    ← Cerrar Sesión
-                </a>
-            </div>
-        </section>
-    </main>
+    <div class="container">
+        <h1>Dashboard de Empleados</h1>
+        
+        <table border="1" cellpadding="10" cellspacing="0" style="width: 100%; margin-top: 20px;">
+            <thead>
+                <tr style="background-color: #34495e; color: white;">
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Número de Empleado</th>
+                    <th>Saldo de Horas</th>
+                </tr>
+            </thead>
+            <tbody id="tabla-empleados">
+                <tr>
+                    <td colspan="4" style="text-align: center; color: #7f8c8d;">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 
     <script src="dashboard.js"></script>
 </body>
