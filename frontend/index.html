@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <title>UCO - Banco Horas</title>
+</head>
+<body>
+    <div class="layout">
+        <nav class="sidebar">
+            <h2>UCO - Sistema</h2>
+            <a href="#" onclick="loadPage('dashboard')" id="btn-dashboard">Dashboard</a>
+            <a href="#" onclick="loadPage('registro')" id="btn-registro">Registrar Horas</a>
+            <a href="#" onclick="loadPage('config')" id="btn-config">Configuración</a>
+            <a href="login.html" onclick="cerrarSesion()" style="margin-top: auto; color: var(--accent-neon);">Cerrar Sesión</a>
+            <a href="#" onclick="loadPage('perfil')" id="btn-perfil">Perfil</a> <!-- NUEVO -->      
+        </nav>
+        <main class="main-content" id="content-area"></main>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
