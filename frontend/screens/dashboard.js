@@ -28,15 +28,15 @@ async function obtenerDatosDashboard() {
 
         // Recorremos cada empleado y creamos su fila dinámicamente con etiquetas reales
         empleados.forEach(emp => {
-            // Ponemos el saldo en verde si es positivo, o rojo si es menor o igual a cero
-            const colorSaldo = emp.saldo_horas > 0 ? "#124416" : "#c0392b";
+            const colorHoras = emp.total_horas >= 0 ? "#124416" : "#c0392b";
             
             tabla.innerHTML += `
                 <tr>
                     <td>${emp.id}</td>
                     <td>${emp.nombre}</td>
-                    <td><strong>${emp.numero_empleado}</strong></td>
-                    <td style="color: ${colorSaldo}; font-weight: bold;">${emp.saldo_horas} hrs</td>
+                    <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
+                    <td>${emp.llegadas_tarde}</td>
+                    <td>${emp.salidas_temprano}</td>
                 </tr>
             `;
         });
