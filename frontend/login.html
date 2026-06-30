@@ -2,25 +2,48 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acceso - UCO</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Inter', sans-serif; background: radial-gradient(circle, #81c5ab, #0f172a); color: white; }
-        .login-card { background: rgba(16, 170, 106, 0.582); backdrop-filter: blur(15px); padding: 3rem; border-radius: 20px; width: 100%; max-width: 350px; border: 1px solid rgba(255, 255, 255, 0.1); text-align: center; }
-        input { display: block; width: 100%; margin: 15px 0; padding: 12px; background: rgb(255, 255, 255); border: 1px solid #334155; border-radius: 8px; color: rgb(0, 0, 0); box-sizing: border-box; }
-        .btn { width: 100%; background: #c4d61c; color: rgb(255, 250, 250); padding: 12px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        :root { --forest: #124416; --purple: #340C51; --gold: #AA7F31; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, var(--purple) 0%, var(--forest) 100%); }
+        .login-card { background: rgba(255, 255, 255, 0.95); padding: 3rem; border-radius: 20px; width: 100%; max-width: 400px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); text-align: center; border-top: 6px solid var(--gold); }
+        img { width: 250px; margin-bottom: 2rem; }
+        input { display: block; width: 100%; margin: 20px 0; padding: 15px; background: #f8f8f8; border: 2px solid #eee; border-radius: 10px; color: #334; transition: 0.4s ease; }
+        input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 10px rgba(170, 127, 49, 0.3); }
+        .btn { width: 100%; background: var(--gold); color: white; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; transition: 0.3s; }
+        
+        /* Estilos del Modal */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); justify-content: center; align-items: center; }
+        .modal-content { background: white; padding: 2rem; border-radius: 15px; width: 90%; max-width: 300px; text-align: center; }
+        .forgot-link { display: block; margin-top: 15px; color: var(--purple); text-decoration: none; font-size: 0.9rem; cursor: pointer; }
     </style>
 </head>
 <body>
     <div class="login-card">
-        <h1>Iniciar Sesión</h1>
+        <img src="logo_uco.png" alt="Logo UCO">
         <form id="login-form">
             <input type="text" placeholder="Usuario" required>
             <input type="password" placeholder="Contraseña" required>
-            <button type="submit" class="btn">Entrar</button>
+            <button type="submit" class="btn">ENTRAR</button>
         </form>
+        <a class="forgot-link" onclick="openModal()">¿Olvidaste tu contraseña?</a>
     </div>
+
+    <div id="forgotModal" class="modal">
+        <div class="modal-content">
+            <h3>Recuperar Acceso</h3>
+            <p style="font-size: 0.8rem; color: #666;">Ingresa tu correo institucional y te enviaremos las instrucciones.</p>
+            <input type="email" placeholder="ejemplo@upq.edu.mx">
+            <button class="btn" onclick="closeModal()">Enviar</button>
+            <a onclick="closeModal()" style="display:block; margin-top: 10px; color: #999; cursor: pointer; font-size: 0.8rem;">Cancelar</a>
+        </div>
+    </div>
+
     <script>
+        const modal = document.getElementById("forgotModal");
+        function openModal() { modal.style.display = "flex"; }
+        function closeModal() { modal.style.display = "none"; }
+        
         document.getElementById('login-form').addEventListener('submit', (e) => {
             e.preventDefault();
             localStorage.setItem("isAuth", "true");
