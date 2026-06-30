@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 from datetime import datetime, date, timedelta
 
@@ -74,6 +75,60 @@ EMPLEADOS_DASHBOARD = {
     740,
 }
 
+EMPLEADOS_NOMBRES = {
+    1: "Nelson",
+    2: "Luis Francisco Valencia Villasana",
+    55: "Martín Bocanegra Lucio",
+    57: "Gabriel Vallejo Balderas",
+    58: "Juan Domínguez Morales",
+    72: "Juan Alberto Zamora Gutiérrez",
+    74: "Alberto Jiménez Ruíz",
+    76: "José Arreola Morales",
+    78: "Juan José Fabián Ramos",
+    80: "Yolanda Ramírez García",
+    83: "Sergio Antonio Pérez Reséndiz",
+    84: "Omar Rodríguez Montoya",
+    85: "Mariana Díaz Morales",
+    90: "Baruch Alberto",
+    91: "Cinthia Flores López",
+    92: "Viridiana Ramírez Rojas",
+    93: "María Eugenia Montalvo Cosme",
+    94: "Álvaro Patiño Botello",
+    119: "Eva Angélica Balderas Rojas",
+    126: "José Aguas García",
+    127: "Roberto Carlos Matehuala Vargas",
+    128: "Alma Leticia Muñiz Núñez",
+    129: "Dania Sánchez Espino",
+    130: "Armando Ramírez Mejía",
+    131: "Cecilia de Lourdes Bracho Rodríguez",
+    132: "Laura Leticia González González",
+    133: "Francisco Javier Limón Naranjo",
+    134: "María del Carmen Mendoza Aldape",
+    135: "Christopher Arturo Muciño González",
+    136: "María Teresa Serrano Lazcano",
+    137: "Daniela Fernanda Jiménez Vázquez",
+    138: "Erik Gabriel Rojas López",
+    140: "Yeniffer Gutiérrez Andrade",
+    141: "José Manuel Martínez Alonso",
+    142: "Tania Ibette León Flores",
+    143: "Miguel Ángel Hernández Tamayo",
+    144: "Alicia Ruiz García",
+    145: "Alma Cristina Rodríguez Zúñiga",
+    146: "Luis Roberto López Yáñez",
+    147: "María Guadalupe Garrido García",
+    148: "Paula María Corte González",
+    274: "Andrea Anguiano Villegas",
+    275: "Gerardo Morales Medrano",
+    276: "Diana Laura Uribe Núñez",
+    279: "Mariano Rivera Sánchez",
+    727: "Ma. Guadalupe Ruíz Ramírez",
+    728: "Angélica María Cruz Lugo",
+    732: "Monserrat Mier Avila",
+    738: "Salvador Ordoñez Martínez",
+    739: "Irma Lilia",
+    740: "Rolando Aranda Gutiérrez",
+}
+
 @app.get("/")
 def inicio():
     return {"status": "online", "mensaje": "Conexión base lista"}
@@ -82,7 +137,11 @@ def inicio():
 # RUTA ACTUALIZADA: PROCESA LAS ENTRADAS/SALIDAS DE LA VISTA
 # ==========================================================
 @app.get("/api/empleados")
-def listar_empleados(fecha_inicio: Optional[date] = None, fecha_fin: Optional[date] = None):
+def listar_empleados(
+    ids: Optional[str] = None,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+):
     try:
         conn = obtener_conexion()
         cursor = conn.cursor()
@@ -95,13 +154,20 @@ def listar_empleados(fecha_inicio: Optional[date] = None, fecha_fin: Optional[da
         # Aseguramos que la sesión use idioma español para DATENAME(WEEKDAY)
         cursor.execute("SET LANGUAGE Spanish;")
 
-        ids_permitidos = ",".join(str(i) for i in sorted(EMPLEADOS_DASHBOARD))
+        if ids:
+            ids_parsed = [int(x) for x in re.split(r"[\s,;]+", ids.strip()) if x.strip().isdigit()]
+            if ids_parsed:
+                ids_permitidos = ",".join(str(i) for i in sorted(set(ids_parsed)))
+            else:
+                ids_permitidos = ",".join(str(i) for i in sorted(EMPLEADOS_DASHBOARD))
+        else:
+            ids_permitidos = ",".join(str(i) for i in sorted(EMPLEADOS_DASHBOARD))
         cursor.execute(f"""
             WITH Eventos AS (
                 SELECT
                     e.IdAutoEvents,
                     e.IdEmpNum,
-                    e.tFullName,
+                    LTRIM(RTRIM(CONCAT(emp.tFirstName, ' ', COALESCE(emp.tMiddleName, ''), ' ', emp.tLastName))) AS tFullName,
                     CAST(e.dtEventReal AS date) AS Fecha,
                     e.dtEventReal,
                     e.IdReader,
@@ -236,8 +302,12 @@ def listar_empleados(fecha_inicio: Optional[date] = None, fecha_fin: Optional[da
 
         filas = cursor.fetchall()
 
-        cursor.execute(f"SELECT iEmployeeNum, tFullName FROM dbo.tblEmployees WHERE iEmployeeNum IN ({ids_permitidos})")
-        nombres = {row[0]: row[1] for row in cursor.fetchall()}
+        cursor.execute(f"SELECT iEmployeeNum, LTRIM(RTRIM(CONCAT(tFirstName, ' ', COALESCE(tMiddleName, ''), ' ', tLastName))) AS tFullName FROM dbo.tblEmployees WHERE iEmployeeNum IN ({ids_permitidos})")
+        nombres = {emp_id: EMPLEADOS_NOMBRES[emp_id] for emp_id in sorted(EMPLEADOS_DASHBOARD) if emp_id in EMPLEADOS_NOMBRES}
+        for row in cursor.fetchall():
+            nombre = row[1].strip() if row[1] else ""
+            if nombre:
+                nombres[row[0]] = nombre
 
         cursor.close()
         conn.close()
@@ -292,3 +362,5 @@ def registrar_horas(datos: RegistroHoras):
         return {"status": "success", "mensaje": "Ajuste de horas guardado e indexado"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    
+    
