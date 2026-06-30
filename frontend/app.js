@@ -1,4 +1,4 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.16.6.86:8000";
 
 async function cargarEmpleados(ids = null) {
     const tabla = document.getElementById("tabla-empleados");
