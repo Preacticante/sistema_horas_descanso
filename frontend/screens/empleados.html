@@ -1,23 +1,139 @@
-<div class="card">
-    <div style="display: flex; justify-content: space-between; align-items: center;">
+<div class="card empleados-card">
+    <style>
+        .empleados-card {
+            padding: 32px;
+            border-radius: 28px;
+            background: white;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+        }
+        .empleados-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+        .empleados-header h1 {
+            margin: 0;
+            font-size: 2rem;
+            color: #132e1c;
+        }
+        .empleados-bar {
+            margin-top: 24px;
+            display: grid;
+            grid-template-columns: minmax(240px, 1fr) auto auto;
+            gap: 12px;
+            align-items: end;
+        }
+        .empleados-bar label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: 700;
+            color: #243a29;
+        }
+        .empleados-bar input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid #d7e0d6;
+            background: #f8faf8;
+            font-size: 0.95rem;
+            color: #1f2d19;
+        }
+        .empleados-bar input:focus {
+            outline: none;
+            border-color: #2f7a42;
+            box-shadow: 0 0 0 3px rgba(47, 122, 66, 0.12);
+        }
+        .empleados-btn {
+            padding: 13px 24px;
+            border-radius: 14px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.18s ease, background 0.18s ease;
+        }
+        .empleados-btn:hover {
+            transform: translateY(-1px);
+        }
+        .empleados-btn-primary {
+            background: var(--forest, #2e7d32);
+            color: white;
+        }
+        .empleados-btn-secondary {
+            background: #48515c;
+            color: white;
+        }
+        .empleados-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 28px;
+            overflow: hidden;
+            border-radius: 20px;
+            box-shadow: 0 14px 30px rgba(20, 40, 20, 0.06);
+        }
+        .empleados-table thead {
+            background: linear-gradient(90deg, rgba(47,122,66,0.12), rgba(86,132,92,0.06));
+        }
+        .empleados-table th,
+        .empleados-table td {
+            padding: 18px 20px;
+            text-align: left;
+            color: #26382e;
+        }
+        .empleados-table th {
+            font-size: 0.95rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            font-weight: 700;
+        }
+        .empleados-table tbody tr {
+            background: white;
+            border-bottom: 1px solid #f0f2f1;
+            transition: transform 0.2s ease, background 0.2s ease;
+        }
+        .empleados-table tbody tr:hover {
+            background: #f7f9f7;
+            transform: translateY(-1px);
+        }
+        .empleados-table td:last-child {
+            color: #6b7a6a;
+        }
+        .empleados-table .badge {
+            display: inline-flex;
+            padding: 6px 12px;
+            border-radius: 999px;
+            background: #eff6ee;
+            color: #2f702f;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+        @media (max-width: 900px) {
+            .empleados-bar {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <div class="empleados-header">
         <h1>Empleados</h1>
-        <button class="btn" id="btn-abrir-modal" style="background:var(--forest, #2e7d32); padding:10px 20px; color:white; border:none; cursor:pointer; border-radius:4px;">
-            + Registrar Horas
-        </button>
+        <button class="empleados-btn empleados-btn-primary" id="btn-abrir-modal">+ Registrar Horas</button>
     </div>
-    <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; align-items: center;">
-        <div style="flex: 1 1 300px;">
-            <label for="filtro-ids" style="display: block; margin-bottom: 6px; font-weight: bold;">IDs de empleados (separados por comas):</label>
-            <input type="text" id="filtro-ids" placeholder="1, 2, 55" style="width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px;" />
+
+    <div class="empleados-bar">
+        <div>
+            <label for="filtro-ids">IDs de empleados</label>
+            <input type="text" id="filtro-ids" placeholder="1, 2, 55, 57..." />
         </div>
-        <button id="btn-filtrar-empleados" style="padding: 12px 22px; background: var(--forest, #2e7d32); color: white; border: none; cursor: pointer; border-radius: 6px; height: 44px;">Filtrar</button>
-        <button id="btn-reset-empleados" style="padding: 12px 22px; background: #555; color: white; border: none; cursor: pointer; border-radius: 6px; height: 44px;">Mostrar todos</button>
+        <button class="empleados-btn empleados-btn-primary" id="btn-filtrar-empleados">Filtrar</button>
+        <button class="empleados-btn empleados-btn-secondary" id="btn-reset-empleados">Mostrar todos</button>
     </div>
-    
-    <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+
+    <table class="empleados-table">
         <thead>
-            <tr style="border-bottom: 2px solid #eee; text-align: left;">
-                <th style="padding:15px;">No. Empleado</th>
+            <tr>
+                <th>No. Empleado</th>
                 <th>Nombre</th>
                 <th>Horas Saldo</th>
                 <th>Retardos / Salidas Temp.</th>
@@ -26,7 +142,7 @@
         </thead>
         <tbody id="tabla-empleados">
             <tr>
-                <td colspan="5" style="padding:15px; text-align:center;">Cargando empleados...</td>
+                <td colspan="5" style="padding:18px; text-align:center; color:#5a6857;">Cargando empleados...</td>
             </tr>
         </tbody>
     </table>
