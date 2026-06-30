@@ -20,6 +20,7 @@ app.add_middleware(
 class RegistroHoras(BaseModel):
     numero_empleado: int
     cantidad_horas: float
+    dias_semana: list[str] = []
 
 EMPLEADOS_DASHBOARD = {
     1,
@@ -141,6 +142,7 @@ def listar_empleados(
     ids: Optional[str] = None,
     fecha_inicio: Optional[date] = None,
     fecha_fin: Optional[date] = None,
+    all: bool = False,
 ):
     try:
         conn = obtener_conexion()
@@ -154,6 +156,29 @@ def listar_empleados(
         # Aseguramos que la sesión use idioma español para DATENAME(WEEKDAY)
         cursor.execute("SET LANGUAGE Spanish;")
 
+        if all:
+            cursor.execute("SELECT iEmployeeNum, LTRIM(RTRIM(CONCAT(tFirstName, ' ', COALESCE(tMiddleName, ''), ' ', tLastName))) AS tFullName FROM dbo.tblEmployees")
+            empleados_db = cursor.fetchall()
+            cursor.execute("SELECT IdEmpNum, SUM(fHoras) AS HorasBanco FROM dbo.tblBancoHorasKardex GROUP BY IdEmpNum")
+            horas_db = {row[0]: float(row[1] or 0.0) for row in cursor.fetchall()}
+
+            resultado = []
+            for row in empleados_db:
+                emp_id = int(row[0])
+                nombre = row[1].strip() if row[1] else f"Empleado {emp_id}"
+                resultado.append({
+                    "id": emp_id,
+                    "nombre": nombre,
+                    "numero_empleado": emp_id,
+                    "total_horas": horas_db.get(emp_id, 0.0),
+                    "llegadas_tarde": 0,
+                    "salidas_temprano": 0,
+                })
+
+            cursor.close()
+            conn.close()
+            return resultado
+
         if ids:
             ids_parsed = [int(x) for x in re.split(r"[\s,;]+", ids.strip()) if x.strip().isdigit()]
             if ids_parsed:
@@ -162,6 +187,7 @@ def listar_empleados(
                 ids_permitidos = ",".join(str(i) for i in sorted(EMPLEADOS_DASHBOARD))
         else:
             ids_permitidos = ",".join(str(i) for i in sorted(EMPLEADOS_DASHBOARD))
+
         cursor.execute(f"""
             WITH Eventos AS (
                 SELECT
@@ -279,35 +305,48 @@ def listar_empleados(
                     ON H.IdEmpNum = D.IdEmpNum
                     AND H.DiaSemana = D.NombreDia
                 WHERE D.RN = 1
+            ),
+            Banco AS (
+                SELECT
+                    IdEmpNum,
+                    SUM(fHoras) AS HorasBanco
+                FROM dbo.tblBancoHorasKardex
+                GROUP BY IdEmpNum
             )
             SELECT
-                IdEmpNum,
-                tFullName AS NombreUsuario,
+                D.IdEmpNum,
+                D.tFullName AS NombreUsuario,
                 ? AS FechaInicial,
                 DATEADD(DAY, -1, ?) AS FechaFinal,
-                IdAccessGroup,
-                IdDepartment,
-                SUM(DuracionHoras) AS TotalHoras,
-                SUM(LlegoTarde) AS LlegadasTarde,
-                SUM(SalioTemprano) AS SalidasTemprano
-            FROM DiasCalculados
-            WHERE IdEmpNum IN ({ids_permitidos})
+                D.IdAccessGroup,
+                D.IdDepartment,
+                COALESCE(B.HorasBanco, 0) AS TotalHoras,
+                SUM(D.LlegoTarde) AS LlegadasTarde,
+                SUM(D.SalioTemprano) AS SalidasTemprano
+            FROM DiasCalculados D
+            LEFT JOIN Banco B
+                ON B.IdEmpNum = D.IdEmpNum
+            WHERE D.IdEmpNum IN ({ids_permitidos})
             GROUP BY
-                IdEmpNum,
-                tFullName,
-                IdAccessGroup,
-                IdDepartment
-            ORDER BY IdEmpNum;
+                D.IdEmpNum,
+                D.tFullName,
+                D.IdAccessGroup,
+                D.IdDepartment,
+                B.HorasBanco
+            ORDER BY D.IdEmpNum;
         """, fecha_inicio, fecha_fin, fecha_inicio, fecha_fin)
 
         filas = cursor.fetchall()
 
-        cursor.execute(f"SELECT iEmployeeNum, LTRIM(RTRIM(CONCAT(tFirstName, ' ', COALESCE(tMiddleName, ''), ' ', tLastName))) AS tFullName FROM dbo.tblEmployees WHERE iEmployeeNum IN ({ids_permitidos})")
-        nombres = {emp_id: EMPLEADOS_NOMBRES[emp_id] for emp_id in sorted(EMPLEADOS_DASHBOARD) if emp_id in EMPLEADOS_NOMBRES}
-        for row in cursor.fetchall():
-            nombre = row[1].strip() if row[1] else ""
-            if nombre:
-                nombres[row[0]] = nombre
+        if not all:
+            cursor.execute(f"SELECT iEmployeeNum, LTRIM(RTRIM(CONCAT(tFirstName, ' ', COALESCE(tMiddleName, ''), ' ', tLastName))) AS tFullName FROM dbo.tblEmployees WHERE iEmployeeNum IN ({ids_permitidos})")
+            nombres = {emp_id: EMPLEADOS_NOMBRES[emp_id] for emp_id in sorted(EMPLEADOS_DASHBOARD) if emp_id in EMPLEADOS_NOMBRES}
+            for row in cursor.fetchall():
+                nombre = row[1].strip() if row[1] else ""
+                if nombre:
+                    nombres[row[0]] = nombre
+        else:
+            nombres = nombres if 'nombres' in locals() else {}
 
         cursor.close()
         conn.close()
@@ -324,8 +363,13 @@ def listar_empleados(
             for fila in filas
         }
 
+        if all:
+            todos_ids = sorted(nombres.keys())
+        else:
+            todos_ids = sorted(EMPLEADOS_DASHBOARD)
+
         resultado = []
-        for emp_id in sorted(EMPLEADOS_DASHBOARD):
+        for emp_id in todos_ids:
             empleado = resumen_por_empleado.get(emp_id)
             if empleado is None:
                 resultado.append({
@@ -346,20 +390,49 @@ def listar_empleados(
 
 @app.post("/api/registrar")
 def registrar_horas(datos: RegistroHoras):
+    if not datos.dias_semana:
+        raise HTTPException(status_code=400, detail="Debes seleccionar al menos un día de la semana.")
+
     try:
         conn = obtener_conexion()
         cursor = conn.cursor()
-        
-        # Validamos si el empleado existe registrando un marcaje ficticio o en la tabla de ajustes
-        cursor.execute("""
-            INSERT INTO tblOvertimeRecords (iEmployeeNum, fHours)
-            VALUES (?, ?)
-        """, datos.numero_empleado, datos.cantidad_horas)
-        
+
+        dias_unicos = []
+        for dia in datos.dias_semana:
+            if dia not in dias_unicos:
+                dias_unicos.append(dia)
+
+        for dia in dias_unicos:
+            observaciones = f"Ajuste manual desde app - {dia}"
+            cursor.execute("""
+                INSERT INTO dbo.tblBancoHorasKardex (
+                    IdEmpNum,
+                    FechaAfectacion,
+                    fHoras,
+                    tTipoTransaccion,
+                    tObservaciones,
+                    IdUsuarioAutoriza,
+                    bActivo,
+                    dtFechaEliminacion,
+                    IdUsuarioElimina
+                )
+                VALUES (
+                    ?,
+                    CAST(GETDATE() AS date),
+                    ?,
+                    'Ajuste',
+                    ?,
+                    NULL,
+                    1,
+                    '1900-01-01',
+                    0
+                )
+            """, datos.numero_empleado, datos.cantidad_horas, observaciones)
+
         conn.commit()
         cursor.close()
         conn.close()
-        return {"status": "success", "mensaje": "Ajuste de horas guardado e indexado"}
+        return {"status": "success", "mensaje": "Asignación de horas guardada e indexado"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     

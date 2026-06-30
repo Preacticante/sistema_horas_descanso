@@ -1,14 +1,29 @@
 <div class="card">
-    <h1>Registrar Actividad</h1>
+    <h1>Registrar Horas Extra por Semana</h1>
     <form id="registroForm">
-        <div style="margin-bottom: 15px;">
-            <label>Descripción de actividad:</label>
-            <input type="text" id="desc" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;">
+        <div style="margin-bottom: 18px;">
+            <label>Empleado</label>
+            <select id="reg-emp" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; background:#f8faf8; color:#1f2d19;">
+                <option value="">Selecciona un empleado...</option>
+            </select>
         </div>
-        <div style="margin-bottom: 15px;">
-            <label>Cantidad de horas:</label>
-            <input type="number" id="horas" step="0.5" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;">
+        <div id="registroHorasActuales" style="margin-bottom: 18px; font-size:0.95rem; color:#2f582f;">Horas extra disponibles: 0.00 hrs</div>
+        <div style="margin-bottom: 18px;">
+            <label>Horas por día</label>
+            <input type="number" id="horas" step="0.5" min="0.5" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;">
         </div>
-        <button type="submit" class="btn" style="background:var(--gold);">Enviar a Base de Datos</button>
+        <div style="margin-bottom: 18px;">
+            <label>Asignar a días de la semana</label>
+            <div style="display:grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap:10px; margin-top:10px;">
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Lunes">Lunes</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Martes">Martes</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Miércoles">Miércoles</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Jueves">Jueves</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Viernes">Viernes</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Sábado">Sábado</label>
+                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Domingo">Domingo</label>
+            </div>
+        </div>
+        <button type="submit" class="btn" style="background:var(--gold);">Guardar asignación</button>
     </form>
 </div>
