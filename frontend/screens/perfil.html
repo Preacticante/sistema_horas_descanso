@@ -361,43 +361,45 @@
                 <div class="perfil-form">
                     <div class="perfil-field perfil-full">
                         <label for="nombre">Nombre completo</label>
-                        <div class="editable-row">
-                            <input type="text" id="nombre" value="Alexis Hernández" disabled />
-                            <button type="button" class="small-btn" id="btn-editar-nombre">Editar</button>
-                        </div>
+                        <input type="text" id="nombre" placeholder="Tu nombre completo" required />
                     </div>
                     <div class="perfil-field">
-                        <label for="rol">Rol</label>
-                        <select id="rol" disabled>
-                            <option>Administrador</option>
+                        <label for="rol">Rol en el sistema</label>
+                        <select id="rol" required>
+                            <option value="Empleado">Empleado</option>
+                            <option value="Supervisor">Supervisor</option>
+                            <option value="Administrador">Administrador</option>
                         </select>
                     </div>
                     <div class="perfil-field">
                         <label for="email">Correo electrónico</label>
-                        <input type="email" id="email" value="alexis.hernandez@uco.com" />
+                        <input type="email" id="email" placeholder="tu@correo.com" required />
+                        <small id="email-error" style="color: #e74c3c; display:none;">Ingresa un correo válido.</small>
                     </div>
                     <div class="perfil-field">
                         <label for="telefono">Teléfono</label>
-                        <input type="tel" id="telefono" value="55 1234 5678" />
+                        <input type="tel" id="telefono" placeholder="+55 1234 5678" required />
+                        <small id="telefono-error" style="color: #e74c3c; display:none;">Ingresa un teléfono válido.</small>
                     </div>
                     <div class="perfil-field">
                         <label for="departamento">Departamento</label>
-                        <input type="text" id="departamento" value="Recursos Humanos" />
+                        <input type="text" id="departamento" placeholder="Tu departamento" />
                     </div>
                     <div class="perfil-field">
                         <label for="sucursal">Sucursal</label>
-                        <input type="text" id="sucursal" value="UCO Centro" />
+                        <input type="text" id="sucursal" placeholder="Tu sucursal" />
                     </div>
                     <div class="perfil-field perfil-full">
                         <label for="direccion">Dirección</label>
-                        <input type="text" id="direccion" value="Av. Reforma 123, Ciudad de México" />
+                        <input type="text" id="direccion" placeholder="Tu dirección completa" />
                     </div>
                     <div class="perfil-field perfil-full">
                         <label>Contraseña</label>
                         <button type="button" class="small-btn" id="btn-editar-password">Cambiar contraseña</button>
+                        <small style="color: #7f8c8d; display:block; margin-top:8px;">Haz clic para cambiar tu contraseña de forma segura.</small>
                     </div>
                     <div class="perfil-footnote">
-                        Deja el botón de contraseña vacíos si no deseas cambiar tu clave ahora. Los cambios se confirmarán con una notificación amigable.
+                        Todos los cambios se guardan automáticamente. Usa caracteres seguros en tu contraseña (mayúsculas, números, símbolos).
                     </div>
                 </div>
 
@@ -432,24 +434,27 @@
         <div class="perfil-modal">
             <button type="button" class="perfil-modal-close" id="close-modal-password">×</button>
             <h2>Cambiar contraseña</h2>
-            <p>Ingresa tu contraseña actual y elige una nueva contraseña segura.</p>
+            <p>Ingresa tu contraseña actual y elige una nueva contraseña segura. Mínimo 8 caracteres.</p>
             <form id="form-password">
                 <div class="modal-row">
                     <label for="actual-password">Contraseña actual</label>
-                    <input type="password" id="actual-password" placeholder="********" />
+                    <input type="password" id="actual-password" placeholder="Ingresa tu contraseña actual" required />
+                    <small id="actual-password-error" style="color: #e74c3c; display:none;">Contraseña requerida.</small>
                 </div>
                 <div class="modal-row">
                     <label for="nueva-password">Nueva contraseña</label>
-                    <input type="password" id="nueva-password" placeholder="********" />
+                    <input type="password" id="nueva-password" placeholder="Mínimo 8 caracteres, incluye mayúsculas y números" required />
+                    <div id="password-strength" style="margin-top: 8px; padding: 8px; border-radius: 8px; display:none; font-weight: 600; text-align: center;"></div>
+                    <small id="nueva-password-error" style="color: #e74c3c; display:none;">Contraseña débil.</small>
                 </div>
                 <div class="modal-row">
                     <label for="confirm-password">Confirmar nueva contraseña</label>
-                    <input type="password" id="confirm-password" placeholder="********" />
+                    <input type="password" id="confirm-password" placeholder="Repite la nueva contraseña" required />
                     <div class="perfil-error" id="error-password"></div>
                 </div>
                 <div class="perfil-modal-footer">
                     <button type="button" class="perfil-btn perfil-btn-secondary" id="cancelar-modal-password">Cancelar</button>
-                    <button type="submit" class="perfil-btn perfil-btn-primary">Guardar contraseña</button>
+                    <button type="submit" class="perfil-btn perfil-btn-primary">Cambiar contraseña</button>
                 </div>
             </form>
         </div>

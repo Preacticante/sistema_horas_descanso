@@ -1,5 +1,6 @@
 const API_URL = `http://${window.location.hostname}:8000`; // Cambia el puerto si tu backend está en otro puerto
 let empleadosCache = [];
+let ultimoReporteData = [];
 
 async function cargarEmpleados(ids = null) {
     const tabla = document.getElementById("tabla-empleados");
@@ -166,6 +167,44 @@ async function cargarEmpleadosParaRegistro() {
     }
 }
 
+function validarEmail(email) {
+    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return regex.test(email);
+}
+
+function validarTelefono(telefono) {
+    const regex = /^[\d\s\-\+\(\)]+$/;
+    return regex.test(telefono) && telefono.length >= 10;
+}
+
+function evaluarFuerzaContraseña(password) {
+    let fuerza = 0;
+    if (password.length >= 8) fuerza++;
+    if (/[A-Z]/.test(password)) fuerza++;
+    if (/[0-9]/.test(password)) fuerza++;
+    if (/[!@#$%^&*]/.test(password)) fuerza++;
+    return fuerza;
+}
+
+function mostrarFuerzaContraseña(password) {
+    const strengthDiv = document.getElementById('password-strength');
+    if (!strengthDiv) return;
+    
+    if (!password) {
+        strengthDiv.style.display = 'none';
+        return;
+    }
+    
+    const fuerza = evaluarFuerzaContraseña(password);
+    const textos = ['Muy débil', 'Débil', 'Normal', 'Fuerte', 'Muy fuerte'];
+    const colores = ['#e74c3c', '#e67e22', '#f39c12', '#27ae60', '#16a085'];
+    
+    strengthDiv.style.display = 'block';
+    strengthDiv.textContent = textos[fuerza];
+    strengthDiv.style.backgroundColor = colores[fuerza];
+    strengthDiv.style.color = 'white';
+}
+
 async function cargarPerfil() {
     try {
         const response = await fetch(`${API_URL}/api/perfil`);
@@ -174,6 +213,7 @@ async function cargarPerfil() {
         }
         const perfil = await response.json();
         document.getElementById('nombre').value = perfil.nombre || '';
+        document.getElementById('rol').value = perfil.rol || 'Empleado';
         document.getElementById('email').value = perfil.email || '';
         document.getElementById('telefono').value = perfil.telefono || '';
         document.getElementById('departamento').value = perfil.departamento || '';
@@ -193,21 +233,13 @@ function inicializarPerfil() {
     const formPerfil = document.getElementById('form-perfil');
     const notice = document.getElementById('perfil-notice');
 
-    const modalNombre = document.getElementById('modal-nombre');
     const modalPassword = document.getElementById('modal-password');
-    const btnEditarNombre = document.getElementById('btn-editar-nombre');
     const btnEditarPassword = document.getElementById('btn-editar-password');
-    const closeModalNombre = document.getElementById('close-modal-nombre');
     const closeModalPassword = document.getElementById('close-modal-password');
-    const cancelarModalNombre = document.getElementById('cancelar-modal-nombre');
     const cancelarModalPassword = document.getElementById('cancelar-modal-password');
-    const formNombre = document.getElementById('form-nombre');
     const formPassword = document.getElementById('form-password');
-    const errorNombre = document.getElementById('error-nombre');
     const errorPassword = document.getElementById('error-password');
-    const nombreInput = document.getElementById('nombre');
     const perfilNombreTitle = document.getElementById('perfil-nombre');
-    const nuevoNombreInput = document.getElementById('nuevo-nombre');
     const actualPassword = document.getElementById('actual-password');
     const nuevaPassword = document.getElementById('nueva-password');
     const confirmPassword = document.getElementById('confirm-password');
@@ -239,97 +271,113 @@ function inicializarPerfil() {
         });
     }
 
-    if (btnEditarNombre) {
-        btnEditarNombre.addEventListener('click', () => {
-            showModal(modalNombre);
-            if (nuevoNombreInput) {
-                nuevoNombreInput.value = nombreInput?.value || '';
-                errorNombre.textContent = '';
-                nuevoNombreInput.focus();
-            }
-        });
-    }
-
     if (btnEditarPassword) {
         btnEditarPassword.addEventListener('click', () => {
             showModal(modalPassword);
-            if (errorPassword) {
-                errorPassword.textContent = '';
-            }
+            if (errorPassword) errorPassword.textContent = '';
             if (actualPassword) {
                 actualPassword.value = '';
                 actualPassword.focus();
             }
-            if (nuevaPassword) nuevaPassword.value = '';
+            if (nuevaPassword) {
+                nuevaPassword.value = '';
+                mostrarFuerzaContraseña('');
+            }
             if (confirmPassword) confirmPassword.value = '';
         });
     }
 
-    [closeModalNombre, cancelarModalNombre].forEach((button) => {
-        if (button) button.addEventListener('click', () => hideModal(modalNombre));
-    });
+    if (nuevaPassword) {
+        nuevaPassword.addEventListener('input', () => mostrarFuerzaContraseña(nuevaPassword.value));
+    }
+
     [closeModalPassword, cancelarModalPassword].forEach((button) => {
         if (button) button.addEventListener('click', () => hideModal(modalPassword));
     });
 
-    if (formNombre) {
-        formNombre.addEventListener('submit', (event) => {
-            event.preventDefault();
-            const nuevoNombre = nuevoNombreInput?.value.trim() || '';
-            if (!nuevoNombre) {
-                if (errorNombre) errorNombre.textContent = 'Ingresa un nombre válido.';
-                nuevoNombreInput?.focus();
-                return;
-            }
-            if (nombreInput) nombreInput.value = nuevoNombre;
-            if (perfilNombreTitle) perfilNombreTitle.textContent = nuevoNombre;
-            hideModal(modalNombre);
-            showNotice('Nombre actualizado con éxito');
-        });
-    }
-
     if (formPassword) {
-        formPassword.addEventListener('submit', (event) => {
+        formPassword.addEventListener('submit', async (event) => {
             event.preventDefault();
             const actual = actualPassword?.value.trim() || '';
             const nueva = nuevaPassword?.value.trim() || '';
             const confirmar = confirmPassword?.value.trim() || '';
 
             if (!actual || !nueva || !confirmar) {
-                if (errorPassword) errorPassword.textContent = 'Completa todos los campos para cambiar la contraseña.';
+                if (errorPassword) errorPassword.textContent = 'Completa todos los campos.';
                 return;
             }
             if (nueva.length < 8) {
-                if (errorPassword) errorPassword.textContent = 'La nueva contraseña debe tener al menos 8 caracteres.';
+                if (errorPassword) errorPassword.textContent = 'La contraseña debe tener mínimo 8 caracteres.';
+                return;
+            }
+            const fuerza = evaluarFuerzaContraseña(nueva);
+            if (fuerza < 2) {
+                if (errorPassword) errorPassword.textContent = 'La contraseña es muy débil. Incluye mayúsculas, números y símbolos.';
                 return;
             }
             if (nueva !== confirmar) {
                 if (errorPassword) errorPassword.textContent = 'Las contraseñas no coinciden.';
                 return;
             }
-            hideModal(modalPassword);
-            showNotice('Contraseña actualizada correctamente');
+            
+            try {
+                const response = await fetch(`${API_URL}/api/perfil-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        actual_password: actual,
+                        new_password: nueva,
+                    }),
+                });
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    if (errorPassword) errorPassword.textContent = error.detail || 'Error al cambiar contraseña.';
+                    return;
+                }
+                
+                hideModal(modalPassword);
+                showNotice('Contraseña actualizada correctamente');
+                formPassword.reset();
+                mostrarFuerzaContraseña('');
+            } catch (error) {
+                console.error('Error al cambiar contraseña:', error);
+                if (errorPassword) errorPassword.textContent = 'Error en la conexión. Intenta de nuevo.';
+            }
         });
     }
 
     if (formPerfil) {
         formPerfil.addEventListener('submit', async (event) => {
             event.preventDefault();
+            const nombre = document.getElementById('nombre')?.value.trim() || '';
+            const rol = document.getElementById('rol')?.value.trim() || '';
             const email = document.getElementById('email')?.value.trim() || '';
             const telefono = document.getElementById('telefono')?.value.trim() || '';
             const departamento = document.getElementById('departamento')?.value.trim() || '';
             const sucursal = document.getElementById('sucursal')?.value.trim() || '';
             const direccion = document.getElementById('direccion')?.value.trim() || '';
-            const nombre = document.getElementById('nombre')?.value.trim() || '';
 
-            if (!email) {
-                showNotice('Ingresa un correo electrónico válido.');
+            const emailError = document.getElementById('email-error');
+            const telefonoError = document.getElementById('telefono-error');
+            if (emailError) emailError.style.display = 'none';
+            if (telefonoError) telefonoError.style.display = 'none';
+
+            let tieneError = false;
+            if (!nombre) {
+                showNotice('Ingresa tu nombre completo.');
                 return;
             }
-            if (!telefono) {
-                showNotice('Ingresa un teléfono válido.');
-                return;
+            if (!validarEmail(email)) {
+                if (emailError) emailError.style.display = 'block';
+                tieneError = true;
             }
+            if (!validarTelefono(telefono)) {
+                if (telefonoError) telefonoError.style.display = 'block';
+                tieneError = true;
+            }
+
+            if (tieneError) return;
 
             try {
                 const response = await fetch(`${API_URL}/api/perfil`, {
@@ -337,6 +385,7 @@ function inicializarPerfil() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         nombre,
+                        rol,
                         email,
                         telefono,
                         departamento,
@@ -350,6 +399,8 @@ function inicializarPerfil() {
                     throw new Error(error.detail || 'No se pudo guardar el perfil.');
                 }
 
+                const perfil = await response.json();
+                if (perfilNombreTitle) perfilNombreTitle.textContent = perfil.nombre || 'Usuario';
                 showNotice('Perfil actualizado correctamente');
             } catch (error) {
                 console.error('Error al guardar perfil:', error);
@@ -632,229 +683,286 @@ function inicializarRegistros() {
     cargarEmpleadosParaRegistro();
 }
 
-function mostrarHorasActuales() {
-    const selectEmpleado = document.getElementById("reg-empleado");
-    const horasActuales = document.getElementById("horas-actuales");
-    if (!selectEmpleado || !horasActuales) return;
+const CONFIG_KEY = "sistema_horas_configuracion";
+const DEFAULT_CONFIG = {
+    maxHorasMes: 160,
+    maxHorasDiarias: 12,
+    minHorasCompensacion: 1,
+    horasDescansoPorHoraExtra: 1,
+    diasMaximosDescanso: 15,
+    toleranciaTarde: 10,
+    permitirRecuperacionOtroDia: true,
+    alertasExceso: true,
+};
 
-    const empleadoId = parseInt(selectEmpleado.value, 10);
-    const empleado = empleadosCache.find(emp => emp.id === empleadoId);
-
-    if (empleado) {
-        horasActuales.textContent = `Horas extra disponibles: ${empleado.total_horas.toFixed(2)} hrs`;
-    } else {
-        horasActuales.textContent = "Horas extra disponibles: 0.00 hrs";
+function obtenerConfiguracionGuardada() {
+    const raw = window.localStorage.getItem(CONFIG_KEY);
+    if (!raw) {
+        return { ...DEFAULT_CONFIG };
     }
-}
-
-
-function generarResumenReporte(datos) {
-    const totalRegistros = datos.length;
-    const empleadosRango = new Set(datos.map(item => item.id)).size;
-    const alertasHoras = datos.filter(item => item.total_horas < 0 || item.salidas_temprano > 0).length;
-
-    return { totalRegistros, empleadosRango, alertasHoras };
-}
-
-function mostrarResumenReporte(datos) {
-    const tarjetas = document.querySelectorAll('.reportes-summary .summary-card strong');
-    const resumen = generarResumenReporte(datos);
-
-    if (tarjetas.length >= 3) {
-        tarjetas[0].textContent = `${resumen.totalRegistros}`;
-        tarjetas[1].textContent = `${resumen.empleadosRango}`;
-        tarjetas[2].textContent = `${resumen.alertasHoras}`;
-    }
-}
-
-function renderizarReporte(datos) {
-    const tbody = document.getElementById('reportes-table-body');
-    const detalle = document.getElementById('reportes-detalle');
-    if (!tbody) return;
-
-    if (!Array.isArray(datos) || datos.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" class="reportes-empty">No se encontraron resultados para ese rango de fechas.</td>
-            </tr>
-        `;
-        detalle.classList.remove('show');
-        return;
-    }
-
-    tbody.innerHTML = '';
-    datos.forEach(emp => {
-        const colorHoras = emp.total_horas >= 0 ? '#124416' : '#c0392b';
-        tbody.innerHTML += `
-            <tr>
-                <td>${emp.id} - ${emp.nombre}</td>
-                <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
-                <td>${emp.salidas_temprano}</td>
-                <td><button class="reportes-btn reportes-btn-secondary btn-detalle" data-id="${emp.id}" data-nombre="${emp.nombre}">Ver detalles</button></td>
-            </tr>
-        `;
-    });
-
-    mostrarResumenReporte(datos);
-}
-
-function renderizarDetalleEmpleado(detalle, nombreEmpleado) {
-    console.log('renderizarDetalleEmpleado llamado con:', detalle, nombreEmpleado);
-    const contenido = document.getElementById('reportes-detalle-body');
-    const panel = document.getElementById('reportes-detalle');
-    console.log('Panel:', panel, 'Contenido:', contenido);
-    if (!contenido || !panel) {
-        console.error('Panel o contenido no encontrado');
-        return;
-    }
-
-    if (!detalle || !detalle.salidas_detalle || detalle.salidas_detalle.length === 0) {
-        panel.classList.add('show');
-        contenido.innerHTML = `<p>No se encontraron registros de salida temprana en el rango seleccionado para ${nombreEmpleado}.</p>`;
-        console.log('Panel mostrado (sin detalles)');
-        return;
-    }
-
-    contenido.innerHTML = `
-        <p><strong>Empleado:</strong> ${nombreEmpleado}</p>
-        <p><strong>Período:</strong> ${detalle.fecha_inicio} a ${detalle.fecha_fin}</p>
-        <ul class="reportes-detalle-list">
-            ${detalle.salidas_detalle.map(item => `
-                <li class="reportes-detalle-item">
-                    <strong>${item.fecha_afectacion}</strong>
-                    <div>Horas: ${item.horas.toFixed(2)}</div>
-                    <div>${item.observaciones}</div>
-                </li>
-            `).join('')}
-        </ul>
-    `;
-    panel.classList.add('show');
-    console.log('Panel mostrado con detalles');
-}
-
-async function cargarReporte(fechaInicio, fechaFin) {
-    const tbody = document.getElementById('reportes-table-body');
-    if (!tbody) return;
-
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="4" class="reportes-empty">Cargando reporte...</td>
-        </tr>
-    `;
 
     try {
-        const response = await fetch(`${API_URL}/api/reportes?fecha_inicio=${encodeURIComponent(fechaInicio)}&fecha_fin=${encodeURIComponent(fechaFin)}`);
+        const parsed = JSON.parse(raw);
+        return { ...DEFAULT_CONFIG, ...parsed };
+    } catch {
+        return { ...DEFAULT_CONFIG };
+    }
+}
+
+function cargarConfiguracion() {
+    const config = obtenerConfiguracionGuardada();
+    actualizarFormularioConfiguracion(config);
+}
+
+function guardarConfiguracion(event) {
+    event.preventDefault();
+    const config = obtenerConfiguracionFormulario();
+    window.localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+    actualizarFormularioConfiguracion(config);
+    mostrarAvisoConfig('Preferencias guardadas correctamente.');
+}
+
+function resetConfiguracion() {
+    window.localStorage.removeItem(CONFIG_KEY);
+    cargarConfiguracion();
+    mostrarAvisoConfig('Configuración restaurada a valores predeterminados.');
+}
+
+function exportarConfiguracion() {
+    const config = obtenerConfiguracionGuardada();
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'configuracion-sistema.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+}
+
+function importarConfiguracion(event) {
+    const file = event.target?.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        try {
+            const parsed = JSON.parse(reader.result);
+            if (typeof parsed !== 'object' || parsed === null) {
+                throw new Error('Formato inválido');
+            }
+
+            const config = { ...DEFAULT_CONFIG, ...parsed };
+            window.localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
+            cargarConfiguracion();
+            mostrarAvisoConfig('Configuración importada correctamente.');
+        } catch (error) {
+            alert('No se pudo importar el archivo de configuración. Asegúrate de que sea un JSON válido.');
+            console.error(error);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function obtenerConfiguracionFormulario() {
+    return {
+        maxHorasMes: parseInt(document.getElementById('max-horas-mes').value, 10) || DEFAULT_CONFIG.maxHorasMes,
+        maxHorasDiarias: parseFloat(document.getElementById('max-horas-diarias').value) || DEFAULT_CONFIG.maxHorasDiarias,
+        minHorasCompensacion: parseFloat(document.getElementById('min-horas-compensacion').value) || DEFAULT_CONFIG.minHorasCompensacion,
+        horasDescansoPorHoraExtra: parseFloat(document.getElementById('horas-descanso-por-hora').value) || DEFAULT_CONFIG.horasDescansoPorHoraExtra,
+        diasMaximosDescanso: parseInt(document.getElementById('dias-maximos-descanso').value, 10) || DEFAULT_CONFIG.diasMaximosDescanso,
+        toleranciaTarde: parseInt(document.getElementById('tolerancia-tarde').value, 10) || DEFAULT_CONFIG.toleranciaTarde,
+        permitirRecuperacionOtroDia: document.getElementById('permitir-recuperacion-otro-dia').checked,
+        alertasExceso: document.getElementById('alertas-exceso').checked,
+    };
+}
+
+function aplicarTemaConfig(tema) {
+    if (!document.body) return;
+    document.body.classList.toggle("theme-dark", tema === "oscuro");
+}
+
+function actualizarFormularioConfiguracion(config) {
+    document.getElementById("max-horas-mes").value = config.maxHorasMes;
+    document.getElementById("max-horas-diarias").value = config.maxHorasDiarias;
+    document.getElementById("min-horas-compensacion").value = config.minHorasCompensacion;
+    document.getElementById("horas-descanso-por-hora").value = config.horasDescansoPorHoraExtra;
+    document.getElementById("dias-maximos-descanso").value = config.diasMaximosDescanso;
+    document.getElementById("tolerancia-tarde").value = config.toleranciaTarde;
+    document.getElementById("permitir-recuperacion-otro-dia").checked = config.permitirRecuperacionOtroDia;
+    document.getElementById("alertas-exceso").checked = config.alertasExceso;
+}
+
+function mostrarAvisoConfig(mensaje) {
+    const notice = document.getElementById("config-notice");
+    if (!notice) return;
+    notice.textContent = mensaje;
+    notice.classList.add("show");
+    setTimeout(() => notice.classList.remove("show"), 3200);
+}
+
+
+async function inicializarConfiguracion() {
+    const form = document.getElementById("config-form");
+    const btnReset = document.getElementById("btn-reset-config");
+    const btnExport = document.getElementById("btn-export-config");
+    const btnImport = document.getElementById("btn-import-config");
+    const inputImport = document.getElementById("import-config-file");
+
+    await cargarConfiguracion();
+
+    if (form) {
+        form.addEventListener("submit", guardarConfiguracion);
+    }
+
+    if (btnReset) {
+        btnReset.addEventListener("click", () => {
+            if (confirm("¿Deseas restaurar los valores predeterminados de configuración?")) {
+                resetConfiguracion();
+            }
+        });
+    }
+
+    if (btnExport) {
+        btnExport.addEventListener("click", exportarConfiguracion);
+    }
+
+    if (btnImport && inputImport) {
+        btnImport.addEventListener("click", () => inputImport.click());
+        inputImport.addEventListener("change", importarConfiguracion);
+    }
+}
+
+async function cargarReportes() {
+    const inicio = document.getElementById('fechaInicio');
+    const fin = document.getElementById('fechaFin');
+    const tbody = document.getElementById('reportes-tbody');
+    const totalRegistros = document.getElementById('reporte-total-registros');
+    const empleadosRango = document.getElementById('reporte-empleados-rango');
+    const alertasHoras = document.getElementById('reporte-alertas-horas');
+
+    if (!inicio || !fin || !tbody || !totalRegistros || !empleadosRango || !alertasHoras) return;
+
+    const fechaInicio = inicio.value;
+    const fechaFin = fin.value;
+    if (!fechaInicio || !fechaFin) {
+        alert('Selecciona un rango de fechas antes de filtrar.');
+        return;
+    }
+
+    if (new Date(fechaInicio) > new Date(fechaFin)) {
+        alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/api/empleados?all=true&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
         if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Error al cargar el reporte');
+            throw new Error(`Error al cargar el reporte (${response.status})`);
         }
 
-        const datos = await response.json();
-        renderizarReporte(datos);
+        const empleados = await response.json();
+        ultimoReporteData = Array.isArray(empleados) ? empleados : [];
+
+        if (!ultimoReporteData.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="5" class="reportes-empty">No se encontraron registros en el rango seleccionado.</td>
+                </tr>
+            `;
+            totalRegistros.textContent = '0';
+            empleadosRango.textContent = '0';
+            alertasHoras.textContent = '0';
+            return;
+        }
+
+        const alertasCount = ultimoReporteData.filter(emp => Number(emp.salidas_temprano) > 0).length;
+        totalRegistros.textContent = String(ultimoReporteData.length);
+        empleadosRango.textContent = String(ultimoReporteData.length);
+        alertasHoras.textContent = String(alertasCount);
+
+        tbody.innerHTML = '';
+        ultimoReporteData.forEach(emp => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${emp.nombre}</td>
+                    <td>${emp.id}</td>
+                    <td>${(Number(emp.total_horas) || 0).toFixed(2)} hrs</td>
+                    <td>${emp.salidas_temprano}</td>
+                    <td>${emp.salidas_temprano > 0 ? 'Revisar' : 'OK'}</td>
+                </tr>
+            `;
+        });
     } catch (error) {
         console.error('Error al cargar el reporte:', error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" class="reportes-empty">No se pudo cargar el reporte. Revisa la consola.</td>
+                <td colspan="5" class="reportes-empty">No se pudo cargar el reporte. Revisa la conexión con el backend.</td>
             </tr>
         `;
     }
 }
 
-async function cargarDetalleEmpleado(empleadoId, empleadoNombre, fechaInicio, fechaFin) {
-    console.log('Cargando detalle para empleado:', empleadoId, empleadoNombre, fechaInicio, fechaFin);
-    try {
-        const url = `${API_URL}/api/empleados/${empleadoId}/detalle?fecha_inicio=${encodeURIComponent(fechaInicio)}&fecha_fin=${encodeURIComponent(fechaFin)}`;
-        console.log('URL del detalle:', url);
-        const response = await fetch(url);
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Error al cargar detalle');
-        }
-
-        const detalle = await response.json();
-        console.log('Detalle recibido:', detalle);
-        renderizarDetalleEmpleado(detalle, empleadoNombre);
-    } catch (error) {
-        console.error('Error al cargar detalle del empleado:', error);
-        alert('Error al cargar detalles: ' + error.message);
+function descargarReporteCSV() {
+    if (!ultimoReporteData.length) {
+        alert('No hay datos de reporte disponibles para exportar.');
+        return;
     }
+
+    const csvRows = [
+        ['Empleado', 'ID', 'Horas', 'Salidas tempranas', 'Estado'],
+        ...ultimoReporteData.map(emp => [
+            emp.nombre,
+            emp.id,
+            (Number(emp.total_horas) || 0).toFixed(2),
+            emp.salidas_temprano,
+            emp.salidas_temprano > 0 ? 'Revisar' : 'OK',
+        ]),
+    ];
+
+    const csvContent = csvRows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'reporte-horas.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
 }
 
 function inicializarReportes() {
-    const btnFiltro = document.getElementById('btn-aplicar-filtro-reportes');
-    const fechaInicioInput = document.getElementById('fechaInicio');
-    const fechaFinInput = document.getElementById('fechaFin');
-    const tablaBody = document.getElementById('reportes-table-body');
+    const btnFiltrar = document.getElementById('btn-aplicar-reporte');
+    const btnFiltrarTop = document.getElementById('btn-filtrar-reporte');
+    const btnExportCsv = document.getElementById('btn-descargar-reporte-csv');
 
-    const btnFiltroTop = document.getElementById('btn-filtrar-datos-reportes');
-
-    const aplicarFiltro = (event) => {
-        event.preventDefault();
-        const fechaInicio = fechaInicioInput.value;
-        const fechaFin = fechaFinInput.value;
-
-        if (!fechaInicio || !fechaFin) {
-            alert('Selecciona un rango de fechas antes de filtrar.');
-            return;
-        }
-
-        if (fechaInicio > fechaFin) {
-            alert('La fecha de inicio no puede ser posterior a la fecha de fin.');
-            return;
-        }
-
-        cargarReporte(fechaInicio, fechaFin);
-    };
-
-    if (btnFiltro && fechaInicioInput && fechaFinInput) {
-        btnFiltro.addEventListener('click', aplicarFiltro);
-    }
-
-    if (btnFiltroTop && fechaInicioInput && fechaFinInput) {
-        btnFiltroTop.addEventListener('click', aplicarFiltro);
-    }
-
-    if (tablaBody) {
-        tablaBody.addEventListener('click', (event) => {
-            console.log('Click en tabla detectado');
-            const target = event.target;
-            console.log('Target:', target, 'Clases:', target.className);
-            if (target.matches('.btn-detalle')) {
-                console.log('Botón de detalle clickeado');
-                const empleadoId = target.dataset.id;
-                const empleadoNombre = target.dataset.nombre;
-                const fechaInicio = document.getElementById('fechaInicio')?.value || '';
-                const fechaFin = document.getElementById('fechaFin')?.value || '';
-
-                console.log('Datos del botón - ID:', empleadoId, 'Nombre:', empleadoNombre);
-
-                if (!fechaInicio || !fechaFin) {
-                    alert('Selecciona un rango de fechas para ver los detalles de empleado.');
-                    return;
-                }
-
-                cargarDetalleEmpleado(empleadoId, empleadoNombre, fechaInicio, fechaFin);
-            }
+    if (btnFiltrar) {
+        btnFiltrar.addEventListener('click', (event) => {
+            event.preventDefault();
+            cargarReportes();
         });
     }
-
-    const modal = document.getElementById('reportes-detalle');
-    const btnCerrar = document.getElementById('reportes-detalle-close');
-    const modalContenido = document.getElementById('reportes-detalle-contenido');
-
-    if (btnCerrar) {
-        btnCerrar.addEventListener('click', () => {
-            modal?.classList.remove('show');
+    if (btnFiltrarTop) {
+        btnFiltrarTop.addEventListener('click', (event) => {
+            event.preventDefault();
+            cargarReportes();
         });
     }
+    if (btnExportCsv) {
+        btnExportCsv.addEventListener('click', descargarReporteCSV);
+    }
 
-    if (modal && modalContenido) {
-        modal.addEventListener('click', (event) => {
-            if (event.target === modal) {
-                modal.classList.remove('show');
-            }
-        });
+    const inicio = document.getElementById('fechaInicio');
+    const fin = document.getElementById('fechaFin');
+    if (inicio && fin) {
+        const hoy = new Date();
+        const hace30 = new Date(hoy);
+        hace30.setDate(hoy.getDate() - 30);
+        inicio.value = hace30.toISOString().slice(0, 10);
+        fin.value = hoy.toISOString().slice(0, 10);
+        cargarReportes();
     }
 }
 
@@ -868,7 +976,7 @@ async function loadPage(pageName, element) {
         const response = await fetch(`./screens/${pageName}.html`);
         const html = await response.text();
         
-        setTimeout(() => {
+        setTimeout(async () => {
             dynamicCard.innerHTML = html;
             container.classList.remove('fade-out');
             console.log("loadPage loaded", pageName);
@@ -894,6 +1002,14 @@ async function loadPage(pageName, element) {
 
             if (pageName === 'perfil') {
                 inicializarPerfil();
+            }
+
+            if (pageName === 'reportes') {
+                inicializarReportes();
+            }
+
+            if (pageName === 'configuracion') {
+                await inicializarConfiguracion();
             }
 
         }, 300);
