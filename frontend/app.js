@@ -423,6 +423,21 @@ function actualizarSelectEmpleados() {
     });
 }
 
+function mostrarHorasActuales() {
+    const selectEmpleado = document.getElementById("reg-empleado");
+    const horasActuales = document.getElementById("horas-actuales");
+    if (!selectEmpleado || !horasActuales) return;
+
+    const empleadoId = parseInt(selectEmpleado.value, 10);
+    const empleado = empleadosCache.find(emp => emp.id === empleadoId);
+
+    if (empleado) {
+        horasActuales.textContent = `Horas extra disponibles: ${empleado.total_horas.toFixed(2)} hrs`;
+    } else {
+        horasActuales.textContent = "Horas extra disponibles: 0.00 hrs";
+    }
+}
+
 let registroFechasSeleccionadas = new Set();
 let registroCalendarioMes = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
