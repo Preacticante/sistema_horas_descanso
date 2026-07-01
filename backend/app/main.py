@@ -21,7 +21,7 @@ app.add_middleware(
 class RegistroHoras(BaseModel):
     numero_empleado: int
     cantidad_horas: float
-    dias_semana: list[str] = []
+    dias_semana: list[date] = []
 
 class ActualizarPerfil(BaseModel):
     nombre: str
@@ -158,6 +158,49 @@ EMPLEADOS_NOMBRES = {
 def inicio():
     return {"status": "online", "mensaje": "Conexión base lista"}
 
+@app.get("/api/dashboard-resumen")
+def dashboard_resumen():
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        # Total de horas en el banco
+        cursor.execute("SELECT ISNULL(SUM(fHoras), 0) FROM dbo.tblBancoHorasKardex")
+        total_horas = float(cursor.fetchone()[0] or 0.0)
+
+        # Contar empleados con horas positivas (pendientes) vs negativas (aprobadas)
+        cursor.execute("""
+            SELECT
+                SUM(CASE WHEN fHoras > 0 THEN 1 ELSE 0 END) AS empleados_pendientes,
+                SUM(CASE WHEN fHoras < 0 THEN 1 ELSE 0 END) AS empleados_aprobadas
+            FROM (
+                SELECT DISTINCT IdEmpNum, SUM(fHoras) AS fHoras
+                FROM dbo.tblBancoHorasKardex
+                GROUP BY IdEmpNum
+            ) AS resumen
+        """)
+        resultado = cursor.fetchone()
+        empleados_pendientes = int(resultado[0] or 0)
+        empleados_aprobadas = int(resultado[1] or 0)
+
+        # Eficiencia: porcentaje de empleados con horas negativas
+        cursor.execute("SELECT COUNT(DISTINCT IdEmpNum) FROM dbo.tblBancoHorasKardex")
+        total_empleados = int(cursor.fetchone()[0] or 1)
+        eficiencia = (empleados_aprobadas / total_empleados * 100) if total_empleados > 0 else 0.0
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "total_horas": total_horas,
+            "empleados_pendientes": empleados_pendientes,
+            "empleados_aprobadas": empleados_aprobadas,
+            "eficiencia": eficiencia,
+        }
+    except Exception as e:
+        print(f"Error al generar resumen del dashboard: {e}")
+        raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+
 # ==========================================================
 # RUTA ACTUALIZADA: PROCESA LAS ENTRADAS/SALIDAS DE LA VISTA
 # ==========================================================
@@ -181,7 +224,12 @@ def listar_empleados(
         cursor.execute("SET LANGUAGE Spanish;")
 
         if all:
-            cursor.execute("SELECT iEmployeeNum, LTRIM(RTRIM(CONCAT(tFirstName, ' ', COALESCE(tMiddleName, ''), ' ', tLastName))) AS tFullName FROM dbo.tblEmployees")
+            cursor.execute("""
+                SELECT DISTINCT e.iEmployeeNum, LTRIM(RTRIM(CONCAT(e.tFirstName, ' ', COALESCE(e.tMiddleName, ''), ' ', e.tLastName))) AS tFullName
+                FROM dbo.tblEmployees e
+                INNER JOIN dbo.tblOrganigramaOficial o ON e.iEmployeeNum = o.IdEmpNum
+                ORDER BY e.iEmployeeNum
+            """)
             empleados_db = cursor.fetchall()
             cursor.execute("SELECT IdEmpNum, SUM(fHoras) AS HorasBanco FROM dbo.tblBancoHorasKardex GROUP BY IdEmpNum")
             horas_db = {row[0]: float(row[1] or 0.0) for row in cursor.fetchall()}
@@ -514,13 +562,21 @@ def registrar_horas(datos: RegistroHoras):
         conn = obtener_conexion()
         cursor = conn.cursor()
 
+        # Verificar que el empleado existe en tblOrganigramaOficial
+        cursor.execute("SELECT IdEmpNum FROM dbo.tblOrganigramaOficial WHERE IdEmpNum = ?", datos.numero_empleado)
+        empleado_existe = cursor.fetchone()
+        if not empleado_existe:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=400, detail=f"El empleado con ID {datos.numero_empleado} no existe en el sistema.")
+
         dias_unicos = []
         for dia in datos.dias_semana:
             if dia not in dias_unicos:
                 dias_unicos.append(dia)
 
         for dia in dias_unicos:
-            observaciones = f"Descanso de {datos.cantidad_horas} hrs el {dia}"
+            observaciones = f"Descuento de {datos.cantidad_horas} hrs por salida temprana el {dia.isoformat()}"
             cursor.execute("""
                 INSERT INTO dbo.tblBancoHorasKardex (
                     IdEmpNum,
@@ -535,7 +591,7 @@ def registrar_horas(datos: RegistroHoras):
                 )
                 VALUES (
                     ?,
-                    CAST(GETDATE() AS date),
+                    ?,
                     ?,
                     'Ajuste',
                     ?,
@@ -544,13 +600,12 @@ def registrar_horas(datos: RegistroHoras):
                     '1900-01-01',
                     NULL
                 )
-            """, datos.numero_empleado, datos.cantidad_horas, observaciones)
+            """, datos.numero_empleado, dia, -abs(datos.cantidad_horas), observaciones)
 
         conn.commit()
         cursor.close()
         conn.close()
         return {"status": "success", "mensaje": "Asignación de horas guardada e indexado"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
+    except HTTPException:
+        raise
     

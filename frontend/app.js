@@ -423,19 +423,114 @@ function actualizarSelectEmpleados() {
     });
 }
 
-function mostrarHorasActuales() {
-    const selectEmpleado = document.getElementById("reg-empleado");
-    const horasActuales = document.getElementById("horas-actuales");
-    if (!selectEmpleado || !horasActuales) return;
+let registroFechasSeleccionadas = new Set();
+let registroCalendarioMes = { year: new Date().getFullYear(), month: new Date().getMonth() };
 
-    const empleadoId = parseInt(selectEmpleado.value, 10);
-    const empleado = empleadosCache.find(emp => emp.id === empleadoId);
+function formatearFecha(date) {
+    return date.toISOString().split('T')[0];
+}
 
-    if (empleado) {
-        horasActuales.textContent = `Horas extra disponibles: ${empleado.total_horas.toFixed(2)} hrs`;
-    } else {
-        horasActuales.textContent = "Horas extra disponibles: 0.00 hrs";
+function actualizarResumenFechasRegistro() {
+    const resumen = document.getElementById('reg-fechas-seleccionadas');
+    if (!resumen) return;
+
+    if (!registroFechasSeleccionadas.size) {
+        resumen.textContent = 'No hay fechas seleccionadas.';
+        return;
     }
+
+    const fechas = Array.from(registroFechasSeleccionadas).sort();
+    resumen.textContent = `Fechas seleccionadas: ${fechas.join(', ')}`;
+}
+
+function construirCalendarioRegistro(year, month) {
+    const container = document.getElementById('reg-calendar-container');
+    if (!container) return;
+
+    const mesNombre = new Date(year, month).toLocaleString('es-ES', { month: 'long' });
+    const primerDia = new Date(year, month, 1);
+    const diasMes = new Date(year, month + 1, 0).getDate();
+    const primerDiaSemana = (primerDia.getDay() + 6) % 7;
+
+    container.innerHTML = `
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px;">
+            <button type="button" id="reg-calendar-prev" style="padding:8px 12px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; cursor:pointer;">Anterior</button>
+            <div style="font-weight:700; color:#1f2937;">${mesNombre.charAt(0).toUpperCase() + mesNombre.slice(1)} ${year}</div>
+            <button type="button" id="reg-calendar-next" style="padding:8px 12px; border-radius:10px; border:1px solid #cbd5e1; background:#f8fafc; cursor:pointer;">Siguiente</button>
+        </div>
+        <div style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px; text-align:center; font-size:0.85rem; color:#475569; margin-bottom:8px;">
+            <div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div><div>Dom</div>
+        </div>
+        <div id="reg-calendar-grid" style="display:grid; grid-template-columns: repeat(7, 1fr); gap:6px;"></div>
+    `;
+
+    const grid = document.getElementById('reg-calendar-grid');
+    if (!grid) return;
+
+    for (let i = 0; i < primerDiaSemana; i += 1) {
+        const empty = document.createElement('div');
+        empty.style.minHeight = '42px';
+        grid.appendChild(empty);
+    }
+
+    for (let dia = 1; dia <= diasMes; dia += 1) {
+        const fecha = new Date(year, month, dia);
+        const fechaStr = formatearFecha(fecha);
+        const celda = document.createElement('button');
+        celda.type = 'button';
+        celda.textContent = dia;
+        celda.dataset.fecha = fechaStr;
+        celda.style.border = '1px solid #cbd5e1';
+        celda.style.borderRadius = '12px';
+        celda.style.padding = '10px 0';
+        celda.style.background = registroFechasSeleccionadas.has(fechaStr) ? '#e0f2fe' : '#ffffff';
+        celda.style.color = '#111827';
+        celda.style.cursor = 'pointer';
+        celda.style.minHeight = '42px';
+        celda.style.fontWeight = registroFechasSeleccionadas.has(fechaStr) ? '700' : '400';
+
+        if (registroFechasSeleccionadas.has(fechaStr)) {
+            celda.style.borderColor = '#38bdf8';
+        }
+
+        celda.addEventListener('click', () => {
+            if (registroFechasSeleccionadas.has(fechaStr)) {
+                registroFechasSeleccionadas.delete(fechaStr);
+            } else {
+                registroFechasSeleccionadas.add(fechaStr);
+            }
+            construirCalendarioRegistro(year, month);
+            actualizarResumenFechasRegistro();
+        });
+
+        grid.appendChild(celda);
+    }
+
+    const prev = document.getElementById('reg-calendar-prev');
+    const next = document.getElementById('reg-calendar-next');
+
+    if (prev) {
+        prev.addEventListener('click', () => {
+            const fechaNueva = new Date(year, month - 1, 1);
+            registroCalendarioMes = { year: fechaNueva.getFullYear(), month: fechaNueva.getMonth() };
+            construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
+        });
+    }
+
+    if (next) {
+        next.addEventListener('click', () => {
+            const fechaNueva = new Date(year, month + 1, 1);
+            registroCalendarioMes = { year: fechaNueva.getFullYear(), month: fechaNueva.getMonth() };
+            construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
+        });
+    }
+}
+
+function inicializarCalendarioRegistro() {
+    registroFechasSeleccionadas = new Set();
+    registroCalendarioMes = { year: new Date().getFullYear(), month: new Date().getMonth() };
+    construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
+    actualizarResumenFechasRegistro();
 }
 
 function abrirModalRegistro() {
@@ -456,12 +551,11 @@ async function enviarRegistroHoras(event) {
 
     const selectEmpleado = document.getElementById("reg-empleado");
     const inputHoras = document.getElementById("reg-horas");
-    const diaCheckboxes = Array.from(document.querySelectorAll("input[name='reg-dias']:checked"));
     if (!selectEmpleado || !inputHoras) return;
 
     const numeroEmpleado = parseInt(selectEmpleado.value, 10);
     const cantidadHoras = parseFloat(inputHoras.value);
-    const diasSeleccionados = diaCheckboxes.map(checkbox => checkbox.value);
+    const diasSeleccionados = Array.from(registroFechasSeleccionadas);
 
     if (Number.isNaN(numeroEmpleado) || Number.isNaN(cantidadHoras) || cantidadHoras <= 0) {
         alert("Selecciona un empleado válido e ingresa una cantidad de horas mayor a cero.");
@@ -469,7 +563,7 @@ async function enviarRegistroHoras(event) {
     }
 
     if (!diasSeleccionados.length) {
-        alert("Selecciona al menos un día de la semana para asignar las horas.");
+        alert("Selecciona al menos una fecha en el calendario.");
         return;
     }
 
@@ -491,6 +585,9 @@ async function enviarRegistroHoras(event) {
 
         alert("Asignación de horas guardada correctamente.");
         event.target.reset();
+        registroFechasSeleccionadas.clear();
+        actualizarResumenFechasRegistro();
+        construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
         mostrarHorasActuales();
     } catch (error) {
         console.error("Error al registrar horas:", error);
@@ -582,6 +679,7 @@ function inicializarRegistros() {
         selectEmpleado.addEventListener("change", mostrarHorasActuales);
     }
 
+    inicializarCalendarioRegistro();
     cargarEmpleadosParaRegistro();
 }
 
@@ -896,6 +994,10 @@ async function loadPage(pageName, element) {
 
             if (pageName === 'dashboard') {
                 cargarDashboard();
+            }
+
+            if (pageName === 'reportes') {
+                inicializarReportes();
             }
 
             if (pageName === 'perfil') {

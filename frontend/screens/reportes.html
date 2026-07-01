@@ -179,6 +179,84 @@
             font-weight: 600;
         }
 
+        .reportes-detalle {
+            position: fixed;
+            inset: 0;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            background: rgba(15, 23, 42, 0.5);
+            padding: 24px;
+            z-index: 999;
+        }
+
+        .reportes-detalle.show {
+            display: flex;
+        }
+
+        .reportes-detalle-contenido {
+            width: min(100%, 740px);
+            max-height: min(100%, 88vh);
+            overflow-y: auto;
+            background: #ffffff;
+            border-radius: 24px;
+            border: 1px solid #e2e8f0;
+            padding: 24px;
+            box-shadow: 0 30px 60px rgba(15, 23, 42, 0.18);
+            position: relative;
+        }
+
+        .reportes-detalle-close {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 36px;
+            height: 36px;
+            border: none;
+            border-radius: 50%;
+            background: #eef2ff;
+            color: #3730a3;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .reportes-detalle-close:hover {
+            background: #c7d2fe;
+        }
+
+        .reportes-detalle h2 {
+            margin: 0 0 16px;
+            font-size: 1.4rem;
+            color: #111827;
+        }
+
+        .reportes-detalle-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .reportes-detalle-item {
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: #f8fafc;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 12px;
+        }
+
+        .reportes-detalle-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .reportes-detalle-item strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+
         .reportes-empty {
             text-align: center;
             padding: 42px 20px;
@@ -219,6 +297,7 @@
         </div>
     </div>
 
+    
     <div class="reportes-summary">
         <div class="summary-card">
             <span>Total de registros</span>
@@ -234,22 +313,47 @@
         </div>
     </div>
 
+    <div class="reportes-filters">
+        <div class="filter-group">
+            <label for="fechaInicio">Fecha de inicio</label>
+            <input type="date" id="fechaInicio">
+        </div>
+        <div class="filter-group">
+            <label for="fechaFin">Fecha de fin</label>
+            <input type="date" id="fechaFin">
+        </div>
+        <div class="filter-group">
+            <label>&nbsp;</label>
+            <button id="btn-aplicar-filtro-reportes" class="reportes-btn reportes-btn-primary">Aplicar filtro</button>
+        </div>
+    </div>
+
+
     <div class="reportes-preview">
         <table class="reportes-table">
             <thead>
                 <tr>
                     <th>Empleado</th>
-                    <th>Fecha</th>
                     <th>Horas</th>
-                    <th>Retardos</th>
-                    <th>Estado</th>
+                    <th>Salidas temprano</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody id="reportes-tbody">
                 <tr>
-                    <td colspan="5" class="reportes-empty">Selecciona un rango de fechas para ver el reporte con resultados reales.</td>
+                    <td colspan="4" class="reportes-empty">Selecciona un rango de fechas para ver el reporte con resultados reales.</td>
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <div id="reportes-detalle" class="reportes-detalle" aria-hidden="true">
+        <div id="reportes-detalle-contenido" class="reportes-detalle-contenido">
+            <button id="reportes-detalle-close" class="reportes-detalle-close" aria-label="Cerrar detalle">×</button>
+            <h2>Detalle de empleado</h2>
+            <div id="reportes-detalle-body">
+                <p>Selecciona "Ver detalles" en un empleado para ver sus días con salida temprana.</p>
+            </div>
+        </div>
     </div>
 </div>
