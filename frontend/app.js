@@ -1,4 +1,5 @@
-const API_URL = "http://172.16.6.86:8000";
+const API_URL = "http://127.0.0.1:8000";
+let empleadosCache = [];
 
 async function cargarEmpleados(ids = null) {
     const tabla = document.getElementById("tabla-empleados");
@@ -178,7 +179,6 @@ function inicializarEmpleados() {
     const btnAbrirModal = document.getElementById("btn-abrir-modal");
     const btnCerrarModal = document.getElementById("btn-cerrar-modal");
     const formRegistro = document.getElementById("form-registrar-horas");
-    const selectEmpleado = document.getElementById("reg-empleado");
 
     if (btnFiltrar && btnReset && filtroIds) {
         btnFiltrar.addEventListener("click", () => {
@@ -204,16 +204,17 @@ function inicializarEmpleados() {
         formRegistro.addEventListener("submit", enviarRegistroHoras);
     }
 
-    if (selectEmpleado) {
-        selectEmpleado.addEventListener("change", mostrarHorasActuales);
-    }
-
+    // Cargar empleados en la tabla
     cargarEmpleados();
 }
 
 function inicializarRegistros() {
     const registroForm = document.getElementById("registroForm");
-    const selectEmpleado = document.getElementById("reg-emp");
+    const selectEmpleado = document.getElementById("reg-empleado");
+
+    console.log("Inicializando registros...");
+    console.log("registroForm:", registroForm);
+    console.log("selectEmpleado:", selectEmpleado);
 
     if (registroForm) {
         registroForm.addEventListener("submit", enviarRegistroHoras);
