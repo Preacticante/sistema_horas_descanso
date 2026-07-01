@@ -1,4 +1,4 @@
-const API_URL = `http://${window.location.hostname}:8000`; // Cambia el puerto si tu backend está en otro puerto
+const API_URL = `http://162.16.6.86:8000`; // Cambia el puerto si tu backend está en otro puerto
 let empleadosCache = [];
 let ultimoReporteData = [];
 
