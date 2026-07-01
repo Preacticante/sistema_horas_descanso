@@ -321,7 +321,6 @@ def listar_empleados(
                 D.IdAccessGroup,
                 D.IdDepartment,
                 COALESCE(B.HorasBanco, 0) AS TotalHoras,
-                SUM(D.LlegoTarde) AS LlegadasTarde,
                 SUM(D.SalioTemprano) AS SalidasTemprano
             FROM DiasCalculados D
             LEFT JOIN Banco B
@@ -357,13 +356,15 @@ def listar_empleados(
                 "nombre": fila[1],
                 "numero_empleado": fila[0],
                 "total_horas": float(fila[6] or 0.0),
-                "llegadas_tarde": int(fila[7] or 0),
-                "salidas_temprano": int(fila[8] or 0),
+                "salidas_temprano": int(fila[7] or 0),
             }
             for fila in filas
         }
 
-        if all:
+        if ids:
+            # Cuando se pasan ids explícitos, devolver solo esos ids en el resultado
+            todos_ids = sorted(ids_parsed) if 'ids_parsed' in locals() else sorted(EMPLEADOS_DASHBOARD)
+        elif all:
             todos_ids = sorted(nombres.keys())
         else:
             todos_ids = sorted(EMPLEADOS_DASHBOARD)
@@ -371,17 +372,36 @@ def listar_empleados(
         resultado = []
         for emp_id in todos_ids:
             empleado = resumen_por_empleado.get(emp_id)
-            if empleado is None:
-                resultado.append({
-                    "id": emp_id,
-                    "nombre": nombres.get(emp_id, f"Empleado {emp_id}"),
-                    "numero_empleado": emp_id,
-                    "total_horas": 0.0,
-                    "llegadas_tarde": 0,
-                    "salidas_temprano": 0,
-                })
+            if ids:
+                # Cuando se filtra por ids, incluir empleados que aparecen en el resumen
+                # o, si no tienen eventos pero existen en la tabla de empleados, devolver un placeholder.
+                if empleado is not None:
+                    resultado.append(empleado)
+                else:
+                    # si existe en nombres (consulta a tblEmployees), devolver fila con ceros
+                    if 'nombres' in locals() and emp_id in nombres:
+                        resultado.append({
+                            "id": emp_id,
+                            "nombre": nombres.get(emp_id, f"Empleado {emp_id}"),
+                            "numero_empleado": emp_id,
+                            "total_horas": 0.0,
+                            "salidas_temprano": 0,
+                        })
+                    else:
+                        # omitir IDs que no existen en la base de datos
+                        continue
             else:
-                resultado.append(empleado)
+                # Comportamiento anterior: rellenar con valores por defecto cuando no hay datos
+                if empleado is None:
+                    resultado.append({
+                        "id": emp_id,
+                        "nombre": nombres.get(emp_id, f"Empleado {emp_id}"),
+                        "numero_empleado": emp_id,
+                        "total_horas": 0.0,
+                        "salidas_temprano": 0,
+                    })
+                else:
+                    resultado.append(empleado)
 
         return resultado
     except Exception as e:
