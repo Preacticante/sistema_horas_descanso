@@ -344,8 +344,12 @@ def listar_empleados(
                 nombre = row[1].strip() if row[1] else ""
                 if nombre:
                     nombres[row[0]] = nombre
+
+            cursor.execute(f"SELECT IdEmpNum, SUM(fHoras) AS HorasBanco FROM dbo.tblBancoHorasKardex WHERE IdEmpNum IN ({ids_permitidos}) GROUP BY IdEmpNum")
+            horas_db = {row[0]: float(row[1] or 0.0) for row in cursor.fetchall()}
         else:
             nombres = nombres if 'nombres' in locals() else {}
+            horas_db = {}
 
         cursor.close()
         conn.close()
@@ -384,7 +388,7 @@ def listar_empleados(
                             "id": emp_id,
                             "nombre": nombres.get(emp_id, f"Empleado {emp_id}"),
                             "numero_empleado": emp_id,
-                            "total_horas": 0.0,
+                            "total_horas": float(horas_db.get(emp_id, 0.0)),
                             "salidas_temprano": 0,
                         })
                     else:
@@ -423,7 +427,7 @@ def registrar_horas(datos: RegistroHoras):
                 dias_unicos.append(dia)
 
         for dia in dias_unicos:
-            observaciones = f"Ajuste manual desde app - {dia}"
+            observaciones = f"Descanso de {datos.cantidad_horas} hrs el {dia}"
             cursor.execute("""
                 INSERT INTO dbo.tblBancoHorasKardex (
                     IdEmpNum,
@@ -445,7 +449,7 @@ def registrar_horas(datos: RegistroHoras):
                     NULL,
                     1,
                     '1900-01-01',
-                    0
+                    NULL
                 )
             """, datos.numero_empleado, datos.cantidad_horas, observaciones)
 
