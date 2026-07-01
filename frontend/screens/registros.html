@@ -13,16 +13,9 @@
             <input type="number" id="reg-horas" step="0.5" min="0.5" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;">
         </div>
         <div style="margin-bottom: 18px;">
-            <label>Asignar a días de la semana</label>
-            <div style="display:grid; grid-template-columns: repeat(2, minmax(120px, 1fr)); gap:10px; margin-top:10px;">
-                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Lunes">Lunes</label>
-                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Martes">Martes</label>
-                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Miércoles">Miércoles</label>
-                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Jueves">Jueves</label>
-                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Viernes">Viernes</label>
-                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Sábado">Sábado</label>
-                <label style="display:flex; align-items:center; gap:8px;"><input type="checkbox" name="reg-dias" value="Domingo">Domingo</label>
-            </div>
+            <label>Selecciona los días en el calendario</label>
+            <div id="reg-calendar-container" style="margin-top: 12px; width:100%; max-width:560px;"></div>
+            <div id="reg-fechas-seleccionadas" style="margin-top:12px; font-size:0.95rem; color:#4b5563;">No hay fechas seleccionadas.</div>
         </div>
         <button type="submit" class="btn" style="background:var(--gold);">Guardar asignación</button>
     </form>
