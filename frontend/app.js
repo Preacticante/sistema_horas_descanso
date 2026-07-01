@@ -14,7 +14,16 @@ async function cargarEmpleados(ids = null) {
     try {
         const respuesta = await fetch(`${API_URL}/api/empleados${query}`);
         if (!respuesta.ok) {
-            throw new Error("No se pudo obtener la lista de empleados");
+            let mensajeError = `Error al obtener la lista de empleados (${respuesta.status})`;
+            try {
+                const errorJson = await respuesta.json();
+                if (errorJson?.detail) {
+                    mensajeError += `: ${errorJson.detail}`;
+                }
+            } catch (_e) {
+                // Ignore JSON parse errors for non-JSON responses
+            }
+            throw new Error(mensajeError);
         }
 
         const empleados = await respuesta.json();
@@ -56,7 +65,16 @@ async function cargarEmpleadosParaRegistro() {
     try {
         const respuesta = await fetch(`${API_URL}/api/empleados?all=true`);
         if (!respuesta.ok) {
-            throw new Error("No se pudo cargar la lista de empleados para registrar horas");
+            let mensajeError = `No se pudo cargar la lista de empleados para registrar horas (${respuesta.status})`;
+            try {
+                const errorJson = await respuesta.json();
+                if (errorJson?.detail) {
+                    mensajeError += `: ${errorJson.detail}`;
+                }
+            } catch (_e) {
+                // Ignore JSON parse errors for non-JSON responses
+            }
+            throw new Error(mensajeError);
         }
 
         const empleados = await respuesta.json();
@@ -68,7 +86,7 @@ async function cargarEmpleadosParaRegistro() {
 }
 
 function actualizarSelectEmpleados() {
-    const selectEmpleado = document.getElementById("reg-emp");
+    const selectEmpleado = document.getElementById("reg-empleado");
     if (!selectEmpleado) return;
 
     selectEmpleado.innerHTML = `<option value="">Selecciona un empleado...</option>`;
@@ -79,8 +97,8 @@ function actualizarSelectEmpleados() {
 }
 
 function mostrarHorasActuales() {
-    const selectEmpleado = document.getElementById("reg-emp");
-    const horasActuales = document.getElementById("registroHorasActuales");
+    const selectEmpleado = document.getElementById("reg-empleado");
+    const horasActuales = document.getElementById("horas-actuales");
     if (!selectEmpleado || !horasActuales) return;
 
     const empleadoId = parseInt(selectEmpleado.value, 10);
@@ -109,8 +127,8 @@ function cerrarModalRegistro() {
 async function enviarRegistroHoras(event) {
     event.preventDefault();
 
-    const selectEmpleado = document.getElementById("reg-emp");
-    const inputHoras = document.getElementById("horas");
+    const selectEmpleado = document.getElementById("reg-empleado");
+    const inputHoras = document.getElementById("reg-horas");
     const diaCheckboxes = Array.from(document.querySelectorAll("input[name='reg-dias']:checked"));
     if (!selectEmpleado || !inputHoras) return;
 
