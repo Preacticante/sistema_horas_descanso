@@ -134,6 +134,49 @@ EMPLEADOS_NOMBRES = {
 def inicio():
     return {"status": "online", "mensaje": "Conexión base lista"}
 
+@app.get("/api/dashboard-resumen")
+def dashboard_resumen():
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        # Total de horas en el banco
+        cursor.execute("SELECT ISNULL(SUM(fHoras), 0) FROM dbo.tblBancoHorasKardex")
+        total_horas = float(cursor.fetchone()[0] or 0.0)
+
+        # Contar empleados con horas positivas (pendientes) vs negativas (aprobadas)
+        cursor.execute("""
+            SELECT
+                SUM(CASE WHEN fHoras > 0 THEN 1 ELSE 0 END) AS empleados_pendientes,
+                SUM(CASE WHEN fHoras < 0 THEN 1 ELSE 0 END) AS empleados_aprobadas
+            FROM (
+                SELECT DISTINCT IdEmpNum, SUM(fHoras) AS fHoras
+                FROM dbo.tblBancoHorasKardex
+                GROUP BY IdEmpNum
+            ) AS resumen
+        """)
+        resultado = cursor.fetchone()
+        empleados_pendientes = int(resultado[0] or 0)
+        empleados_aprobadas = int(resultado[1] or 0)
+
+        # Eficiencia: porcentaje de empleados con horas negativas
+        cursor.execute("SELECT COUNT(DISTINCT IdEmpNum) FROM dbo.tblBancoHorasKardex")
+        total_empleados = int(cursor.fetchone()[0] or 1)
+        eficiencia = (empleados_aprobadas / total_empleados * 100) if total_empleados > 0 else 0.0
+
+        cursor.close()
+        conn.close()
+
+        return {
+            "total_horas": total_horas,
+            "empleados_pendientes": empleados_pendientes,
+            "empleados_aprobadas": empleados_aprobadas,
+            "eficiencia": eficiencia,
+        }
+    except Exception as e:
+        print(f"Error al generar resumen del dashboard: {e}")
+        raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+
 # ==========================================================
 # RUTA ACTUALIZADA: PROCESA LAS ENTRADAS/SALIDAS DE LA VISTA
 # ==========================================================
@@ -412,6 +455,149 @@ def listar_empleados(
         print(f"Error al procesar la consulta de horas: {e}")
         raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
 
+@app.get("/api/reportes")
+def reportes(fecha_inicio: Optional[date] = None, fecha_fin: Optional[date] = None):
+    if fecha_inicio is None:
+        fecha_inicio = date(2025, 8, 1)
+    if fecha_fin is None:
+        fecha_fin = date(2025, 8, 16)
+
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        cursor.execute("SET LANGUAGE Spanish;")
+
+        ids_permitidos = ",".join(str(i) for i in sorted(EMPLEADOS_DASHBOARD))
+
+        cursor.execute(f"""
+            WITH Eventos AS (
+                SELECT
+                    e.IdEmpNum,
+                    CASE
+                        WHEN emp.IdAccessGroup IN (5, 9) THEN
+                            CASE
+                                WHEN e.IdPanel = 1 AND e.IdReader = 1 THEN 'Salida'
+                                WHEN e.IdPanel = 1 AND e.IdReader = 2 THEN 'Entrada'
+                                WHEN e.IdPanel = 3 AND e.IdReader = 10 THEN 'Salida'
+                                WHEN e.IdPanel = 3 AND e.IdReader = 9 THEN 'Entrada'
+                                WHEN e.IdPanel = 4 AND e.IdReader = 11 THEN 'Salida'
+                                WHEN e.IdPanel = 4 AND e.IdReader = 12 THEN 'Entrada'
+                            END
+                        WHEN emp.IdAccessGroup = 6 THEN
+                            CASE
+                                WHEN e.IdPanel = 1 AND e.IdReader = 1 THEN 'Entrada'
+                                WHEN e.IdPanel = 1 AND e.IdReader = 2 THEN 'Salida'
+                                WHEN e.IdPanel = 3 AND e.IdReader = 10 THEN 'Entrada'
+                                WHEN e.IdPanel = 3 AND e.IdReader = 9 THEN 'Salida'
+                                WHEN e.IdPanel = 4 AND e.IdReader = 11 THEN 'Entrada'
+                                WHEN e.IdPanel = 4 AND e.IdReader = 12 THEN 'Salida'
+                            END
+                        WHEN emp.IdAccessGroup IN (1, 2, 3, 8) THEN
+                            CASE
+                                WHEN e.IdPanel = 1 AND e.IdReader = 1 THEN 'Entrada'
+                                WHEN e.IdPanel = 1 AND e.IdReader = 2 THEN 'Salida'
+                                WHEN e.IdPanel = 3 AND e.IdReader = 10 THEN 'Entrada'
+                                WHEN e.IdPanel = 3 AND e.IdReader = 9 THEN 'Salida'
+                                WHEN e.IdPanel = 4 AND e.IdReader = 11 THEN 'Entrada'
+                                WHEN e.IdPanel = 4 AND e.IdReader = 12 THEN 'Salida'
+                            END
+                        ELSE 'NO CLASIFICADO'
+                    END AS TipoEvento
+                FROM [AxTrax1].[dbo].[tblEvents] e
+                INNER JOIN [AxTrax1].[dbo].[tblEmployees] emp
+                    ON emp.iEmployeeNum = e.IdEmpNum
+                WHERE e.dtEventReal >= ?
+                  AND e.dtEventReal <= ?
+                  AND emp.iEmployeeNum IN ({ids_permitidos})
+            ),
+            Salidas AS (
+                SELECT IdEmpNum, COUNT(*) AS ConteoSalidas
+                FROM Eventos
+                WHERE TipoEvento = 'Salida'
+                GROUP BY IdEmpNum
+            )
+            SELECT
+                emp.iEmployeeNum,
+                LTRIM(RTRIM(CONCAT(emp.tFirstName, ' ', COALESCE(emp.tMiddleName, ''), ' ', emp.tLastName))) AS Nombre,
+                ISNULL(h.HorasBanco, 0.0) AS HorasBanco,
+                ISNULL(s.ConteoSalidas, 0) AS SalidasTemprano
+            FROM dbo.tblEmployees emp
+            LEFT JOIN (
+                SELECT IdEmpNum, SUM(fHoras) AS HorasBanco
+                FROM dbo.tblBancoHorasKardex
+                WHERE FechaAfectacion >= ?
+                  AND FechaAfectacion <= ?
+                  AND IdEmpNum IN ({ids_permitidos})
+                GROUP BY IdEmpNum
+            ) h ON h.IdEmpNum = emp.iEmployeeNum
+            LEFT JOIN Salidas s ON s.IdEmpNum = emp.iEmployeeNum
+            WHERE emp.iEmployeeNum IN ({ids_permitidos})
+            ORDER BY emp.iEmployeeNum
+        """, fecha_inicio, fecha_fin, fecha_inicio, fecha_fin)
+
+        filas = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return [
+            {
+                "id": int(fila[0]),
+                "nombre": fila[1].strip() if fila[1] else f"Empleado {fila[0]}",
+                "total_horas": float(fila[2] or 0.0),
+                "salidas_temprano": int(fila[3] or 0),
+            }
+            for fila in filas
+        ]
+    except Exception as e:
+        print(f"Error al generar el reporte: {e}")
+        raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+
+@app.get("/api/empleados/{id}/detalle")
+def detalle_empleado(id: int, fecha_inicio: Optional[date] = None, fecha_fin: Optional[date] = None):
+    if fecha_inicio is None:
+        fecha_inicio = date(2025, 8, 1)
+    if fecha_fin is None:
+        fecha_fin = date(2025, 8, 16)
+
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        cursor.execute("SET LANGUAGE Spanish;")
+
+        cursor.execute("""
+            SELECT
+                k.FechaAfectacion,
+                k.fHoras,
+                k.tObservaciones
+            FROM dbo.tblBancoHorasKardex k
+            WHERE k.IdEmpNum = ?
+              AND k.fHoras < 0
+              AND k.FechaAfectacion >= ?
+              AND k.FechaAfectacion <= ?
+            ORDER BY k.FechaAfectacion DESC
+        """, id, fecha_inicio, fecha_fin)
+
+        filas = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return {
+            "id": id,
+            "fecha_inicio": fecha_inicio.isoformat(),
+            "fecha_fin": fecha_fin.isoformat(),
+            "salidas_detalle": [
+                {
+                    "fecha_afectacion": fila[0].isoformat() if fila[0] else None,
+                    "horas": float(fila[1] or 0.0),
+                    "observaciones": fila[2] or "",
+                }
+                for fila in filas
+            ],
+        }
+    except Exception as e:
+        print(f"Error al obtener detalle del empleado {id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+
 @app.post("/api/registrar")
 def registrar_horas(datos: RegistroHoras):
     if not datos.dias_semana:
@@ -427,7 +613,7 @@ def registrar_horas(datos: RegistroHoras):
                 dias_unicos.append(dia)
 
         for dia in dias_unicos:
-            observaciones = f"Descanso de {datos.cantidad_horas} hrs el {dia}"
+            observaciones = f"Descuento de {datos.cantidad_horas} hrs por salida temprana el {dia}"
             cursor.execute("""
                 INSERT INTO dbo.tblBancoHorasKardex (
                     IdEmpNum,
@@ -451,7 +637,7 @@ def registrar_horas(datos: RegistroHoras):
                     '1900-01-01',
                     NULL
                 )
-            """, datos.numero_empleado, datos.cantidad_horas, observaciones)
+            """, datos.numero_empleado, -abs(datos.cantidad_horas), observaciones)
 
         conn.commit()
         cursor.close()

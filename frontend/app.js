@@ -534,6 +534,198 @@ function inicializarRegistros() {
     cargarEmpleadosParaRegistro();
 }
 
+function generarResumenReporte(datos) {
+    const totalRegistros = datos.length;
+    const empleadosRango = new Set(datos.map(item => item.id)).size;
+    const alertasHoras = datos.filter(item => item.total_horas < 0 || item.salidas_temprano > 0).length;
+
+    return { totalRegistros, empleadosRango, alertasHoras };
+}
+
+function mostrarResumenReporte(datos) {
+    const tarjetas = document.querySelectorAll('.reportes-summary .summary-card strong');
+    const resumen = generarResumenReporte(datos);
+
+    if (tarjetas.length >= 3) {
+        tarjetas[0].textContent = `${resumen.totalRegistros}`;
+        tarjetas[1].textContent = `${resumen.empleadosRango}`;
+        tarjetas[2].textContent = `${resumen.alertasHoras}`;
+    }
+}
+
+function renderizarReporte(datos) {
+    const tbody = document.getElementById('reportes-table-body');
+    const detalle = document.getElementById('reportes-detalle');
+    if (!tbody) return;
+
+    if (!Array.isArray(datos) || datos.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="reportes-empty">No se encontraron resultados para ese rango de fechas.</td>
+            </tr>
+        `;
+        detalle.classList.remove('show');
+        return;
+    }
+
+    tbody.innerHTML = '';
+    datos.forEach(emp => {
+        const colorHoras = emp.total_horas >= 0 ? '#124416' : '#c0392b';
+        tbody.innerHTML += `
+            <tr>
+                <td>${emp.id} - ${emp.nombre}</td>
+                <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
+                <td>${emp.salidas_temprano}</td>
+                <td><button class="reportes-btn reportes-btn-secondary btn-detalle" data-id="${emp.id}" data-nombre="${emp.nombre}">Ver detalles</button></td>
+            </tr>
+        `;
+    });
+
+    mostrarResumenReporte(datos);
+}
+
+function renderizarDetalleEmpleado(detalle, nombreEmpleado) {
+    console.log('renderizarDetalleEmpleado llamado con:', detalle, nombreEmpleado);
+    const contenido = document.getElementById('reportes-detalle-contenido');
+    const panel = document.getElementById('reportes-detalle');
+    console.log('Panel:', panel, 'Contenido:', contenido);
+    if (!contenido || !panel) {
+        console.error('Panel o contenido no encontrado');
+        return;
+    }
+
+    if (!detalle || !detalle.salidas_detalle || detalle.salidas_detalle.length === 0) {
+        panel.classList.add('show');
+        contenido.innerHTML = `<p>No se encontraron registros de salida temprana en el rango seleccionado para ${nombreEmpleado}.</p>`;
+        console.log('Panel mostrado (sin detalles)');
+        return;
+    }
+
+    contenido.innerHTML = `
+        <p><strong>Empleado:</strong> ${nombreEmpleado}</p>
+        <p><strong>Período:</strong> ${detalle.fecha_inicio} a ${detalle.fecha_fin}</p>
+        <ul class="reportes-detalle-list">
+            ${detalle.salidas_detalle.map(item => `
+                <li class="reportes-detalle-item">
+                    <strong>${item.fecha_afectacion}</strong>
+                    <div>Horas: ${item.horas.toFixed(2)}</div>
+                    <div>${item.observaciones}</div>
+                </li>
+            `).join('')}
+        </ul>
+    `;
+    panel.classList.add('show');
+    console.log('Panel mostrado con detalles');
+}
+
+async function cargarReporte(fechaInicio, fechaFin) {
+    const tbody = document.getElementById('reportes-table-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="4" class="reportes-empty">Cargando reporte...</td>
+        </tr>
+    `;
+
+    try {
+        const response = await fetch(`${API_URL}/api/reportes?fecha_inicio=${encodeURIComponent(fechaInicio)}&fecha_fin=${encodeURIComponent(fechaFin)}`);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Error al cargar el reporte');
+        }
+
+        const datos = await response.json();
+        renderizarReporte(datos);
+    } catch (error) {
+        console.error('Error al cargar el reporte:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="reportes-empty">No se pudo cargar el reporte. Revisa la consola.</td>
+            </tr>
+        `;
+    }
+}
+
+async function cargarDetalleEmpleado(empleadoId, empleadoNombre, fechaInicio, fechaFin) {
+    console.log('Cargando detalle para empleado:', empleadoId, empleadoNombre, fechaInicio, fechaFin);
+    try {
+        const url = `${API_URL}/api/empleados/${empleadoId}/detalle?fecha_inicio=${encodeURIComponent(fechaInicio)}&fecha_fin=${encodeURIComponent(fechaFin)}`;
+        console.log('URL del detalle:', url);
+        const response = await fetch(url);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Error al cargar detalle');
+        }
+
+        const detalle = await response.json();
+        console.log('Detalle recibido:', detalle);
+        renderizarDetalleEmpleado(detalle, empleadoNombre);
+    } catch (error) {
+        console.error('Error al cargar detalle del empleado:', error);
+        alert('Error al cargar detalles: ' + error.message);
+    }
+}
+
+function inicializarReportes() {
+    const btnFiltro = document.getElementById('btn-aplicar-filtro-reportes');
+    const fechaInicioInput = document.getElementById('fechaInicio');
+    const fechaFinInput = document.getElementById('fechaFin');
+    const tablaBody = document.getElementById('reportes-table-body');
+
+    const btnFiltroTop = document.getElementById('btn-filtrar-datos-reportes');
+
+    const aplicarFiltro = (event) => {
+        event.preventDefault();
+        const fechaInicio = fechaInicioInput.value;
+        const fechaFin = fechaFinInput.value;
+
+        if (!fechaInicio || !fechaFin) {
+            alert('Selecciona un rango de fechas antes de filtrar.');
+            return;
+        }
+
+        if (fechaInicio > fechaFin) {
+            alert('La fecha de inicio no puede ser posterior a la fecha de fin.');
+            return;
+        }
+
+        cargarReporte(fechaInicio, fechaFin);
+    };
+
+    if (btnFiltro && fechaInicioInput && fechaFinInput) {
+        btnFiltro.addEventListener('click', aplicarFiltro);
+    }
+
+    if (btnFiltroTop && fechaInicioInput && fechaFinInput) {
+        btnFiltroTop.addEventListener('click', aplicarFiltro);
+    }
+
+    if (tablaBody) {
+        tablaBody.addEventListener('click', (event) => {
+            console.log('Click en tabla detectado');
+            const target = event.target;
+            console.log('Target:', target, 'Clases:', target.className);
+            if (target.matches('.btn-detalle')) {
+                console.log('Botón de detalle clickeado');
+                const empleadoId = target.dataset.id;
+                const empleadoNombre = target.dataset.nombre;
+                const fechaInicio = document.getElementById('fechaInicio')?.value || '';
+                const fechaFin = document.getElementById('fechaFin')?.value || '';
+
+                console.log('Datos del botón - ID:', empleadoId, 'Nombre:', empleadoNombre);
+
+                if (!fechaInicio || !fechaFin) {
+                    alert('Selecciona un rango de fechas para ver los detalles de empleado.');
+                    return;
+                }
+
+                cargarDetalleEmpleado(empleadoId, empleadoNombre, fechaInicio, fechaFin);
+            }
+        });
+    }
+}
+
 async function loadPage(pageName, element) {
     const container = document.getElementById('content-area');
     const dynamicCard = document.getElementById('dynamic-card');
@@ -562,6 +754,10 @@ async function loadPage(pageName, element) {
 
             if (pageName === 'dashboard') {
                 cargarDashboard();
+            }
+
+            if (pageName === 'reportes') {
+                inicializarReportes();
             }
 
             if (pageName === 'perfil') {

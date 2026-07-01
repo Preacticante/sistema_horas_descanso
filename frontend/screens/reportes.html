@@ -179,6 +179,49 @@
             font-weight: 600;
         }
 
+        .reportes-detalle {
+            margin-top: 24px;
+            padding: 22px;
+            border-radius: 20px;
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            display: none;
+        }
+
+        .reportes-detalle.show {
+            display: block;
+        }
+
+        .reportes-detalle h2 {
+            margin: 0 0 16px;
+            font-size: 1.2rem;
+            color: #111827;
+        }
+
+        .reportes-detalle-list {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .reportes-detalle-item {
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: white;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 12px;
+        }
+
+        .reportes-detalle-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .reportes-detalle-item strong {
+            display: block;
+            margin-bottom: 8px;
+            color: #1f2937;
+        }
+
         .reportes-empty {
             text-align: center;
             padding: 42px 20px;
@@ -199,26 +242,12 @@
             <p>Selecciona un rango de fechas y obtén una vista clara de la información del equipo. Fácil de usar, rápida y lista para visualizar.</p>
         </div>
         <div class="reportes-actions">
-            <button class="reportes-btn reportes-btn-secondary">Descargar CSV</button>
-            <button class="reportes-btn reportes-btn-primary">Filtrar datos</button>
+            <button id="btn-descargar-csv-reportes" class="reportes-btn reportes-btn-secondary">Descargar CSV</button>
+            <button id="btn-filtrar-datos-reportes" class="reportes-btn reportes-btn-primary">Filtrar datos</button>
         </div>
     </div>
 
-    <div class="reportes-filters">
-        <div class="filter-group">
-            <label for="fechaInicio">Fecha de inicio</label>
-            <input type="date" id="fechaInicio">
-        </div>
-        <div class="filter-group">
-            <label for="fechaFin">Fecha de fin</label>
-            <input type="date" id="fechaFin">
-        </div>
-        <div class="filter-group">
-            <label>&nbsp;</label>
-            <button class="reportes-btn reportes-btn-primary">Aplicar filtro</button>
-        </div>
-    </div>
-
+    
     <div class="reportes-summary">
         <div class="summary-card">
             <span>Total de registros</span>
@@ -234,22 +263,44 @@
         </div>
     </div>
 
+    <div class="reportes-filters">
+        <div class="filter-group">
+            <label for="fechaInicio">Fecha de inicio</label>
+            <input type="date" id="fechaInicio">
+        </div>
+        <div class="filter-group">
+            <label for="fechaFin">Fecha de fin</label>
+            <input type="date" id="fechaFin">
+        </div>
+        <div class="filter-group">
+            <label>&nbsp;</label>
+            <button id="btn-aplicar-filtro-reportes" class="reportes-btn reportes-btn-primary">Aplicar filtro</button>
+        </div>
+    </div>
+
+
     <div class="reportes-preview">
         <table class="reportes-table">
             <thead>
                 <tr>
                     <th>Empleado</th>
-                    <th>Fecha</th>
                     <th>Horas</th>
-                    <th>Retardos</th>
-                    <th>Estado</th>
+                    <th>Salidas temprano</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="reportes-table-body">
                 <tr>
-                    <td colspan="5" class="reportes-empty">Selecciona un rango de fechas para ver el reporte con resultados reales.</td>
+                    <td colspan="4" class="reportes-empty">Selecciona un rango de fechas para ver el reporte con resultados reales.</td>
                 </tr>
             </tbody>
         </table>
+    </div>
+
+    <div id="reportes-detalle" class="reportes-detalle">
+        <h2>Detalle de empleado</h2>
+        <div id="reportes-detalle-contenido">
+            <p>Selecciona "Ver detalles" en un empleado para ver sus días con salida temprana.</p>
+        </div>
     </div>
 </div>
