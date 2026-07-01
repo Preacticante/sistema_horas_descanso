@@ -199,8 +199,8 @@
             <p>Selecciona un rango de fechas y obtén una vista clara de la información del equipo. Fácil de usar, rápida y lista para visualizar.</p>
         </div>
         <div class="reportes-actions">
-            <button class="reportes-btn reportes-btn-secondary">Descargar CSV</button>
-            <button class="reportes-btn reportes-btn-primary">Filtrar datos</button>
+            <button class="reportes-btn reportes-btn-secondary" id="btn-descargar-reporte-csv">Descargar CSV</button>
+            <button class="reportes-btn reportes-btn-primary" id="btn-filtrar-reporte">Filtrar datos</button>
         </div>
     </div>
 
@@ -215,22 +215,22 @@
         </div>
         <div class="filter-group">
             <label>&nbsp;</label>
-            <button class="reportes-btn reportes-btn-primary">Aplicar filtro</button>
+            <button class="reportes-btn reportes-btn-primary" id="btn-aplicar-reporte">Aplicar filtro</button>
         </div>
     </div>
 
     <div class="reportes-summary">
         <div class="summary-card">
             <span>Total de registros</span>
-            <strong>--</strong>
+            <strong id="reporte-total-registros">--</strong>
         </div>
         <div class="summary-card">
             <span>Empleados en rango</span>
-            <strong>--</strong>
+            <strong id="reporte-empleados-rango">--</strong>
         </div>
         <div class="summary-card">
             <span>Alertas de horas</span>
-            <strong>--</strong>
+            <strong id="reporte-alertas-horas">--</strong>
         </div>
     </div>
 
@@ -245,7 +245,7 @@
                     <th>Estado</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="reportes-tbody">
                 <tr>
                     <td colspan="5" class="reportes-empty">Selecciona un rango de fechas para ver el reporte con resultados reales.</td>
                 </tr>

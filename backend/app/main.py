@@ -1,6 +1,7 @@
 import re
 from typing import Optional
 from datetime import datetime, date, timedelta
+import hashlib
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -21,6 +22,29 @@ class RegistroHoras(BaseModel):
     numero_empleado: int
     cantidad_horas: float
     dias_semana: list[str] = []
+
+class ActualizarPerfil(BaseModel):
+    nombre: str
+    rol: str = "Empleado"
+    email: str
+    telefono: str
+    departamento: str = ""
+    sucursal: str = ""
+    direccion: str = ""
+
+class CambiarPassword(BaseModel):
+    actual_password: str
+    new_password: str
+
+PERFIL_DATA = {
+    "nombre": "Alexis Hernández",
+    "rol": "Administrador",
+    "email": "alexis@uco.mx",
+    "telefono": "55 1234 5678",
+    "departamento": "Control",
+    "sucursal": "Sucursal Centro",
+    "direccion": "Av. Reforma 123",
+}
 
 EMPLEADOS_DASHBOARD = {
     1,
@@ -148,10 +172,10 @@ def listar_empleados(
         conn = obtener_conexion()
         cursor = conn.cursor()
 
-        if fecha_inicio is None:
-            fecha_inicio = date(2025, 8, 1)
         if fecha_fin is None:
-            fecha_fin = date(2025, 8, 16)
+            fecha_fin = date.today()
+        if fecha_inicio is None:
+            fecha_inicio = fecha_fin - timedelta(days=30)
 
         # Aseguramos que la sesión use idioma español para DATENAME(WEEKDAY)
         cursor.execute("SET LANGUAGE Spanish;")
@@ -411,6 +435,75 @@ def listar_empleados(
     except Exception as e:
         print(f"Error al procesar la consulta de horas: {e}")
         raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+
+@app.get("/api/dashboard-resumen")
+def obtener_dashboard_resumen():
+    try:
+        empleados = listar_empleados(all=True)
+        total_horas = sum(float(emp.get("total_horas", 0) or 0) for emp in empleados)
+        empleados_pendientes = sum(1 for emp in empleados if emp.get("salidas_temprano", 0) > 0)
+        empleados_aprobadas = sum(1 for emp in empleados if emp.get("salidas_temprano", 0) == 0)
+        eficiencia = round((empleados_aprobadas / len(empleados) * 100) if empleados else 0.0, 2)
+        return {
+            "total_horas": total_horas,
+            "empleados_pendientes": empleados_pendientes,
+            "empleados_aprobadas": empleados_aprobadas,
+            "eficiencia": eficiencia,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al generar resumen del dashboard: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo generar el resumen del dashboard.")
+
+@app.get("/api/perfil")
+def obtener_perfil():
+    return PERFIL_DATA
+
+@app.post("/api/perfil")
+def guardar_perfil(perfil: ActualizarPerfil):
+    try:
+        PERFIL_DATA["nombre"] = perfil.nombre
+        PERFIL_DATA["rol"] = perfil.rol
+        PERFIL_DATA["email"] = perfil.email
+        PERFIL_DATA["telefono"] = perfil.telefono
+        PERFIL_DATA["departamento"] = perfil.departamento
+        PERFIL_DATA["sucursal"] = perfil.sucursal
+        PERFIL_DATA["direccion"] = perfil.direccion
+        return PERFIL_DATA
+    except Exception as e:
+        print(f"Error al guardar el perfil: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo guardar el perfil.")
+
+@app.post("/api/perfil-password")
+def cambiar_password(datos: CambiarPassword):
+    """
+    Cambiar la contraseña del usuario. 
+    En un sistema real, esto verificaría la contraseña actual en la BD.
+    Por ahora, aceptamos cualquier contraseña actual válida (mock).
+    """
+    try:
+        # Validar que la nueva contraseña sea fuerte
+        if len(datos.new_password) < 8:
+            raise HTTPException(status_code=400, detail="La contraseña debe tener mínimo 8 caracteres.")
+        
+        has_upper = any(c.isupper() for c in datos.new_password)
+        has_digit = any(c.isdigit() for c in datos.new_password)
+        has_special = any(c in "!@#$%^&*" for c in datos.new_password)
+        
+        if not (has_upper and has_digit and has_special):
+            raise HTTPException(status_code=400, detail="La contraseña debe incluir mayúsculas, números y símbolos (!@#$%^&*).")
+        
+        # En un sistema real, aquí verificarías con la base de datos
+        # Por ahora, simulamos que la contraseña cambió
+        print(f"[MOCK] Contraseña actualizada para usuario (de {len(datos.actual_password)} chars a {len(datos.new_password)} chars)")
+        
+        return {"detail": "Contraseña actualizada correctamente.", "status": "success"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al cambiar contraseña: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo cambiar la contraseña.")
 
 @app.post("/api/registrar")
 def registrar_horas(datos: RegistroHoras):
