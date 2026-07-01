@@ -3,14 +3,18 @@ let empleadosCache = [];
 
 async function cargarEmpleados(ids = null) {
     const tabla = document.getElementById("tabla-empleados");
-    if (!tabla) return;
+    if (!tabla) {
+        console.error("tabla-empleados no encontrada");
+        return;
+    }
 
     const query = ids ? `?ids=${encodeURIComponent(ids)}` : "";
     tabla.innerHTML = `
         <tr>
-            <td colspan="5" style="padding:15px; text-align:center;">Cargando empleados...</td>
+            <td colspan="4" style="padding:15px; text-align:center;">Cargando empleados...</td>
         </tr>
     `;
+    console.log("cargarEmpleados: fetch", `${API_URL}/api/empleados${query}`);
 
     try {
         const respuesta = await fetch(`${API_URL}/api/empleados${query}`);
@@ -34,7 +38,7 @@ async function cargarEmpleados(ids = null) {
         if (!empleadosCache.length) {
             tabla.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align: center;">No se encontraron empleados.</td>
+                    <td colspan="4" style="text-align: center;">No se encontraron empleados.</td>
                 </tr>
             `;
             return;
@@ -47,7 +51,6 @@ async function cargarEmpleados(ids = null) {
                     <td>${emp.id}</td>
                     <td>${emp.nombre}</td>
                     <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
-                    <td>${emp.llegadas_tarde}</td>
                     <td>${emp.salidas_temprano}</td>
                 </tr>
             `;
@@ -56,7 +59,7 @@ async function cargarEmpleados(ids = null) {
         console.error("Error al conectar con la API:", error);
         tabla.innerHTML = `
             <tr>
-                <td colspan="5" style="color: red; text-align: center; font-weight: bold;">Error de conexión: Asegúrate de que el backend esté encendido.</td>
+                <td colspan="4" style="color: red; text-align: center; font-weight: bold;">Error de conexión: Asegúrate de que el backend esté encendido.</td>
             </tr>
         `;
     }
@@ -446,19 +449,51 @@ async function enviarRegistroHoras(event) {
 
 function inicializarEmpleados() {
     const filtroIds = document.getElementById("filtro-ids");
-    const btnFiltrar = document.getElementById("btn-filtrar-empleados");
+    const btnBuscar = document.getElementById("btn-buscar-empleados");
     const btnReset = document.getElementById("btn-reset-empleados");
     const btnAbrirModal = document.getElementById("btn-abrir-modal");
     const btnCerrarModal = document.getElementById("btn-cerrar-modal");
     const formRegistro = document.getElementById("form-registrar-horas");
 
-    if (btnFiltrar && btnReset && filtroIds) {
-        btnFiltrar.addEventListener("click", () => {
-            const ids = filtroIds.value.trim();
-            cargarEmpleados(ids || null);
+    console.log("Inicializando empleados...");
+    console.log("filtroIds:", filtroIds, "btnBuscar:", btnBuscar, "btnReset:", btnReset, "btnAbrirModal:", btnAbrirModal, "modalForm:", formRegistro);
+
+    if (btnBuscar && btnReset && filtroIds) {
+        btnBuscar.addEventListener("click", (event) => {
+            event.preventDefault();
+            const raw = filtroIds.value.trim();
+            if (!raw) {
+                alert("Ingresa un ID de empleado para buscar.");
+                return;
+            }
+
+            const idsArray = raw.split(/[\s,;]+/).map(s => s.trim()).filter(s => /^\d+$/.test(s));
+            if (!idsArray.length) {
+                alert("Introduce IDs numéricos válidos (ejemplo: 55 o 55,56).\nSi quieres todos, deja el campo vacío y presiona Mostrar todos.");
+                return;
+            }
+
+            // Sólo permitir IDs que estén actualmente visibles en la tabla (empleadosCache)
+            const visibleIdsSet = new Set(empleadosCache.map(e => String(e.id)));
+            const allowed = idsArray.filter(s => visibleIdsSet.has(s));
+            if (!allowed.length) {
+                alert("Ningún ID ingresado coincide con los empleados mostrados en pantalla.");
+                return;
+            }
+
+            const idsParam = allowed.join(",");
+            cargarEmpleados(idsParam);
         });
 
-        btnReset.addEventListener("click", () => {
+        filtroIds.addEventListener("keydown", (event) => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                btnBuscar.click();
+            }
+        });
+
+        btnReset.addEventListener("click", (event) => {
+            event.preventDefault();
             filtroIds.value = "";
             cargarEmpleados();
         });
@@ -512,6 +547,7 @@ async function loadPage(pageName, element) {
         setTimeout(() => {
             dynamicCard.innerHTML = html;
             container.classList.remove('fade-out');
+            console.log("loadPage loaded", pageName);
             
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
             if(element) element.classList.add('active');
