@@ -1,10 +1,459 @@
-<div class="card">
-    <h1>Perfil</h1>
-    <form>
-        <label>Nombre:</label>
-        <input type="text" value="Alexis Hernández" style="width:100%; margin-bottom:15px; padding:10px;">
-        <label>Rol:</label>
-        <input type="text" value="Administrador" disabled style="width:100%; margin-bottom:15px; padding:10px; background:#eee;">
-        <button class="btn">Guardar Cambios</button>
-    </form>
+﻿<div class="perfil-card">
+    <style>
+        .perfil-card {
+            padding: 32px;
+            border-radius: 28px;
+            background: #ffffff;
+            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+            color: #1f2937;
+            font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .perfil-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 28px;
+        }
+
+        .perfil-header h1 {
+            margin: 0;
+            font-size: 2.2rem;
+            letter-spacing: -0.03em;
+            color: #0f172a;
+        }
+
+        .perfil-description {
+            margin: 12px 0 0;
+            color: #475569;
+            max-width: 640px;
+            line-height: 1.7;
+        }
+
+        .perfil-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 28px;
+        }
+
+        .perfil-aside,
+        .perfil-main {
+            background: #f8fafc;
+            border-radius: 24px;
+            padding: 26px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .perfil-aside {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            gap: 16px;
+        }
+
+        .perfil-avatar {
+            width: 110px;
+            height: 110px;
+            border-radius: 999px;
+            background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+            display: grid;
+            place-items: center;
+            color: white;
+            font-size: 2.8rem;
+            font-weight: 800;
+            box-shadow: 0 20px 35px rgba(15, 23, 42, 0.12);
+        }
+
+        .perfil-aside h2 {
+            margin: 0;
+            font-size: 1.3rem;
+            color: #111827;
+        }
+
+        .perfil-aside p {
+            margin: 0;
+            color: #475569;
+            line-height: 1.6;
+        }
+
+        .perfil-aside button {
+            background: white;
+            color: #374151;
+            border: 1px solid #d1d5db;
+            border-radius: 14px;
+            padding: 12px 18px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background 0.18s ease, transform 0.18s ease;
+        }
+
+        .perfil-aside button:hover {
+            background: #eef2ff;
+            transform: translateY(-1px);
+        }
+
+        .perfil-form {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .perfil-field {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .perfil-field label {
+            font-weight: 700;
+            color: #334155;
+            font-size: 0.92rem;
+        }
+
+        .perfil-field input,
+        .perfil-field select,
+        .perfil-field button {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #111827;
+            font-size: 0.96rem;
+            box-sizing: border-box;
+            min-height: 52px;
+        }
+
+        .perfil-field input:focus,
+        .perfil-field select:focus,
+        .perfil-field button:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+        }
+
+        .editable-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .small-btn {
+            width: auto;
+            padding: 14px 18px;
+            min-width: 120px;
+            font-weight: 700;
+            border-radius: 16px;
+            background: #aa7f31;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.18s ease, background 0.18s ease;
+        }
+
+        .small-btn:hover {
+            transform: translateY(-1px);
+            background: #8a6130;
+        }
+
+        .perfil-footnote {
+            grid-column: 1 / -1;
+            font-size: 0.92rem;
+            color: #6b7280;
+            line-height: 1.6;
+            background: #eef2ff;
+            padding: 18px 20px;
+            border-radius: 18px;
+            border: 1px solid #dbeafe;
+        }
+
+        .perfil-full {
+            grid-column: 1 / -1;
+        }
+
+        .perfil-footer {
+            margin-top: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .perfil-btn {
+            padding: 14px 24px;
+            border-radius: 16px;
+            border: none;
+            cursor: pointer;
+            font-weight: 700;
+            transition: transform 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .perfil-btn-primary {
+            background: #aa7f31;
+            color: white;
+            box-shadow: 0 14px 30px rgba(170, 127, 49, 0.18);
+        }
+
+        .perfil-btn-secondary {
+            background: #f8fafc;
+            color: #334155;
+            border: 1px solid #d1d5db;
+        }
+
+        .perfil-btn:hover {
+            transform: translateY(-1px);
+        }
+
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 16px;
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .perfil-modal {
+            width: 100%;
+            max-width: 520px;
+            background: white;
+            border-radius: 24px;
+            padding: 28px;
+            box-shadow: 0 24px 80px rgba(15, 23, 42, 0.18);
+            position: relative;
+        }
+
+        .perfil-modal h2 {
+            margin-top: 0;
+            margin-bottom: 18px;
+            color: #0f172a;
+        }
+
+        .perfil-modal p {
+            margin: 0 0 18px;
+            color: #475569;
+            line-height: 1.7;
+        }
+
+        .perfil-modal .modal-row {
+            display: grid;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .perfil-modal label {
+            font-weight: 700;
+            color: #334155;
+            font-size: 0.92rem;
+        }
+
+        .perfil-modal input {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 18px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            color: #111827;
+            font-size: 0.96rem;
+            box-sizing: border-box;
+            min-height: 52px;
+        }
+
+        .perfil-modal input:focus {
+            outline: none;
+            border-color: #0f9d58;
+            box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
+        }
+
+        .perfil-modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .perfil-modal-close {
+            position: absolute;
+            top: 18px;
+            right: 18px;
+            width: 40px;
+            height: 40px;
+            border-radius: 999px;
+            border: 1px solid #e5e7eb;
+            background: white;
+            display: grid;
+            place-items: center;
+            cursor: pointer;
+            color: #475569;
+            font-weight: 700;
+        }
+
+        .perfil-modal-close:hover {
+            background: #f3f4f6;
+        }
+
+        .perfil-error {
+            color: #b91c1c;
+            font-size: 0.9rem;
+            min-height: 18px;
+        }
+
+        .perfil-notice {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: #0f9d58;
+            color: white;
+            padding: 16px 20px;
+            border-radius: 18px;
+            box-shadow: 0 20px 40px rgba(15, 118, 110, 0.24);
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+            z-index: 1100;
+        }
+
+        .perfil-notice.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @media (max-width: 960px) {
+            .perfil-grid,
+            .perfil-form {
+                grid-template-columns: 1fr;
+            }
+
+            .editable-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+
+    <div class="perfil-header">
+        <div>
+            <h1>Mi perfil</h1>
+            <p class="perfil-description">Actualiza tu información personal, datos de contacto y seguridad. Todo en un mismo lugar para administrar tu cuenta fácilmente.</p>
+        </div>
+    </div>
+
+    <div class="perfil-grid">
+        <aside class="perfil-aside">
+            <div class="perfil-avatar" id="perfil-avatar">AH</div>
+            <h2 id="perfil-nombre">Alexis Hernández</h2>
+            <p id="perfil-rol">Administrador</p>
+            <button type="button" id="btn-cambiar-foto">Cambiar foto</button>
+            <input type="file" id="input-foto" accept="image/*" style="display:none;" />
+        </aside>
+
+        <section class="perfil-main">
+            <form id="form-perfil">
+                <div class="perfil-form">
+                    <div class="perfil-field perfil-full">
+                        <label for="nombre">Nombre completo</label>
+                        <div class="editable-row">
+                            <input type="text" id="nombre" value="Alexis Hernández" disabled />
+                            <button type="button" class="small-btn" id="btn-editar-nombre">Editar</button>
+                        </div>
+                    </div>
+                    <div class="perfil-field">
+                        <label for="rol">Rol</label>
+                        <select id="rol" disabled>
+                            <option>Administrador</option>
+                        </select>
+                    </div>
+                    <div class="perfil-field">
+                        <label for="email">Correo electrónico</label>
+                        <input type="email" id="email" value="alexis.hernandez@uco.com" />
+                    </div>
+                    <div class="perfil-field">
+                        <label for="telefono">Teléfono</label>
+                        <input type="tel" id="telefono" value="55 1234 5678" />
+                    </div>
+                    <div class="perfil-field">
+                        <label for="departamento">Departamento</label>
+                        <input type="text" id="departamento" value="Recursos Humanos" />
+                    </div>
+                    <div class="perfil-field">
+                        <label for="sucursal">Sucursal</label>
+                        <input type="text" id="sucursal" value="UCO Centro" />
+                    </div>
+                    <div class="perfil-field perfil-full">
+                        <label for="direccion">Dirección</label>
+                        <input type="text" id="direccion" value="Av. Reforma 123, Ciudad de México" />
+                    </div>
+                    <div class="perfil-field perfil-full">
+                        <label>Contraseña</label>
+                        <button type="button" class="small-btn" id="btn-editar-password">Cambiar contraseña</button>
+                    </div>
+                    <div class="perfil-footnote">
+                        Deja el botón de contraseña vacíos si no deseas cambiar tu clave ahora. Los cambios se confirmarán con una notificación amigable.
+                    </div>
+                </div>
+
+                <div class="perfil-footer">
+                    <button type="reset" class="perfil-btn perfil-btn-secondary">Cancelar</button>
+                    <button type="submit" class="perfil-btn perfil-btn-primary">Guardar cambios</button>
+                </div>
+            </form>
+        </section>
+    </div>
+
+    <div class="modal-overlay" id="modal-nombre">
+        <div class="perfil-modal">
+            <button type="button" class="perfil-modal-close" id="close-modal-nombre">×</button>
+            <h2>Actualizar nombre</h2>
+            <p>Escribe tu nuevo nombre completo y confirma el cambio. Esto actualizará tu perfil visible en el sistema.</p>
+            <form id="form-nombre">
+                <div class="modal-row">
+                    <label for="nuevo-nombre">Nuevo nombre completo</label>
+                    <input type="text" id="nuevo-nombre" placeholder="Escribe tu nombre completo" />
+                    <div class="perfil-error" id="error-nombre"></div>
+                </div>
+                <div class="perfil-modal-footer">
+                    <button type="button" class="perfil-btn perfil-btn-secondary" id="cancelar-modal-nombre">Cancelar</button>
+                    <button type="submit" class="perfil-btn perfil-btn-primary">Guardar nombre</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="modal-password">
+        <div class="perfil-modal">
+            <button type="button" class="perfil-modal-close" id="close-modal-password">×</button>
+            <h2>Cambiar contraseña</h2>
+            <p>Ingresa tu contraseña actual y elige una nueva contraseña segura.</p>
+            <form id="form-password">
+                <div class="modal-row">
+                    <label for="actual-password">Contraseña actual</label>
+                    <input type="password" id="actual-password" placeholder="********" />
+                </div>
+                <div class="modal-row">
+                    <label for="nueva-password">Nueva contraseña</label>
+                    <input type="password" id="nueva-password" placeholder="********" />
+                </div>
+                <div class="modal-row">
+                    <label for="confirm-password">Confirmar nueva contraseña</label>
+                    <input type="password" id="confirm-password" placeholder="********" />
+                    <div class="perfil-error" id="error-password"></div>
+                </div>
+                <div class="perfil-modal-footer">
+                    <button type="button" class="perfil-btn perfil-btn-secondary" id="cancelar-modal-password">Cancelar</button>
+                    <button type="submit" class="perfil-btn perfil-btn-primary">Guardar contraseña</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="perfil-notice" id="perfil-notice"></div>
 </div>
