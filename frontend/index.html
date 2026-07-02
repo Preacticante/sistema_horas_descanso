@@ -6,41 +6,81 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root { --forest: #124416; --purple: #340C51; --gold: #AA7F31; --bg-gray: #f4f6f8; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-gray); display: flex; min-height: 100vh; }
-        .sidebar { width: 280px; background: var(--forest); color: white; padding: 2rem 1rem; display: flex; flex-direction: column; }
+        
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-gray); overflow: hidden; }
+        
+        /* Layout principal: evitamos scroll en el body */
+        .layout-wrapper { display: flex; height: 100vh; overflow: hidden; }
+        
+        .sidebar { 
+            width: 280px; 
+            background: var(--forest); 
+            color: white; 
+            padding: 2rem 1rem; 
+            display: flex; 
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 1000;
+        }
+
+        /* Contenedor del menú para que empuje el botón arriba */
+        .menu-wrapper { flex-grow: 1; }
+
+        .main-content { 
+            flex-grow: 1; 
+            padding: 3rem; 
+            overflow-y: auto; /* Solo esta parte hace scroll */
+            height: 100vh; 
+        }
+
+        .fade-out { opacity: 0; }
+        
         .logo-container { text-align: center; margin-bottom: 2rem; padding: 1rem; }
-        .logo-container img { width: 250px; height: auto; transition: transform 0.3s ease; }
-        .menu-group { margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem; }
+        .logo-container img { width: 250px; height: auto; }
+        .menu-group { margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem; }
+        
         .sidebar a { padding: 14px 20px; color: #d1d1d1; text-decoration: none; border-radius: 12px; margin-bottom: 8px; transition: all 0.3s ease; cursor: pointer; display: flex; align-items: center; font-weight: 500; font-size: 0.95rem; }
         .sidebar a:hover { background: rgba(255,255,255,0.05); color: white; }
-        .sidebar a.active { background: rgba(255,255,255,0.1); color: var(--gold); box-shadow: 0 4px 15px rgba(170, 127, 49, 0.4); border: 1px solid var(--gold); }
+        .sidebar a.active { background: rgba(255,255,255,0.1); color: var(--gold); border: 1px solid var(--gold); }
         .icon { width: 20px; height: 20px; margin-right: 15px; fill: currentColor; }
-        .main-content { flex-grow: 1; padding: 3rem; transition: opacity 0.3s ease; }
-        .fade-out { opacity: 0; }
-        .card { background: white; padding: 2.5rem; border-radius: 20px; border-left: 6px solid var(--gold); box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        
+        /* Ajuste botón cerrar sesión */
+        .logout-btn { 
+            color: var(--gold); 
+            border: 1px solid var(--gold); 
+            justify-content: center; 
+            border-radius: 12px; 
+            padding: 12px; 
+            text-decoration: none; 
+            margin-bottom: 2rem; /* Separación extra del borde inferior */
+        }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="logo-container"><img src="logo_uco.png" alt="Logo UCO"></div>
-        <div class="menu-group">
-            <a onclick="loadPage('dashboard', this)" class="active">
-                <svg class="icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Panel Principal
-            </a>
-            <a onclick="loadPage('empleados', this)"><svg class="icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Empleados</a>
-            <a onclick="loadPage('registros', this)"><svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>Registros</a>
-            <a onclick="loadPage('reportes', this)"><svg class="icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>Reportes</a>
-        </div>
-        <div class="menu-group" style="border:none;">
-            <a onclick="loadPage('configuracion', this)"><svg class="icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.63l-1.92-3.32c-.12-.22-.37-.31-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.63l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.63l1.92 3.32c.12.22.37.31.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.63l-2.03-1.58zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>Configuración</a>
-            <a onclick="loadPage('perfil', this)"><svg class="icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Perfil</a>
-        </div>
-        <a href="login.html" style="margin-top: auto; color: var(--gold); border: 1px solid var(--gold); justify-content: center; border-radius: 12px; padding: 12px;">Cerrar Sesión</a>
-    </div>
+    <div class="layout-wrapper">
+        <aside class="sidebar">
+            <div class="logo-container"><img src="logo_uco.png" alt="Logo UCO"></div>
+            
+            <div class="menu-wrapper">
+                <div class="menu-group">
+                    <a onclick="loadPage('dashboard', this)" class="active">Panel Principal</a>
+                    <a onclick="loadPage('empleados', this)">Empleados</a>
+                    <a onclick="loadPage('registros', this)">Registros</a>
+                    <a onclick="loadPage('reportes', this)">Reportes</a>
+                </div>
+                <div class="menu-group" style="border:none;">
+                    <a onclick="loadPage('configuracion', this)">Configuración</a>
+                    <a onclick="loadPage('perfil', this)">Perfil</a>
+                </div>
+            </div>
 
-    <main class="main-content" id="content-area">
-        <div id="dynamic-card"></div>
-    </main>
+            <a href="login.html" class="logout-btn">Cerrar Sesión</a>
+        </aside>
+
+        <main class="main-content" id="content-area">
+            <div id="dynamic-card"></div>
+        </main>
+    </div>
 
     <script src="app.js"></script>
 </body>
