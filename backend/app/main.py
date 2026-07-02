@@ -484,6 +484,101 @@ def listar_empleados(
         print(f"Error al procesar la consulta de horas: {e}")
         raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
 
+@app.get("/api/reportes")
+def obtener_reportes(
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        if fecha_fin is None:
+            fecha_fin = date.today()
+        if fecha_inicio is None:
+            fecha_inicio = fecha_fin - timedelta(days=30)
+
+        cursor.execute("SET LANGUAGE Spanish;")
+
+        cursor.execute("""
+            SELECT
+                b.IdEmpNum,
+                LTRIM(RTRIM(CONCAT(emp.tFirstName, ' ', COALESCE(emp.tMiddleName, ''), ' ', emp.tLastName))) AS NombreUsuario,
+                SUM(b.fHoras) AS TotalHoras,
+                COUNT(*) AS SalidasTemprano
+            FROM dbo.tblBancoHorasKardex b
+            INNER JOIN dbo.tblEmployees emp
+                ON emp.iEmployeeNum = b.IdEmpNum
+            WHERE b.FechaAfectacion >= ?
+              AND b.FechaAfectacion <= ?
+              AND b.fHoras < 0
+            GROUP BY b.IdEmpNum, emp.tFirstName, emp.tMiddleName, emp.tLastName
+            ORDER BY b.IdEmpNum;
+        """, fecha_inicio, fecha_fin)
+
+        filas = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return [
+            {
+                "id": fila[0],
+                "nombre": fila[1],
+                "total_horas": float(fila[2] or 0.0),
+                "salidas_temprano": int(fila[3] or 0),
+            }
+            for fila in filas
+        ]
+    except Exception as e:
+        print(f"Error al generar el reporte: {e}")
+        raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+
+@app.get("/api/empleados/{empleado_id}/salidas-temprano")
+def obtener_detalle_salidas_temprano(
+    empleado_id: int,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        if fecha_fin is None:
+            fecha_fin = date.today()
+        if fecha_inicio is None:
+            fecha_inicio = fecha_fin - timedelta(days=30)
+
+        cursor.execute("SET LANGUAGE Spanish;")
+
+        cursor.execute("""
+            SELECT
+                b.FechaAfectacion,
+                b.tObservaciones,
+                b.fHoras
+            FROM dbo.tblBancoHorasKardex b
+            WHERE b.IdEmpNum = ?
+              AND b.FechaAfectacion >= ?
+              AND b.FechaAfectacion <= ?
+              AND b.fHoras < 0
+            ORDER BY b.FechaAfectacion;
+        """, empleado_id, fecha_inicio, fecha_fin)
+
+        filas = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return [
+            {
+                "fecha": fila[0].isoformat() if fila[0] else None,
+                "observaciones": fila[1],
+                "horas": float(fila[2] or 0.0),
+            }
+            for fila in filas
+        ]
+    except Exception as e:
+        print(f"Error al obtener el detalle de salidas temprano: {e}")
+        raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+
 @app.get("/api/dashboard-resumen")
 def obtener_dashboard_resumen():
     try:

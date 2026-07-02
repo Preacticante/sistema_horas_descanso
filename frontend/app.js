@@ -1,6 +1,45 @@
-const API_URL = `http://162.16.6.86:8000`; // Cambia el puerto si tu backend está en otro puerto
+const API_URL = 'http://127.0.0.1:8000';
 let empleadosCache = [];
 let ultimoReporteData = [];
+
+// Sistema de notificaciones
+function mostrarNotificacion(tipo, titulo, mensaje, duracion = 4000) {
+    const container = document.getElementById('notification-container');
+    if (!container) return;
+
+    const iconos = {
+        success: '✓',
+        error: '✕',
+        warning: '⚠',
+        info: 'ℹ'
+    };
+
+    const notif = document.createElement('div');
+    notif.className = `notification ${tipo}`;
+    notif.innerHTML = `
+        <div class="notification-icon">${iconos[tipo] || '✓'}</div>
+        <div class="notification-content">
+            <div class="notification-title">${titulo}</div>
+            <div class="notification-message">${mensaje}</div>
+        </div>
+        <div class="notification-close">✕</div>
+    `;
+
+    const closeBtn = notif.querySelector('.notification-close');
+    const remover = () => {
+        notif.classList.add('removing');
+        setTimeout(() => notif.remove(), 300);
+    };
+
+    closeBtn.addEventListener('click', remover);
+    container.appendChild(notif);
+
+    if (duracion > 0) {
+        setTimeout(remover, duracion);
+    }
+
+    return notif;
+}
 
 async function cargarEmpleados(ids = null) {
     const tabla = document.getElementById("tabla-empleados");
@@ -162,8 +201,13 @@ async function cargarEmpleadosParaRegistro() {
         const empleados = await respuesta.json();
         empleadosCache = Array.isArray(empleados) ? empleados : [];
         actualizarSelectEmpleados();
+        configurarDropdownEmpleados();
     } catch (error) {
         console.error("Error al cargar empleados para registro:", error);
+        const menuEmpleado = document.getElementById("reg-empleado-menu");
+        if (menuEmpleado) {
+            menuEmpleado.innerHTML = `<div style="padding: 12px; text-align: center; color: #999;">No se pudo cargar la lista de empleados</div>`;
+        }
     }
 }
 
@@ -414,28 +458,93 @@ function inicializarPerfil() {
 
 function actualizarSelectEmpleados() {
     const selectEmpleado = document.getElementById("reg-empleado");
-    if (!selectEmpleado) return;
+    const menuEmpleado = document.getElementById("reg-empleado-menu");
+    const btnEmpleado = document.getElementById("reg-empleado-btn");
+    
+    if (!selectEmpleado || !menuEmpleado || !btnEmpleado) return;
 
-    selectEmpleado.innerHTML = `<option value="">Selecciona un empleado...</option>`;
-    empleadosCache.forEach(emp => {
-        const label = `${emp.id} - ${emp.nombre} (${emp.total_horas.toFixed(2)} hrs)`;
-        selectEmpleado.innerHTML += `<option value="${emp.id}">${label}</option>`;
+    if (!empleadosCache.length) {
+        menuEmpleado.innerHTML = `<div style="padding: 12px; text-align: center; color: #999;">No hay empleados disponibles</div>`;
+        return;
+    }
+
+    menuEmpleado.innerHTML = '';
+    empleadosCache.forEach((emp, index) => {
+        const totalHoras = Number(emp.total_horas || 0).toFixed(2);
+        const label = `${emp.id} - ${emp.nombre}`;
+        const item = document.createElement('div');
+        item.style.cssText = `
+            padding: 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: all 0.2s ease;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        `;
+        item.innerHTML = `
+            <span style="color: #1f2d19; font-weight: 500;">${label}</span>
+            <span style="color: #AA7F31; font-weight: 600; font-size: 0.9rem;">${totalHoras} hrs</span>
+        `;
+        item.addEventListener('mouseover', () => {
+            item.style.background = '#f8faf8';
+        });
+        item.addEventListener('mouseout', () => {
+            item.style.background = 'white';
+        });
+        item.addEventListener('click', () => {
+            selectEmpleado.value = emp.id;
+            document.getElementById("reg-empleado-label").textContent = label;
+            menuEmpleado.style.display = 'none';
+            btnEmpleado.style.borderColor = '#e0e0e0';
+            mostrarHorasActuales();
+        });
+        menuEmpleado.appendChild(item);
+    });
+}
+
+function configurarDropdownEmpleados() {
+    const btnEmpleado = document.getElementById("reg-empleado-btn");
+    const menuEmpleado = document.getElementById("reg-empleado-menu");
+    
+    if (!btnEmpleado || !menuEmpleado) return;
+    
+    btnEmpleado.addEventListener('click', (e) => {
+        e.preventDefault();
+        const isOpen = menuEmpleado.style.display === 'block';
+        menuEmpleado.style.display = isOpen ? 'none' : 'block';
+        btnEmpleado.style.borderColor = isOpen ? '#e0e0e0' : '#AA7F31';
+    });
+    
+    document.addEventListener('click', (e) => {
+        if (!e.target.closest('#reg-empleado-dropdown')) {
+            menuEmpleado.style.display = 'none';
+            btnEmpleado.style.borderColor = '#e0e0e0';
+        }
     });
 }
 
 function mostrarHorasActuales() {
     const selectEmpleado = document.getElementById("reg-empleado");
     const horasActuales = document.getElementById("horas-actuales");
-    if (!selectEmpleado || !horasActuales) return;
+    if (!horasActuales) return;
 
-    const empleadoId = parseInt(selectEmpleado.value, 10);
-    const empleado = empleadosCache.find(emp => emp.id === empleadoId);
-
-    if (empleado) {
-        horasActuales.textContent = `Horas extra disponibles: ${empleado.total_horas.toFixed(2)} hrs`;
-    } else {
-        horasActuales.textContent = "Horas extra disponibles: 0.00 hrs";
+    if (!selectEmpleado || !selectEmpleado.value) {
+        horasActuales.textContent = 'Horas extra disponibles: 0.00 hrs';
+        return;
     }
+
+    const seleccionado = parseInt(selectEmpleado.value, 10);
+    if (Number.isNaN(seleccionado)) {
+        horasActuales.textContent = 'Horas extra disponibles: 0.00 hrs';
+        return;
+    }
+
+    const empleado = Array.isArray(empleadosCache)
+        ? empleadosCache.find(function(item) { return Number(item?.id) === seleccionado; })
+        : null;
+    const totalHoras = empleado ? Number(empleado.total_horas || 0).toFixed(2) : '0.00';
+    horasActuales.textContent = `Horas extra disponibles: ${totalHoras} hrs`;
 }
 
 let registroFechasSeleccionadas = new Set();
@@ -573,12 +682,12 @@ async function enviarRegistroHoras(event) {
     const diasSeleccionados = Array.from(registroFechasSeleccionadas);
 
     if (Number.isNaN(numeroEmpleado) || Number.isNaN(cantidadHoras) || cantidadHoras <= 0) {
-        alert("Selecciona un empleado válido e ingresa una cantidad de horas mayor a cero.");
+        mostrarNotificacion('warning', 'Campos incompletos', 'Selecciona un empleado válido e ingresa una cantidad de horas mayor a cero.');
         return;
     }
 
     if (!diasSeleccionados.length) {
-        alert("Selecciona al menos una fecha en el calendario.");
+        mostrarNotificacion('warning', 'Sin fechas', 'Selecciona al menos una fecha en el calendario.');
         return;
     }
 
@@ -598,7 +707,7 @@ async function enviarRegistroHoras(event) {
             throw new Error(error.detail || "Error al registrar las horas");
         }
 
-        alert("Asignación de horas guardada correctamente.");
+        mostrarNotificacion('success', 'Éxito', 'Asignación de horas guardada correctamente.');
         event.target.reset();
         registroFechasSeleccionadas.clear();
         actualizarResumenFechasRegistro();
@@ -606,7 +715,7 @@ async function enviarRegistroHoras(event) {
         mostrarHorasActuales();
     } catch (error) {
         console.error("Error al registrar horas:", error);
-        alert(`No se pudo guardar la asignación: ${error.message}`);
+        mostrarNotificacion('error', 'Error', `No se pudo guardar la asignación: ${error.message}`);
     }
 }
 
@@ -626,13 +735,13 @@ function inicializarEmpleados() {
             event.preventDefault();
             const raw = filtroIds.value.trim();
             if (!raw) {
-                alert("Ingresa un ID de empleado para buscar.");
+                mostrarNotificacion('warning', 'ID requerido', 'Ingresa un ID de empleado para buscar.');
                 return;
             }
 
             const idsArray = raw.split(/[\s,;]+/).map(s => s.trim()).filter(s => /^\d+$/.test(s));
             if (!idsArray.length) {
-                alert("Introduce IDs numéricos válidos (ejemplo: 55 o 55,56).\nSi quieres todos, deja el campo vacío y presiona Mostrar todos.");
+                mostrarNotificacion('warning', 'IDs inválidos', 'Introduce IDs numéricos válidos (ejemplo: 55 o 55,56). Si quieres todos, deja el campo vacío y presiona Mostrar todos.');
                 return;
             }
 
@@ -640,7 +749,7 @@ function inicializarEmpleados() {
             const visibleIdsSet = new Set(empleadosCache.map(e => String(e.id)));
             const allowed = idsArray.filter(s => visibleIdsSet.has(s));
             if (!allowed.length) {
-                alert("Ningún ID ingresado coincide con los empleados mostrados en pantalla.");
+                mostrarNotificacion('info', 'Sin coincidencias', 'Ningún ID ingresado coincide con los empleados mostrados en pantalla.');
                 return;
             }
 
@@ -678,7 +787,7 @@ function inicializarEmpleados() {
     cargarEmpleados();
 }
 
-function inicializarRegistros() {
+async function inicializarRegistros() {
     const registroForm = document.getElementById("registroForm");
     const selectEmpleado = document.getElementById("reg-empleado");
 
@@ -695,7 +804,7 @@ function inicializarRegistros() {
     }
 
     inicializarCalendarioRegistro();
-    cargarEmpleadosParaRegistro();
+    await cargarEmpleadosParaRegistro();
 }
 
 const CONFIG_KEY = "sistema_horas_configuracion";
@@ -773,7 +882,7 @@ function importarConfiguracion(event) {
             cargarConfiguracion();
             mostrarAvisoConfig('Configuración importada correctamente.');
         } catch (error) {
-            alert('No se pudo importar el archivo de configuración. Asegúrate de que sea un JSON válido.');
+            mostrarNotificacion('error', 'Error de importación', 'No se pudo importar el archivo de configuración. Asegúrate de que sea un JSON válido.');
             console.error(error);
         }
     };
@@ -862,17 +971,17 @@ async function cargarReportes() {
     const fechaInicio = inicio.value;
     const fechaFin = fin.value;
     if (!fechaInicio || !fechaFin) {
-        alert('Selecciona un rango de fechas antes de filtrar.');
+        mostrarNotificacion('warning', 'Fechas requeridas', 'Selecciona un rango de fechas antes de filtrar.');
         return;
     }
 
     if (new Date(fechaInicio) > new Date(fechaFin)) {
-        alert('La fecha de inicio no puede ser mayor que la fecha de fin.');
+        mostrarNotificacion('error', 'Rango inválido', 'La fecha de inicio no puede ser mayor que la fecha de fin.');
         return;
     }
 
     try {
-        const response = await fetch(`${API_URL}/api/empleados?all=true&fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
+        const response = await fetch(`${API_URL}/api/reportes?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
         if (!response.ok) {
             throw new Error(`Error al cargar el reporte (${response.status})`);
         }
@@ -883,7 +992,7 @@ async function cargarReportes() {
         if (!ultimoReporteData.length) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="reportes-empty">No se encontraron registros en el rango seleccionado.</td>
+                    <td colspan="4" class="reportes-empty">No se encontraron registros en el rango seleccionado.</td>
                 </tr>
             `;
             totalRegistros.textContent = '0';
@@ -902,26 +1011,83 @@ async function cargarReportes() {
             tbody.innerHTML += `
                 <tr>
                     <td>${emp.nombre}</td>
-                    <td>${emp.id}</td>
                     <td>${(Number(emp.total_horas) || 0).toFixed(2)} hrs</td>
                     <td>${emp.salidas_temprano}</td>
-                    <td>${emp.salidas_temprano > 0 ? 'Revisar' : 'OK'}</td>
+                    <td>
+                        <button type="button" class="reportes-btn reportes-btn-secondary btn-detalle" data-id="${emp.id}" data-nombre="${emp.nombre}" data-fecha-inicio="${fechaInicio}" data-fecha-fin="${fechaFin}">Ver detalles</button>
+                    </td>
                 </tr>
             `;
+        });
+
+        tbody.querySelectorAll('.btn-detalle').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const id = Number(btn.dataset.id);
+                const nombre = btn.dataset.nombre || '';
+                const inicioSeleccionado = btn.dataset.fechaInicio;
+                const finSeleccionado = btn.dataset.fechaFin;
+                abrirDetalleEmpleado(id, nombre, inicioSeleccionado, finSeleccionado);
+            });
         });
     } catch (error) {
         console.error('Error al cargar el reporte:', error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="reportes-empty">No se pudo cargar el reporte. Revisa la conexión con el backend.</td>
+                <td colspan="4" class="reportes-empty">No se pudo cargar el reporte. Revisa la conexión con el backend.</td>
             </tr>
         `;
     }
 }
 
+async function abrirDetalleEmpleado(id, nombre, fechaInicio, fechaFin) {
+    const modal = document.getElementById('reportes-detalle');
+    const body = document.getElementById('reportes-detalle-body');
+    if (!modal || !body) return;
+
+    body.innerHTML = `<p>Cargando detalles de ${nombre}...</p>`;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+
+    try {
+        const response = await fetch(`${API_URL}/api/empleados/${id}/salidas-temprano?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
+        if (!response.ok) {
+            throw new Error(`Error al cargar detalle (${response.status})`);
+        }
+
+        const detalles = await response.json();
+        if (!Array.isArray(detalles) || detalles.length === 0) {
+            body.innerHTML = `<p>No se encontraron registros para ${nombre} en este rango de fechas.</p>`;
+            return;
+        }
+
+        body.innerHTML = `
+            <p style="font-weight:700; margin-bottom:16px;">Detalle de ${nombre}</p>
+            <ul class="reportes-detalle-list">
+                ${detalles.map(det => `
+                    <li class="reportes-detalle-item">
+                        <strong>${det.fecha}</strong>
+                        <div>Horas: ${Number(det.horas || 0).toFixed(2)} hrs</div>
+                        <div>${det.observaciones || 'Sin observaciones'}</div>
+                    </li>
+                `).join('')}
+            </ul>
+        `;
+    } catch (error) {
+        console.error('Error al cargar el detalle del empleado:', error);
+        body.innerHTML = `<p>No se pudo cargar el detalle. Intenta nuevamente.</p>`;
+    }
+}
+
+function cerrarDetalleEmpleado() {
+    const modal = document.getElementById('reportes-detalle');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
 function descargarReporteCSV() {
     if (!ultimoReporteData.length) {
-        alert('No hay datos de reporte disponibles para exportar.');
+        mostrarNotificacion('warning', 'Sin datos', 'No hay datos de reporte disponibles para exportar.');
         return;
     }
 
@@ -952,6 +1118,8 @@ function inicializarReportes() {
     const btnFiltrar = document.getElementById('btn-aplicar-reporte');
     const btnFiltrarTop = document.getElementById('btn-filtrar-reporte');
     const btnExportCsv = document.getElementById('btn-descargar-reporte-csv');
+    const btnCerrarDetalle = document.getElementById('reportes-detalle-close');
+    const modalDetalle = document.getElementById('reportes-detalle');
 
     if (btnFiltrar) {
         btnFiltrar.addEventListener('click', (event) => {
@@ -967,6 +1135,16 @@ function inicializarReportes() {
     }
     if (btnExportCsv) {
         btnExportCsv.addEventListener('click', descargarReporteCSV);
+    }
+    if (btnCerrarDetalle) {
+        btnCerrarDetalle.addEventListener('click', cerrarDetalleEmpleado);
+    }
+    if (modalDetalle) {
+        modalDetalle.addEventListener('click', (event) => {
+            if (event.target === modalDetalle) {
+                cerrarDetalleEmpleado();
+            }
+        });
     }
 
     const inicio = document.getElementById('fechaInicio');
@@ -1004,7 +1182,7 @@ async function loadPage(pageName, element) {
             }
 
             if (pageName === 'registros') {
-                inicializarRegistros();
+                await inicializarRegistros();
             }
 
             if (pageName === 'dashboard') {

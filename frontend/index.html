@@ -6,8 +6,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         :root { --forest: #124416; --purple: #340C51; --gold: #AA7F31; --bg-gray: #f4f6f8; }
-        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-gray); display: flex; min-height: 100vh; }
-        .sidebar { width: 280px; background: var(--forest); color: white; padding: 2rem 1rem; display: flex; flex-direction: column; }
+        body { margin: 0; font-family: 'Inter', sans-serif; background: var(--bg-gray); min-height: 100vh; }
+        .sidebar { position: fixed; top: 0; left: 0; bottom: 0; width: 280px; background: var(--forest); color: white; padding: 2rem 1rem; display: flex; flex-direction: column; overflow-y: auto; }
         .logo-container { text-align: center; margin-bottom: 2rem; padding: 1rem; }
         .logo-container img { width: 250px; height: auto; transition: transform 0.3s ease; }
         .menu-group { margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem; }
@@ -15,9 +15,28 @@
         .sidebar a:hover { background: rgba(255,255,255,0.05); color: white; }
         .sidebar a.active { background: rgba(255,255,255,0.1); color: var(--gold); box-shadow: 0 4px 15px rgba(170, 127, 49, 0.4); border: 1px solid var(--gold); }
         .icon { width: 20px; height: 20px; margin-right: 15px; fill: currentColor; }
-        .main-content { flex-grow: 1; padding: 3rem; transition: opacity 0.3s ease; }
+        .main-content { margin-left: 280px; padding: 3rem; transition: opacity 0.3s ease; min-height: 100vh; }
         .fade-out { opacity: 0; }
         .card { background: white; padding: 2.5rem; border-radius: 20px; border-left: 6px solid var(--gold); box-shadow: 0 10px 25px rgba(0,0,0,0.05); }
+        .notification-container { position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 420px; }
+        .notification { background: white; padding: 16px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; gap: 12px; align-items: flex-start; animation: slideIn 0.3s ease; border-left: 5px solid #4CAF50; }
+        .notification.success { border-left-color: #4CAF50; }
+        .notification.error { border-left-color: #f44336; }
+        .notification.warning { border-left-color: #FF9800; }
+        .notification.info { border-left-color: #2196F3; }
+        .notification-icon { width: 24px; height: 24px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.2rem; }
+        .notification.success .notification-icon { color: #4CAF50; }
+        .notification.error .notification-icon { color: #f44336; }
+        .notification.warning .notification-icon { color: #FF9800; }
+        .notification.info .notification-icon { color: #2196F3; }
+        .notification-content { flex-grow: 1; }
+        .notification-title { font-weight: 600; color: #1f2d19; margin-bottom: 4px; font-size: 0.95rem; }
+        .notification-message { color: #666; font-size: 0.9rem; line-height: 1.4; }
+        .notification-close { width: 20px; height: 20px; cursor: pointer; color: #999; transition: color 0.2s; flex-shrink: 0; }
+        .notification-close:hover { color: #333; }
+        @keyframes slideIn { from { transform: translateX(450px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(450px); opacity: 0; } }
+        .notification.removing { animation: slideOut 0.3s ease forwards; }
     </style>
 </head>
 <body>
@@ -41,6 +60,8 @@
     <main class="main-content" id="content-area">
         <div id="dynamic-card"></div>
     </main>
+    
+    <div class="notification-container" id="notification-container"></div>
 
     <script src="app.js"></script>
 </body>

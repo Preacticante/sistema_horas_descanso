@@ -1,22 +1,37 @@
 <div class="card">
-    <h1>Registrar horas de descanso</h1>
+    <h1 style="margin-top: 0; margin-bottom: 2rem; color: #1f2d19; font-size: 1.8rem; font-weight: 600;">Registrar horas de descanso</h1>
     <form id="registroForm">
-        <div style="margin-bottom: 18px;">
-            <label>Empleado</label>
-            <select id="reg-empleado" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc; background:#f8faf8; color:#1f2d19;">
-                <option value="">Selecciona un empleado...</option>
-            </select>
+        <!-- Empleado -->
+        <div style="margin-bottom: 2rem;">
+            <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Empleado</label>
+            <div id="reg-empleado-dropdown" style="position: relative;">
+                <button type="button" id="reg-empleado-btn" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; transition: all 0.3s ease; font-family: 'Inter', sans-serif; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
+                    <span id="reg-empleado-label">Selecciona un empleado...</span>
+                    <svg style="width: 18px; height: 18px; fill: #2f582f;" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
+                </button>
+                <div id="reg-empleado-menu" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px; max-height: 300px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
+                </div>
+                <input type="hidden" id="reg-empleado" name="reg-empleado" required>
+            </div>
         </div>
-        <div id="horas-actuales" style="margin-bottom: 18px; font-size:0.95rem; color:#2f582f;">Horas extra disponibles: 0.00 hrs</div>
-        <div style="margin-bottom: 18px;">
-            <label>Horas por día</label>
-            <input type="number" id="reg-horas" step="0.5" min="0.5" required style="width:100%; padding:10px; border-radius:8px; border:1px solid #ccc;">
+
+        <!-- Horas disponibles -->
+        <div id="horas-actuales" style="margin-bottom: 2rem; padding: 1rem; background: linear-gradient(135deg, rgba(47, 88, 47, 0.08) 0%, rgba(170, 127, 31, 0.08) 100%); border-left: 4px solid #2f582f; border-radius: 8px; font-size: 0.95rem; color: #2f582f; font-weight: 500;">Horas extra disponibles: <strong style="color: #AA7F31;">0.00 hrs</strong></div>
+
+        <!-- Horas por día -->
+        <div style="margin-bottom: 2rem;">
+            <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Horas por día</label>
+            <input type="number" id="reg-horas" step="0.5" min="0.5" required style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; transition: all 0.3s ease; font-family: 'Inter', sans-serif; box-sizing: border-box;" onfocus="this.style.borderColor='#AA7F31'; this.style.boxShadow='0 4px 12px rgba(170, 127, 31, 0.15)';" onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';">
         </div>
-        <div style="margin-bottom: 18px;">
-            <label>Selecciona los días en el calendario</label>
-            <div id="reg-calendar-container" style="margin-top: 12px; width:100%; max-width:560px; min-height:260px; padding:12px; border:1px solid #cbd5e1; border-radius:12px; background:#ffffff;"></div>
-            <div id="reg-fechas-seleccionadas" style="margin-top:12px; font-size:0.95rem; color:#4b5563;">No hay fechas seleccionadas.</div>
+
+        <!-- Calendario -->
+        <div style="margin-bottom: 2rem;">
+            <label style="display: block; margin-bottom: 1rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Selecciona los días en el calendario</label>
+            <div id="reg-calendar-container" style="margin: 0 auto; width:100%; max-width:560px; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e8e8e8; box-shadow: 0 2px 8px rgba(0,0,0,0.04);"></div>
+            <div id="reg-fechas-seleccionadas" style="margin-top: 1.5rem; padding: 0.75rem 1rem; background: #f0f4f0; border-left: 4px solid #AA7F31; border-radius: 6px; font-size: 0.95rem; color: #2f582f;">No hay fechas seleccionadas.</div>
         </div>
-        <button type="submit" class="btn" style="background:var(--gold);">Guardar asignación</button>
+
+        <!-- Botón -->
+        <button type="submit" class="btn" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 220px; box-shadow: 0 4px 12px rgba(170, 127, 31, 0.3);" onmouseover="this.style.boxShadow='0 6px 16px rgba(170, 127, 31, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='0 4px 12px rgba(170, 127, 31, 0.3)'; this.style.transform='translateY(0)';">Guardar asignación</button>
     </form>
 </div>
