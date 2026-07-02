@@ -2,53 +2,129 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Acceso - UCO</title>
     <style>
-        :root { --forest: #124416; --purple: #340C51; --gold: #AA7F31; }
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, var(--purple) 0%, var(--forest) 100%); }
-        .login-card { background: rgba(255, 255, 255, 0.95); padding: 3rem; border-radius: 20px; width: 100%; max-width: 400px; box-shadow: 0 15px 35px rgba(0,0,0,0.3); text-align: center; border-top: 6px solid var(--gold); }
-        img { width: 250px; margin-bottom: 2rem; }
-        input { display: block; width: 100%; margin: 20px 0; padding: 15px; background: #f8f8f8; border: 2px solid #eee; border-radius: 10px; color: #334; transition: 0.4s ease; }
-        input:focus { outline: none; border-color: var(--gold); box-shadow: 0 0 10px rgba(170, 127, 49, 0.3); }
-        .btn { width: 100%; background: var(--gold); color: white; padding: 15px; border: none; border-radius: 10px; cursor: pointer; font-weight: 700; transition: 0.3s; }
-        
-        /* Estilos del Modal */
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); backdrop-filter: blur(5px); justify-content: center; align-items: center; }
-        .modal-content { background: white; padding: 2rem; border-radius: 15px; width: 90%; max-width: 300px; text-align: center; }
-        .forgot-link { display: block; margin-top: 15px; color: var(--purple); text-decoration: none; font-size: 0.9rem; cursor: pointer; }
+        :root { --forest: #0f3a2e; --purple: #340C51; --gold: #AA7F31; --muted:#888; }
+        * { box-sizing: border-box; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: 'Segoe UI', sans-serif; background: linear-gradient(135deg, var(--purple) 0%, var(--forest) 100%); }
+        .login-card { background: rgba(255,255,255,0.98); padding: 2rem; border-radius: 12px; width: 100%; max-width: 420px; box-shadow: 0 20px 60px rgba(0,0,0,0.45); text-align: left; border-top: 6px solid var(--gold); }
+        .brand { display:flex; flex-direction:column; gap:6px; align-items:center; margin-bottom: 1rem; }
+        .brand img { width: 120px; height:120px; object-fit:contain; border-radius:8px; }
+        h1 { margin: 0 0 12px 0; font-size: 1.4rem; text-align:center; }
+        label { display:block; font-size:0.85rem; color:#333; margin-bottom:6px; }
+        .form-row { margin-bottom: 14px; }
+        input[type="text"], input[type="email"], input[type="password"] { width:100%; padding:12px 14px; border-radius:8px; border:1px solid #e6e6e6; background:#fafafa; font-size:0.98rem; }
+        .controls { display:flex; align-items:center; gap:8px; }
+        .btn { width:100%; background:var(--gold); color:#fff; padding:12px; border:none; border-radius:8px; font-weight:700; cursor:pointer; }
+        .btn.secondary { background:#340C51; }
+        .muted { color:var(--muted); font-size:0.85rem; }
+        .row-between { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+        .error { color:#c62828; font-size:0.9rem; margin-top:6px; min-height:1.2em; }
+        .success { color:#006400; font-size:0.9rem; min-height:1.2em; }
+        .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); backdrop-filter: blur(5px); align-items:center; justify-content:center; }
+        .modal-content { background:#fff; padding:1.6rem; border-radius:10px; width:100%; max-width:360px; }
+        .pw-row { display:flex; gap:8px; align-items:center; }
+        .pw-toggle { background:transparent; border:none; cursor:pointer; color:var(--muted); }
+        .strength { height:8px; border-radius:6px; background:#eee; overflow:hidden; }
+        .strength > i { display:block; height:100%; width:0%; background:linear-gradient(90deg,#f44336,#ff9800,#4caf50); transition:width .25s ease; }
+        .small { font-size:0.85rem; }
+        .spinner { display:inline-block; width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.4); border-top-color:rgba(255,255,255,0.9); animation:spin .8s linear infinite; vertical-align:middle; }
+        @keyframes spin { to { transform:rotate(360deg); } }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <img src="logo_uco.png" alt="Logo UCO">
-        <form id="login-form">
-            <input type="text" placeholder="Usuario" required>
-            <input type="password" placeholder="Contraseña" required>
-            <button type="submit" class="btn">ENTRAR</button>
+    <main class="login-card" aria-labelledby="loginTitle">
+        <div class="brand">
+            <img src="logo_uco.png" alt="Logo UCO">
+            <div style="flex:1">
+                <h1 id="loginTitle">Acceso al Sistema</h1>
+                <div class="muted">Ingresa con tu usuario o correo institucional</div>
+            </div>
+        </div>
+
+        <form id="login-form" novalidate>
+            <div class="form-row">
+                <label for="login-username">Usuario o correo</label>
+                <input id="login-username" name="username" type="text" autocomplete="username" placeholder="usuario o correo@dominio" required aria-required="true">
+            </div>
+
+            <div class="form-row">
+                <label for="login-password">Contraseña</label>
+                <div class="pw-row">
+                    <input id="login-password" name="password" type="password" autocomplete="current-password" placeholder="Contraseña" required aria-required="true">
+                    <button type="button" id="toggle-pw" class="pw-toggle" aria-label="Mostrar contraseña">👁</button>
+                </div>
+            </div>
+
+            <div class="form-row row-between">
+                <label class="small"><input id="rememberMe" type="checkbox"> Recordarme</label>
+                <a class="muted" href="#" onclick="openModal(); return false;">¿Olvidaste tu contraseña?</a>
+            </div>
+
+            <div class="form-row">
+                <button id="loginBtn" class="btn" type="submit">ENTRAR</button>
+            </div>
+
+            <div id="login-error" class="error" role="alert" aria-live="assertive"></div>
         </form>
-        <a class="forgot-link" onclick="openModal()">¿Olvidaste tu contraseña?</a>
+
+        <div style="margin-top:10px; display:flex; gap:10px;">
+            <button id="openRegisterBtn" class="btn secondary">Crear cuenta</button>
+        </div>
+    </main>
+
+    <div id="forgotModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="forgotTitle">
+        <div class="modal-content">
+            <h2 id="forgotTitle">Recuperar Acceso</h2>
+            <p class="small muted">Ingresa tu correo institucional y te enviaremos instrucciones.</p>
+            <input id="forgot-email" type="email" placeholder="ejemplo@dominio.com">
+            <div style="display:flex; gap:8px; margin-top:12px;"><button class="btn" onclick="sendRecovery()">Enviar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>
+        </div>
     </div>
 
-    <div id="forgotModal" class="modal">
+    <div id="registerModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="registerTitle">
         <div class="modal-content">
-            <h3>Recuperar Acceso</h3>
-            <p style="font-size: 0.8rem; color: #666;">Ingresa tu correo institucional y te enviaremos las instrucciones.</p>
-            <input type="email" placeholder="ejemplo@upq.edu.mx">
-            <button class="btn" onclick="closeModal()">Enviar</button>
-            <a onclick="closeModal()" style="display:block; margin-top: 10px; color: #999; cursor: pointer; font-size: 0.8rem;">Cancelar</a>
+            <h2 id="registerTitle">Crear cuenta</h2>
+            <form id="register-form">
+                <div class="form-row"><label for="register-name">Nombre completo</label><input id="register-name" type="text" required></div>
+                <div class="form-row"><label for="register-username">Usuario</label><input id="register-username" type="text" required></div>
+                <div class="form-row"><label for="register-email">Correo electrónico</label><input id="register-email" type="email" required></div>
+                <div class="form-row"><label for="register-password">Contraseña</label><input id="register-password" type="password" required></div>
+                <div class="form-row"><label for="register-confirm-password">Confirmar contraseña</label><input id="register-confirm-password" type="password" required></div>
+                <div class="form-row"><div class="strength"><i id="strengthBar"></i></div><div class="small muted">La contraseña debe tener mínimo 8 caracteres.</div></div>
+                <div class="form-row"><button id="registerBtn" type="submit" class="btn">Registrar</button></div>
+            </form>
+            <div style="margin-top:8px; text-align:center;"><button class="btn" onclick="closeRegisterModal()">Cerrar</button></div>
         </div>
     </div>
 
     <script>
-        const modal = document.getElementById("forgotModal");
-        function openModal() { modal.style.display = "flex"; }
-        function closeModal() { modal.style.display = "none"; }
-        
-        document.getElementById('login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            localStorage.setItem("isAuth", "true");
-            window.location.href = "index.html";
+        const forgotModal = document.getElementById('forgotModal');
+        const registerModal = document.getElementById('registerModal');
+        function openModal(){ forgotModal.style.display='flex'; }
+        function closeModal(){ forgotModal.style.display='none'; }
+        function openRegisterModal(){ registerModal.style.display='flex'; }
+        function closeRegisterModal(){ registerModal.style.display='none'; }
+
+        const togglePw = document.getElementById('toggle-pw');
+        const pwInput = document.getElementById('login-password');
+        togglePw.addEventListener('click', ()=>{
+            const t = pwInput.type === 'password' ? 'text' : 'password';
+            pwInput.type = t;
         });
+
+        // Login handling (ACCESO DIRECTO)
+        document.getElementById('login-form').addEventListener('submit', (ev)=>{
+            ev.preventDefault();
+            sessionStorage.setItem('isAuth', 'true');
+            window.location.href = 'index.html';
+        });
+
+        // Register handling
+        document.getElementById('openRegisterBtn').addEventListener('click', openRegisterModal);
+        
+        function sendRecovery(){ alert('Se ha enviado un correo (simulado).'); closeModal(); }
     </script>
 </body>
 </html>

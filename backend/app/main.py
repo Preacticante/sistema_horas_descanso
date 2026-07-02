@@ -2,10 +2,11 @@ import re
 from typing import Optional
 from datetime import datetime, date, timedelta
 import hashlib
+import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from pydantic import BaseModel, constr
 from app.database import obtener_conexion
 
 app = FastAPI(title="Sistema de Horas Extra API")
@@ -36,6 +37,19 @@ class CambiarPassword(BaseModel):
     actual_password: str
     new_password: str
 
+class RegistroUsuario(BaseModel):
+    nombre: constr(strip_whitespace=True, min_length=3, max_length=150)
+    nombre_usuario: constr(strip_whitespace=True, min_length=4, max_length=50, regex=r"^[A-Za-z0-9_]+$")
+    email: str
+    password: constr(min_length=8)
+    confirm_password: str
+    rol: str = "Empleado"
+    id_empleado: Optional[int] = None
+
+class LoginRequest(BaseModel):
+    username_or_email: str
+    password: str
+
 PERFIL_DATA = {
     "nombre": "Alexis Hernández",
     "rol": "Administrador",
@@ -45,6 +59,39 @@ PERFIL_DATA = {
     "sucursal": "Sucursal Centro",
     "direccion": "Av. Reforma 123",
 }
+
+PASSWORD_SPECIAL_CHARS = "!@#$%^&*"
+
+
+def validar_password(password: str) -> None:
+    if len(password) < 8:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener mínimo 8 caracteres.")
+
+
+def es_email_valido(email: str) -> bool:
+    return bool(re.fullmatch(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email.strip()))
+
+
+def generar_hash_salt(password: str, salt: bytes | None = None) -> tuple[bytes, bytes]:
+    if salt is None:
+        salt = os.urandom(16)
+    hash_bytes = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, 200000)
+    return salt, hash_bytes
+
+
+def verificar_password(stored_hash: bytes, stored_salt: bytes, password: str) -> bool:
+    _, hash_bytes = generar_hash_salt(password, stored_salt)
+    return hash_bytes == stored_hash
+
+
+def obtener_usuario_por_login(cursor, username_or_email: str):
+    cursor.execute(
+        "SELECT IdUsuario, Nombre, NombreUsuario, Email, PasswordHash, PasswordSalt, Rol, Activo FROM dbo.tblUsuarios "
+        "WHERE (NombreUsuario = ? OR Email = ?) AND Activo = 1",
+        username_or_email,
+        username_or_email,
+    )
+    return cursor.fetchone()
 
 EMPLEADOS_DASHBOARD = {
     1,
@@ -158,48 +205,98 @@ EMPLEADOS_NOMBRES = {
 def inicio():
     return {"status": "online", "mensaje": "Conexión base lista"}
 
-@app.get("/api/dashboard-resumen")
-def dashboard_resumen():
+@app.post("/api/auth/register")
+def registrar_usuario(usuario: RegistroUsuario):
+    if usuario.password != usuario.confirm_password:
+        raise HTTPException(status_code=400, detail="Las contraseñas no coinciden.")
+
+    if not es_email_valido(usuario.email):
+        raise HTTPException(status_code=400, detail="El correo electrónico no tiene un formato válido.")
+
+    validar_password(usuario.password)
+
     try:
         conn = obtener_conexion()
         cursor = conn.cursor()
 
-        # Total de horas en el banco
-        cursor.execute("SELECT ISNULL(SUM(fHoras), 0) FROM dbo.tblBancoHorasKardex")
-        total_horas = float(cursor.fetchone()[0] or 0.0)
+        cursor.execute(
+            "SELECT NombreUsuario, Email FROM dbo.tblUsuarios WHERE NombreUsuario = ? OR Email = ?",
+            usuario.nombre_usuario,
+            usuario.email.lower(),
+        )
+        usuario_existente = cursor.fetchone()
+        if usuario_existente:
+            if usuario_existente[0] == usuario.nombre_usuario:
+                raise HTTPException(status_code=409, detail="El nombre de usuario ya está en uso.")
+            if usuario_existente[1].lower() == usuario.email.lower():
+                raise HTTPException(status_code=409, detail="El correo electrónico ya está registrado.")
 
-        # Contar empleados con horas positivas (pendientes) vs negativas (aprobadas)
-        cursor.execute("""
-            SELECT
-                SUM(CASE WHEN fHoras > 0 THEN 1 ELSE 0 END) AS empleados_pendientes,
-                SUM(CASE WHEN fHoras < 0 THEN 1 ELSE 0 END) AS empleados_aprobadas
-            FROM (
-                SELECT DISTINCT IdEmpNum, SUM(fHoras) AS fHoras
-                FROM dbo.tblBancoHorasKardex
-                GROUP BY IdEmpNum
-            ) AS resumen
-        """)
-        resultado = cursor.fetchone()
-        empleados_pendientes = int(resultado[0] or 0)
-        empleados_aprobadas = int(resultado[1] or 0)
+        if usuario.id_empleado is not None:
+            cursor.execute(
+                "SELECT IdEmpNum FROM dbo.tblOrganigramaOficial WHERE IdEmpNum = ?",
+                usuario.id_empleado,
+            )
+            if cursor.fetchone() is None:
+                raise HTTPException(status_code=400, detail="El número de empleado proporcionado no existe.")
 
-        # Eficiencia: porcentaje de empleados con horas negativas
-        cursor.execute("SELECT COUNT(DISTINCT IdEmpNum) FROM dbo.tblBancoHorasKardex")
-        total_empleados = int(cursor.fetchone()[0] or 1)
-        eficiencia = (empleados_aprobadas / total_empleados * 100) if total_empleados > 0 else 0.0
+        salt, hash_bytes = generar_hash_salt(usuario.password)
+
+        cursor.execute(
+            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, Email, PasswordHash, PasswordSalt, Rol, IdEmpleado, FechaCreacion, Activo) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), 1)",
+            usuario.nombre,
+            usuario.nombre_usuario,
+            usuario.email.lower(),
+            hash_bytes,
+            salt,
+            usuario.rol,
+            usuario.id_empleado,
+        )
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {"status": "success", "mensaje": "Usuario registrado correctamente."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al registrar usuario: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo registrar el usuario.")
+
+
+@app.post("/api/auth/login")
+def login_usuario(datos: LoginRequest):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        fila = obtener_usuario_por_login(cursor, datos.username_or_email.strip())
+        if not fila:
+            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
+
+        id_usuario, nombre, nombre_usuario, email, password_hash, password_salt, rol, activo = fila
+        if not verificar_password(password_hash, password_salt, datos.password):
+            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
 
         cursor.close()
         conn.close()
 
         return {
-            "total_horas": total_horas,
-            "empleados_pendientes": empleados_pendientes,
-            "empleados_aprobadas": empleados_aprobadas,
-            "eficiencia": eficiencia,
+            "status": "success",
+            "usuario": {
+                "id": id_usuario,
+                "nombre": nombre,
+                "usuario": nombre_usuario,
+                "email": email,
+                "rol": rol,
+            },
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        print(f"Error al generar resumen del dashboard: {e}")
-        raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+        print(f"Error al iniciar sesión: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo iniciar sesión.")
+
 
 # ==========================================================
 # RUTA ACTUALIZADA: PROCESA LAS ENTRADAS/SALIDAS DE LA VISTA
