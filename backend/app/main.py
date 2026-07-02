@@ -1,12 +1,12 @@
 import re
-from typing import Optional
+from typing import Optional, Annotated
 from datetime import datetime, date, timedelta
 import hashlib
 import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, constr
+from pydantic import BaseModel, Field
 from app.database import obtener_conexion
 
 app = FastAPI(title="Sistema de Horas Extra API")
@@ -38,10 +38,10 @@ class CambiarPassword(BaseModel):
     new_password: str
 
 class RegistroUsuario(BaseModel):
-    nombre: constr(strip_whitespace=True, min_length=3, max_length=150)
-    nombre_usuario: constr(strip_whitespace=True, min_length=4, max_length=50, regex=r"^[A-Za-z0-9_]+$")
+    nombre: Annotated[str, Field(min_length=3, max_length=150)]
+    nombre_usuario: Annotated[str, Field(min_length=4, max_length=50, pattern=r"^[A-Za-z0-9_]+$")]
     email: str
-    password: constr(min_length=8)
+    password: Annotated[str, Field(min_length=8)]
     confirm_password: str
     rol: str = "Empleado"
     id_empleado: Optional[int] = None
