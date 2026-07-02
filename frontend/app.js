@@ -1,4 +1,4 @@
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = `http://172.16.6.86:8000`; // Cambia el puerto si tu backend está en otro puerto
 let empleadosCache = [];
 let ultimoReporteData = [];
 
