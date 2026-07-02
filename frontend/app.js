@@ -48,7 +48,8 @@ async function cargarEmpleados(ids = null) {
         return;
     }
 
-    const query = ids ? `?ids=${encodeURIComponent(ids)}` : "";
+    // Si no hay IDs específicos, cargamos TODOS los empleados con all=true
+    const query = ids ? `?ids=${encodeURIComponent(ids)}` : "?all=true";
     tabla.innerHTML = `
         <tr>
             <td colspan="4" style="padding:15px; text-align:center;">Cargando empleados...</td>
@@ -141,7 +142,7 @@ async function cargarDashboardEmpleados() {
     `;
 
     try {
-        const response = await fetch(`${API_URL}/api/empleados`);
+        const response = await fetch(`${API_URL}/api/empleados?all=true`);
         if (!response.ok) {
             throw new Error(`Error al cargar empleados (${response.status})`);
         }
