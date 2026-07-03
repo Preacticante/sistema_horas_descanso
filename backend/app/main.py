@@ -37,6 +37,15 @@ class CambiarPassword(BaseModel):
     actual_password: str
     new_password: str
 
+class SystemConfig(BaseModel):
+    max_horas_mes: float
+    max_horas_diarias: float
+    min_horas_compensacion: float
+    horas_descanso_por_hora: float
+    dias_maximos_descanso: int
+    permitir_recuperacion_otro_dia: bool
+    alertas_exceso: bool
+
 class RegistroUsuario(BaseModel):
     nombre: Annotated[str, Field(min_length=3, max_length=150)]
     nombre_usuario: Annotated[str, Field(min_length=4, max_length=50, pattern=r"^[A-Za-z0-9_]+$")]
@@ -825,7 +834,27 @@ def cambiar_password(datos: CambiarPassword):
     except Exception as e:
         print(f"Error al cambiar contraseña: {e}")
         raise HTTPException(status_code=500, detail="No se pudo cambiar la contraseña.")
+@app.post("/api/configuracion")
+async def guardar_configuracion(config: SystemConfig):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        # Aquí debes adaptar el UPDATE a tu estructura de tabla real
+        # cursor.execute("UPDATE dbo.tblConfiguracion SET ...") 
+        # conn.commit()
+        cursor.close()
+        conn.close()
+        return {"status": "success", "mensaje": "Configuración guardada"}
+    except Exception as e:
+        print(f"Error al guardar config: {e}")
+        raise HTTPException(status_code=500, detail="Error al actualizar configuración.")
 
+@app.get("/api/configuracion")
+async def obtener_configuracion():
+    # Aquí un SELECT a tu tabla de configuración
+    return {"status": "success", "data": "Valores actuales"}
+
+    
 @app.post("/api/registrar")
 def registrar_horas(datos: RegistroHoras):
     if not datos.dias_semana:
