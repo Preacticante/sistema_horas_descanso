@@ -31,6 +31,9 @@
         .small { font-size:0.85rem; }
         .spinner { display:inline-block; width:18px; height:18px; border-radius:50%; border:2px solid rgba(255,255,255,0.4); border-top-color:rgba(255,255,255,0.9); animation:spin .8s linear infinite; vertical-align:middle; }
         @keyframes spin { to { transform:rotate(360deg); } }
+        /* Estilo para alerta bonita */
+        .toast { position: fixed; bottom: 30px; right: 30px; background: #0f3a2e; color: white; padding: 1rem 2rem; border-radius: 12px; box-shadow: 0 10px 15px rgba(0,0,0,0.3); animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
     </style>
 </head>
 <body>
@@ -48,7 +51,6 @@
                 <label for="login-username">Usuario o correo</label>
                 <input id="login-username" name="username" type="text" autocomplete="username" placeholder="usuario o correo@dominio" required aria-required="true">
             </div>
-
             <div class="form-row">
                 <label for="login-password">Contraseña</label>
                 <div class="pw-row">
@@ -56,19 +58,15 @@
                     <button type="button" id="toggle-pw" class="pw-toggle" aria-label="Mostrar contraseña">👁</button>
                 </div>
             </div>
-
             <div class="form-row row-between">
                 <label class="small"><input id="rememberMe" type="checkbox"> Recordarme</label>
                 <a class="muted" href="#" onclick="openModal(); return false;">¿Olvidaste tu contraseña?</a>
             </div>
-
             <div class="form-row">
                 <button id="loginBtn" class="btn" type="submit">ENTRAR</button>
             </div>
-
             <div id="login-error" class="error" role="alert" aria-live="assertive"></div>
         </form>
-
         <div style="margin-top:10px; display:flex; gap:10px;">
             <button id="openRegisterBtn" class="btn secondary">Crear cuenta</button>
         </div>
@@ -92,7 +90,6 @@
                 <div class="form-row"><label for="register-email">Correo electrónico</label><input id="register-email" type="email" required></div>
                 <div class="form-row"><label for="register-password">Contraseña</label><input id="register-password" type="password" required></div>
                 <div class="form-row"><label for="register-confirm-password">Confirmar contraseña</label><input id="register-confirm-password" type="password" required></div>
-                <div class="form-row"><div class="strength"><i id="strengthBar"></i></div><div class="small muted">La contraseña debe tener mínimo 8 caracteres.</div></div>
                 <div class="form-row"><button id="registerBtn" type="submit" class="btn">Registrar</button></div>
             </form>
             <div style="margin-top:8px; text-align:center;"><button class="btn" onclick="closeRegisterModal()">Cerrar</button></div>
@@ -106,24 +103,33 @@
         function closeModal(){ forgotModal.style.display='none'; }
         function openRegisterModal(){ registerModal.style.display='flex'; }
         function closeRegisterModal(){ registerModal.style.display='none'; }
+        
+        function mostrarAlerta(msg) {
+            const t = document.createElement('div'); t.className = 'toast'; t.textContent = msg;
+            document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+        }
 
-        const togglePw = document.getElementById('toggle-pw');
-        const pwInput = document.getElementById('login-password');
-        togglePw.addEventListener('click', ()=>{
-            const t = pwInput.type === 'password' ? 'text' : 'password';
-            pwInput.type = t;
+        document.getElementById('toggle-pw').addEventListener('click', ()=>{
+            const t = document.getElementById('login-password').type === 'password' ? 'text' : 'password';
+            document.getElementById('login-password').type = t;
         });
 
-        // Login handling (ACCESO DIRECTO)
         document.getElementById('login-form').addEventListener('submit', (ev)=>{
             ev.preventDefault();
             sessionStorage.setItem('isAuth', 'true');
             window.location.href = 'index.html';
         });
 
-        // Register handling
         document.getElementById('openRegisterBtn').addEventListener('click', openRegisterModal);
         
+        document.getElementById('register-form').addEventListener('submit', (ev)=>{
+            ev.preventDefault();
+            const perfil = { nombre: document.getElementById('register-name').value, email: document.getElementById('register-email').value };
+            localStorage.setItem('perfilPrincipal', JSON.stringify(perfil));
+            mostrarAlerta("¡Perfil configurado con éxito!");
+            closeRegisterModal();
+        });
+
         function sendRecovery(){ alert('Se ha enviado un correo (simulado).'); closeModal(); }
     </script>
 </body>

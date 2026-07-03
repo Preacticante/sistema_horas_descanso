@@ -1,0 +1,5 @@
+fastapi
+uvicorn
+pyodbc
+passlib[bcrypt]
+python-dotenv
