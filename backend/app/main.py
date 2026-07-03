@@ -328,8 +328,30 @@ def listar_empleados(
                 ORDER BY e.iEmployeeNum
             """)
             empleados_db = cursor.fetchall()
+            
+            # Obtener horas totales
             cursor.execute("SELECT IdEmpNum, SUM(fHoras) AS HorasBanco FROM dbo.tblBancoHorasKardex GROUP BY IdEmpNum")
             horas_db = {row[0]: float(row[1] or 0.0) for row in cursor.fetchall()}
+            
+            # Obtener salidas tempranas (registros donde fHoras < 0)
+            cursor.execute("SELECT IdEmpNum, COUNT(*) AS SalidasTemprano FROM dbo.tblBancoHorasKardex WHERE fHoras < 0 GROUP BY IdEmpNum")
+            salidas_db = {row[0]: int(row[1] or 0) for row in cursor.fetchall()}
+            
+            # Obtener horarios (L-V: Lunes a Viernes, usando nombres de día)
+            horarios_db = {}
+            try:
+                cursor.execute("""
+                    SELECT DISTINCT 
+                        IdEmpNum,
+                        CAST(HorarioInicio AS VARCHAR(8)) + ' - ' + CAST(HorarioFinal AS VARCHAR(8)) AS Horario
+                    FROM dbo.tblHorariosEmployees
+                    WHERE DiaSemana IN ('Lunes', 'Martes', 'Miércoles', 'Miercoles', 'Jueves', 'Viernes')
+                    ORDER BY IdEmpNum
+                """)
+                horarios_db = {row[0]: row[1] for row in cursor.fetchall()}
+            except Exception as e:
+                print(f"Advertencia: No se pudieron cargar los horarios: {e}")
+                horarios_db = {}
 
             resultado = []
             for row in empleados_db:
@@ -340,8 +362,8 @@ def listar_empleados(
                     "nombre": nombre,
                     "numero_empleado": emp_id,
                     "total_horas": horas_db.get(emp_id, 0.0),
-                    "llegadas_tarde": 0,
-                    "salidas_temprano": 0,
+                    "horario": horarios_db.get(emp_id, "No configurado"),
+                    "salidas_temprano": salidas_db.get(emp_id, 0),
                 })
 
             cursor.close()
@@ -674,6 +696,65 @@ def obtener_detalle_salidas_temprano(
         ]
     except Exception as e:
         print(f"Error al obtener el detalle de salidas temprano: {e}")
+        raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+
+@app.get("/api/empleados/{empleado_id}/horario")
+def obtener_horario_empleado(
+    empleado_id: int,
+    fecha_inicio: Optional[date] = None,
+    fecha_fin: Optional[date] = None,
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        if fecha_fin is None:
+            fecha_fin = date.today()
+        if fecha_inicio is None:
+            fecha_inicio = fecha_fin - timedelta(days=30)
+
+        cursor.execute("SET LANGUAGE Spanish;")
+
+        cursor.execute("""
+            SELECT
+                H.DiaSemana,
+                CAST(H.HorarioInicio AS VARCHAR(5)) + ' - ' + CAST(H.HorarioFinal AS VARCHAR(5)) AS Horario,
+                ISNULL(SUM(CASE WHEN b.fHoras > 0 THEN b.fHoras ELSE 0 END), 0) AS HorasExtra
+            FROM dbo.tblHorariosEmployees H
+            LEFT JOIN dbo.tblBancoHorasKardex b
+                ON b.IdEmpNum = H.IdEmpNum
+                AND b.fHoras > 0
+                AND b.FechaAfectacion >= ?
+                AND b.FechaAfectacion <= ?
+                AND DATENAME(WEEKDAY, b.FechaAfectacion) = H.DiaSemana
+            WHERE H.IdEmpNum = ?
+              AND H.DiaSemana IN ('Lunes', 'Martes', 'Miércoles', 'Miercoles', 'Jueves', 'Viernes')
+            GROUP BY H.DiaSemana, H.HorarioInicio, H.HorarioFinal
+            ORDER BY CASE
+                WHEN H.DiaSemana = 'Lunes' THEN 1
+                WHEN H.DiaSemana = 'Martes' THEN 2
+                WHEN H.DiaSemana = 'Miércoles' THEN 3
+                WHEN H.DiaSemana = 'Miercoles' THEN 3
+                WHEN H.DiaSemana = 'Jueves' THEN 4
+                WHEN H.DiaSemana = 'Viernes' THEN 5
+                ELSE 6
+            END;
+        """, fecha_inicio, fecha_fin, empleado_id)
+
+        filas = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return [
+            {
+                "dia": fila[0],
+                "horario": fila[1],
+                "horas_extra": float(fila[2] or 0.0),
+            }
+            for fila in filas
+        ]
+    except Exception as e:
+        print(f"Error al obtener el horario del empleado: {e}")
         raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
 
 @app.get("/api/dashboard-resumen")

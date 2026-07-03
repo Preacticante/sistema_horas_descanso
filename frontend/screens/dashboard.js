@@ -45,7 +45,6 @@ async function obtenerDatosDashboard() {
                     <td>${emp.id}</td>
                     <td>${emp.nombre}</td>
                     <td style="color: ${colorHoras}; font-weight: bold;">${(emp.total_horas || 0).toFixed(2)} hrs</td>
-                    <td>${emp.llegadas_tarde || 0}</td>
                     <td>${emp.salidas_temprano || 0}</td>
                 </tr>
             `;

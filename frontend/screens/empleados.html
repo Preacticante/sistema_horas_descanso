@@ -118,6 +118,10 @@
 
     <div class="empleados-header">
         <h1>Empleados</h1>
+        <div style="display: flex; gap: 12px;">
+            
+            <button class="empleados-btn empleados-btn-secondary" id="btn-restaurar-cambios" style="background: #ea580c;">Restaurar todo</button>
+        </div>
     </div>
 
     <div class="empleados-bar">
@@ -136,12 +140,214 @@
                 <th>Nombre</th>
                 <th>Horas Saldo</th>
                 <th>Salidas Tempranas</th>
+                <th>Acciones</th>
             </tr>
         </thead>
         <tbody id="tabla-empleados">
             <tr>
-                <td colspan="4" style="padding:18px; text-align:center; color:#5a6857;">Cargando empleados...</td>
+                <td colspan="5" style="padding:18px; text-align:center; color:#5a6857;">Cargando empleados...</td>
             </tr>
         </tbody>
     </table>
 </div>
+
+<div id="modal-horario" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2>Horario del empleado</h2>
+            <button id="btn-cerrar-horario" class="modal-close">✕</button>
+        </div>
+        <div class="modal-body">
+            <div id="modal-horario-content">
+                <p style="color:#4b5563;">Cargando horario...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div id="modal-confirmacion" class="modal-overlay" style="display:none;">
+    <div class="modal-confirmation">
+        <div class="modal-confirmation-icon">⚠️</div>
+        <h3 id="confirmacion-titulo">Eliminar empleado</h3>
+        <p id="confirmacion-mensaje">¿Estás seguro de que deseas eliminar este empleado? Esta acción es solo visual.</p>
+        <div class="modal-confirmation-actions">
+            <button type="button" class="btn-confirm-cancel" id="btn-confirmacion-cancelar">Cancelar</button>
+            <button type="button" class="btn-confirm-danger" id="btn-confirmacion-confirmar">Eliminar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-empleado" class="modal-overlay" style="display:none;">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 id="modal-empleado-titulo">Agregar empleado</h2>
+            <button id="btn-cerrar-empleado" class="modal-close">✕</button>
+        </div>
+        <form id="form-empleado" class="modal-body">
+            <div style="margin-bottom: 18px;">
+                <label for="empleado-id" style="font-weight:700; display:block; margin-bottom:8px; color:#243a29;">ID</label>
+                <input type="text" id="empleado-id" readonly style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid #d7e0d6; background:#f8faf8;" />
+            </div>
+            <div style="margin-bottom: 18px;">
+                <label for="empleado-nombre" style="font-weight:700; display:block; margin-bottom:8px; color:#243a29;">Nombre completo</label>
+                <input type="text" id="empleado-nombre" required style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid #d7e0d6;" />
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+                <div>
+                    <label for="empleado-horas" style="font-weight:700; display:block; margin-bottom:8px; color:#243a29;">Horas Saldo</label>
+                    <input type="number" id="empleado-horas" step="0.25" min="0" style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid #d7e0d6;" />
+                </div>
+                <div>
+                    <label for="empleado-salidas" style="font-weight:700; display:block; margin-bottom:8px; color:#243a29;">Salidas tempranas</label>
+                    <input type="number" id="empleado-salidas" min="0" style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid #d7e0d6;" />
+                </div>
+            </div>
+            <p style="color:#475569; margin-bottom:18px;">Nota: esta edición es visual, no modifica la base de datos.</p>
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button type="button" class="empleados-btn empleados-btn-secondary" id="btn-cancelar-empleado">Cancelar</button>
+                <button type="submit" class="empleados-btn empleados-btn-primary">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.48);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+    }
+    .modal-card {
+        width: min(92vw, 640px);
+        background: white;
+        border-radius: 24px;
+        padding: 24px;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+    }
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 18px;
+    }
+    .modal-header h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #132e1c;
+    }
+    .modal-close {
+        border: none;
+        background: #f3f4f6;
+        width: 42px;
+        height: 42px;
+        border-radius: 50%;
+        font-size: 1.1rem;
+        cursor: pointer;
+        color: #334155;
+    }
+    .modal-close:hover {
+        background: #e2e8f0;
+    }
+    .modal-body {
+        max-height: 62vh;
+        overflow-y: auto;
+    }
+    .horario-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    .horario-table th,
+    .horario-table td {
+        padding: 14px 16px;
+        border-bottom: 1px solid #e5e7eb;
+        text-align: left;
+        color: #24323f;
+    }
+    .horario-table th {
+        background: #f8faf8;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.04em;
+    }
+    .horario-table td {
+        font-size: 0.95rem;
+    }
+    .horario-badge {
+        display: inline-flex;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #e6f4ea;
+        color: #166534;
+        font-weight: 700;
+        font-size: 0.85rem;
+    }
+    .modal-confirmation {
+        width: min(92vw, 500px);
+        background: white;
+        border-radius: 24px;
+        padding: 32px;
+        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
+        text-align: center;
+    }
+    .modal-confirmation-icon {
+        width: 60px;
+        height: 60px;
+        margin: 0 auto 20px;
+        border-radius: 50%;
+        background: #fee2e2;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 32px;
+        color: #dc2626;
+    }
+    .modal-confirmation h3 {
+        margin: 0 0 12px 0;
+        font-size: 1.3rem;
+        color: #132e1c;
+        font-weight: 700;
+    }
+    .modal-confirmation p {
+        margin: 0 0 24px 0;
+        color: #475569;
+        font-size: 0.95rem;
+        line-height: 1.5;
+    }
+    .modal-confirmation-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+    }
+    .modal-confirmation-actions button {
+        padding: 12px 24px;
+        border-radius: 14px;
+        border: none;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 0.18s ease, background 0.18s ease;
+        font-size: 0.95rem;
+    }
+    .modal-confirmation-actions button:hover {
+        transform: translateY(-1px);
+    }
+    .btn-confirm-danger {
+        background: #dc2626;
+        color: white;
+    }
+    .btn-confirm-danger:hover {
+        background: #b91c1c;
+    }
+    .btn-confirm-cancel {
+        background: #e5e7eb;
+        color: #374151;
+    }
+    .btn-confirm-cancel:hover {
+        background: #d1d5db;
+    }
+</style>

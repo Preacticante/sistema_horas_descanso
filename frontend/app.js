@@ -1,6 +1,53 @@
 const API_URL = `http://172.16.6.86:8000`; // Cambia el puerto si tu backend está en otro puerto
 let empleadosCache = [];
 let ultimoReporteData = [];
+let empleadosVisual = {
+    deleted: new Set(),
+    edited: {},
+    added: [],
+};
+let empleadoModalMode = 'add';
+let empleadoModalEditingId = null;
+let tempEmpleadoId = -1;
+
+const STORAGE_KEY_EMPLEADOS = 'empleados_visual_changes';
+
+function cargarEmpleadosLocales() {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY_EMPLEADOS);
+        if (raw) {
+            const parsed = JSON.parse(raw);
+            empleadosVisual.deleted = new Set(parsed.deleted || []);
+            empleadosVisual.edited = parsed.edited || {};
+            empleadosVisual.added = parsed.added || [];
+        }
+    } catch (error) {
+        console.warn('No se pudieron cargar cambios visuales de empleados:', error);
+    }
+}
+
+function guardarEmpleadosLocales() {
+    const payload = {
+        deleted: Array.from(empleadosVisual.deleted),
+        edited: empleadosVisual.edited,
+        added: empleadosVisual.added,
+    };
+    try {
+        localStorage.setItem(STORAGE_KEY_EMPLEADOS, JSON.stringify(payload));
+    } catch (error) {
+        console.warn('No se pudieron guardar cambios visuales de empleados:', error);
+    }
+}
+
+function aplicarCambiosVisuales(empleados) {
+    return empleados
+        .filter(emp => !empleadosVisual.deleted.has(String(emp.id)))
+        .map(emp => {
+            const edited = empleadosVisual.edited[String(emp.id)];
+            return edited ? {...emp, ...edited} : emp;
+        })
+        .concat(empleadosVisual.added || []);
+}
 
 // Sistema de notificaciones
 function mostrarNotificacion(tipo, titulo, mensaje, duracion = 4000) {
@@ -52,7 +99,7 @@ async function cargarEmpleados(ids = null) {
     const query = ids ? `?ids=${encodeURIComponent(ids)}` : "?all=true";
     tabla.innerHTML = `
         <tr>
-            <td colspan="4" style="padding:15px; text-align:center;">Cargando empleados...</td>
+            <td colspan="5" style="padding:15px; text-align:center;">Cargando empleados...</td>
         </tr>
     `;
     console.log("cargarEmpleados: fetch", `${API_URL}/api/empleados${query}`);
@@ -73,38 +120,269 @@ async function cargarEmpleados(ids = null) {
         }
 
         const empleados = await respuesta.json();
-        empleadosCache = Array.isArray(empleados) ? empleados : [];
+        cargarEmpleadosLocales();
+        empleadosCache = aplicarCambiosVisuales(Array.isArray(empleados) ? empleados : []);
         tabla.innerHTML = "";
 
         if (!empleadosCache.length) {
             tabla.innerHTML = `
                 <tr>
-                    <td colspan="4" style="text-align: center;">No se encontraron empleados.</td>
+                    <td colspan="5" style="text-align: center;">No se encontraron empleados.</td>
                 </tr>
             `;
             return;
         }
 
-        empleadosCache.forEach(emp => {
-            const colorHoras = emp.total_horas >= 0 ? "#124416" : "#c0392b";
-            tabla.innerHTML += `
-                <tr>
-                    <td>${emp.id}</td>
-                    <td>${emp.nombre}</td>
-                    <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
-                    <td>${emp.salidas_temprano}</td>
-                </tr>
-            `;
-        });
+        renderEmpleadosTabla(tabla, empleadosCache);
+
     } catch (error) {
         console.error("Error al conectar con la API:", error);
         tabla.innerHTML = `
             <tr>
-                <td colspan="4" style="color: red; text-align: center; font-weight: bold;">Error de conexión: Asegúrate de que el backend esté encendido.</td>
+                <td colspan="5" style="color: red; text-align: center; font-weight: bold;">Error de conexión: Asegúrate de que el backend esté encendido.</td>
             </tr>
         `;
     }
 }
+
+function renderEmpleadosTabla(tabla, empleados) {
+    tabla.innerHTML = '';
+    if (!empleados.length) {
+        tabla.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center;">No se encontraron empleados.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    empleados.forEach(emp => {
+        const colorHoras = emp.total_horas >= 0 ? "#124416" : "#c0392b";
+        tabla.innerHTML += `
+            <tr>
+                <td>${emp.id}</td>
+                <td>${emp.nombre}</td>
+                <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
+                <td>${emp.salidas_temprano || 0}</td>
+                <td>
+                    <button class="empleados-btn empleados-btn-secondary ver-horario-btn" data-emp-id="${emp.id}">Horario</button>
+                    <button class="empleados-btn empleados-btn-secondary editar-empleado-btn" data-emp-id="${emp.id}">Editar</button>
+                    <button class="empleados-btn empleados-btn-secondary eliminar-empleado-btn" data-emp-id="${emp.id}">Eliminar</button>
+                </td>
+            </tr>
+        `;
+    });
+}
+
+function abrirModalEmpleado(mode, empleado = null) {
+    empleadoModalMode = mode;
+    empleadoModalEditingId = empleado ? empleado.id : null;
+    const titulo = document.getElementById('modal-empleado-titulo');
+    const idInput = document.getElementById('empleado-id');
+    const nombreInput = document.getElementById('empleado-nombre');
+    const horasInput = document.getElementById('empleado-horas');
+    const salidasInput = document.getElementById('empleado-salidas');
+
+    if (titulo) {
+        titulo.textContent = mode === 'edit' ? 'Editar empleado' : 'Agregar empleado';
+    }
+
+    if (mode === 'edit' && empleado) {
+        if (idInput) idInput.value = empleado.id;
+        if (nombreInput) nombreInput.value = empleado.nombre || '';
+        if (horasInput) horasInput.value = empleado.total_horas ?? 0;
+        if (salidasInput) salidasInput.value = empleado.salidas_temprano ?? 0;
+    } else {
+        if (idInput) idInput.value = tempEmpleadoId;
+        if (nombreInput) nombreInput.value = '';
+        if (horasInput) horasInput.value = 0;
+        if (salidasInput) salidasInput.value = 0;
+    }
+
+    const modal = document.getElementById('modal-empleado');
+    if (modal) modal.style.display = 'flex';
+}
+
+function cerrarModalEmpleado() {
+    const modal = document.getElementById('modal-empleado');
+    if (modal) modal.style.display = 'none';
+}
+
+function obtenerSiguienteIdTemporal() {
+    return tempEmpleadoId--;
+}
+
+function guardarEmpleadoVisual(empleado) {
+    if (empleadoModalMode === 'edit' && empleadoModalEditingId !== null) {
+        empleadosVisual.edited[String(empleadoModalEditingId)] = {
+            nombre: empleado.nombre,
+            total_horas: empleado.total_horas,
+            salidas_temprano: empleado.salidas_temprano,
+        };
+        empleadosCache = empleadosCache.map(emp => emp.id === empleadoModalEditingId ? {...emp, ...empleado} : emp);
+        mostrarNotificacion('success', 'Empleado actualizado', 'Los cambios se aplicaron visualmente.');
+    } else {
+        const nuevoEmpleado = {
+            id: empleado.id,
+            nombre: empleado.nombre,
+            total_horas: empleado.total_horas,
+            salidas_temprano: empleado.salidas_temprano,
+        };
+        empleadosVisual.added.push(nuevoEmpleado);
+        empleadosCache.push(nuevoEmpleado);
+        mostrarNotificacion('success', 'Empleado agregado', 'El empleado se agregó visualmente.');
+    }
+    guardarEmpleadosLocales();
+    const tabla = document.getElementById('tabla-empleados');
+    if (tabla) renderEmpleadosTabla(tabla, empleadosCache);
+}
+
+let empleadoAEliminar = null;
+
+function abrirModalConfirmacion(empleadoId, nombreEmpleado) {
+    empleadoAEliminar = empleadoId;
+    const modal = document.getElementById('modal-confirmacion');
+    const titulo = document.getElementById('confirmacion-titulo');
+    const mensaje = document.getElementById('confirmacion-mensaje');
+    
+    if (titulo) titulo.textContent = `Eliminar a ${nombreEmpleado}`;
+    if (mensaje) mensaje.textContent = `¿Estás seguro de que deseas eliminar a ${nombreEmpleado}? Esta acción es solo visual y no modifica la base de datos.`;
+    
+    if (modal) modal.style.display = 'flex';
+}
+
+function cerrarModalConfirmacion() {
+    const modal = document.getElementById('modal-confirmacion');
+    if (modal) modal.style.display = 'none';
+    empleadoAEliminar = null;
+}
+
+function confirmarEliminacion() {
+    if (empleadoAEliminar === null) return;
+    
+    const empleado = empleadosCache.find(emp => String(emp.id) === String(empleadoAEliminar));
+    if (!empleado) {
+        cerrarModalConfirmacion();
+        return;
+    }
+
+    empleadosVisual.deleted.add(String(empleadoAEliminar));
+    guardarEmpleadosLocales();
+    empleadosCache = empleadosCache.filter(emp => String(emp.id) !== String(empleadoAEliminar));
+    const tabla = document.getElementById('tabla-empleados');
+    if (tabla) renderEmpleadosTabla(tabla, empleadosCache);
+    mostrarNotificacion('success', 'Empleado eliminado', `${empleado.nombre} ha sido ocultado. Esta eliminación es solo visual.`);
+    cerrarModalConfirmacion();
+}
+
+function eliminarEmpleadoVisual(empleadoId) {
+    const empleado = empleadosCache.find(emp => String(emp.id) === String(empleadoId));
+    if (!empleado) return;
+    
+    abrirModalConfirmacion(empleadoId, empleado.nombre);
+}
+
+function recuperarEmpleadoVisual(empleadoId) {
+    empleadosVisual.deleted.delete(String(empleadoId));
+    guardarEmpleadosLocales();
+    cargarEmpleados(); // Recargar para mostrar el empleado recuperado
+    mostrarNotificacion('success', 'Empleado recuperado', 'El empleado ha sido restaurado en la tabla.');
+}
+
+function limpiarCambiosVisualesEmpleados() {
+    abrirModalConfirmacionLimpiar();
+}
+
+function abrirModalConfirmacionLimpiar() {
+    const modal = document.getElementById('modal-confirmacion');
+    const titulo = document.getElementById('confirmacion-titulo');
+    const mensaje = document.getElementById('confirmacion-mensaje');
+    const btnConfirmar = document.getElementById('btn-confirmacion-confirmar');
+    
+    if (titulo) titulo.textContent = 'Restaurar todos los cambios';
+    if (mensaje) mensaje.textContent = '¿Deseas limpiar todos los cambios visuales (adiciones, ediciones y eliminaciones)? Esta acción no modifica la base de datos.';
+    
+    empleadoAEliminar = 'restore_all';
+    
+    if (btnConfirmar) {
+        btnConfirmar.textContent = 'Restaurar';
+        btnConfirmar.className = 'btn-confirm-danger';
+    }
+    
+    if (modal) modal.style.display = 'flex';
+}
+
+function confirmarLimpiar() {
+    empleadosVisual = {
+        deleted: new Set(),
+        edited: {},
+        added: [],
+    };
+    guardarEmpleadosLocales();
+    cargarEmpleados();
+    mostrarNotificacion('success', 'Cambios restaurados', 'Todos los cambios visuales han sido eliminados. Se muestran los datos de la base de datos.');
+    cerrarModalConfirmacion();
+}
+
+async function obtenerHorarioEmpleado(empleadoId) {
+    const modalContent = document.getElementById('modal-horario-content');
+    if (!modalContent) return;
+
+    modalContent.innerHTML = `<p style="color:#4b5563;">Cargando horario...</p>`;
+    abrirModalHorario();
+
+    try {
+        const response = await fetch(`${API_URL}/api/empleados/${empleadoId}/horario`);
+        if (!response.ok) {
+            throw new Error(`No se pudo cargar el horario (${response.status})`);
+        }
+
+        const horario = await response.json();
+        if (!Array.isArray(horario) || horario.length === 0) {
+            modalContent.innerHTML = `<p style="color:#475569;">No se encontró horario configurado para este empleado.</p>`;
+            return;
+        }
+
+        modalContent.innerHTML = `
+            <table class="horario-table">
+                <thead>
+                    <tr>
+                        <th>Día</th>
+                        <th>Horario</th>
+                        <th>Horas extra (últimos 30 días)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${horario.map(item => `
+                        <tr>
+                            <td>${item.dia}</td>
+                            <td>${item.horario || 'No configurado'}</td>
+                            <td>${item.horas_extra.toFixed(2)} hrs</td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    } catch (error) {
+        console.error('Error al cargar el horario del empleado:', error);
+        modalContent.innerHTML = `<p style="color:#b91c1c;">No se pudo cargar el horario. Intenta de nuevo.</p>`;
+    }
+}
+
+function abrirModalHorario() {
+    const modal = document.getElementById('modal-horario');
+    if (modal) {
+        modal.style.display = 'flex';
+    }
+}
+
+function cerrarModalHorario() {
+    const modal = document.getElementById('modal-horario');
+    if (modal) {
+        modal.style.display = 'none';
+    }
+}
+
 async function cargarDashboard() {
     try {
         const response = await fetch(`${API_URL}/api/dashboard-resumen`);
@@ -165,8 +443,7 @@ async function cargarDashboardEmpleados() {
                     <td>${emp.id}</td>
                     <td>${emp.nombre}</td>
                     <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
-                    <td>${emp.llegadas_tarde}</td>
-                    <td>${emp.salidas_temprano}</td>
+                    <td>${emp.salidas_temprano || 0}</td>
                 </tr>
             `;
         });
@@ -724,12 +1001,15 @@ function inicializarEmpleados() {
     const filtroIds = document.getElementById("filtro-ids");
     const btnBuscar = document.getElementById("btn-buscar-empleados");
     const btnReset = document.getElementById("btn-reset-empleados");
-    const btnAbrirModal = document.getElementById("btn-abrir-modal");
-    const btnCerrarModal = document.getElementById("btn-cerrar-modal");
+    const btnAgregarEmpleado = document.getElementById("btn-agregar-empleado");
+    const btnRestaurarCambios = document.getElementById("btn-restaurar-cambios");
+    const btnCerrarEmpleado = document.getElementById("btn-cerrar-empleado");
+    const btnCancelarEmpleado = document.getElementById("btn-cancelar-empleado");
+    const formEmpleado = document.getElementById("form-empleado");
     const formRegistro = document.getElementById("form-registrar-horas");
 
     console.log("Inicializando empleados...");
-    console.log("filtroIds:", filtroIds, "btnBuscar:", btnBuscar, "btnReset:", btnReset, "btnAbrirModal:", btnAbrirModal, "modalForm:", formRegistro);
+    console.log("filtroIds:", filtroIds, "btnBuscar:", btnBuscar, "btnReset:", btnReset, "btnAgregarEmpleado:", btnAgregarEmpleado, "btnCerrarEmpleado:", btnCerrarEmpleado, "formEmpleado:", formEmpleado);
 
     if (btnBuscar && btnReset && filtroIds) {
         btnBuscar.addEventListener("click", (event) => {
@@ -772,16 +1052,114 @@ function inicializarEmpleados() {
         });
     }
 
-    if (btnAbrirModal) {
-        btnAbrirModal.addEventListener("click", abrirModalRegistro);
+    if (btnAgregarEmpleado) {
+        btnAgregarEmpleado.addEventListener("click", () => abrirModalEmpleado('add'));
     }
 
-    if (btnCerrarModal) {
-        btnCerrarModal.addEventListener("click", cerrarModalRegistro);
+    if (btnRestaurarCambios) {
+        btnRestaurarCambios.addEventListener("click", limpiarCambiosVisualesEmpleados);
+    }
+
+    if (btnCerrarEmpleado) {
+        btnCerrarEmpleado.addEventListener("click", cerrarModalEmpleado);
+    }
+
+    if (btnCancelarEmpleado) {
+        btnCancelarEmpleado.addEventListener("click", cerrarModalEmpleado);
+    }
+
+    const tablaEmpleados = document.getElementById("tabla-empleados");
+    if (tablaEmpleados) {
+        tablaEmpleados.addEventListener("click", (event) => {
+            const horarioBtn = event.target.closest(".ver-horario-btn");
+            const editarBtn = event.target.closest(".editar-empleado-btn");
+            const eliminarBtn = event.target.closest(".eliminar-empleado-btn");
+
+            if (horarioBtn) {
+                const empleadoId = horarioBtn.getAttribute("data-emp-id");
+                if (empleadoId) {
+                    obtenerHorarioEmpleado(empleadoId);
+                }
+                return;
+            }
+
+            if (editarBtn) {
+                const empleadoId = editarBtn.getAttribute("data-emp-id");
+                const empleado = empleadosCache.find(emp => String(emp.id) === String(empleadoId));
+                if (empleado) {
+                    abrirModalEmpleado('edit', empleado);
+                }
+                return;
+            }
+
+            if (eliminarBtn) {
+                const empleadoId = eliminarBtn.getAttribute("data-emp-id");
+                if (empleadoId) {
+                    eliminarEmpleadoVisual(empleadoId);
+                }
+                return;
+            }
+        });
+    }
+
+    const btnCerrarHorario = document.getElementById("btn-cerrar-horario");
+    if (btnCerrarHorario) {
+        btnCerrarHorario.addEventListener("click", cerrarModalHorario);
+    }
+
+    if (formEmpleado) {
+        formEmpleado.addEventListener("submit", async (event) => {
+            event.preventDefault();
+            const idValue = document.getElementById('empleado-id')?.value;
+            const nombreValue = document.getElementById('empleado-nombre')?.value.trim();
+            const horasValue = parseFloat(document.getElementById('empleado-horas')?.value || '0');
+            const salidasValue = parseInt(document.getElementById('empleado-salidas')?.value || '0', 10);
+
+            if (!nombreValue) {
+                mostrarNotificacion('warning', 'Nombre requerido', 'Ingresa el nombre del empleado.');
+                return;
+            }
+
+            const empleado = {
+                id: idValue ? (Number(idValue) || idValue) : obtenerSiguienteIdTemporal(),
+                nombre: nombreValue,
+                total_horas: Number.isNaN(horasValue) ? 0 : horasValue,
+                salidas_temprano: Number.isNaN(salidasValue) ? 0 : salidasValue,
+            };
+
+            guardarEmpleadoVisual(empleado);
+            cerrarModalEmpleado();
+        });
     }
 
     if (formRegistro) {
         formRegistro.addEventListener("submit", enviarRegistroHoras);
+    }
+
+    const btnConfirmacionCancelar = document.getElementById("btn-confirmacion-cancelar");
+    const btnConfirmacionConfirmar = document.getElementById("btn-confirmacion-confirmar");
+    const modalConfirmacion = document.getElementById("modal-confirmacion");
+
+    if (btnConfirmacionCancelar) {
+        btnConfirmacionCancelar.addEventListener("click", cerrarModalConfirmacion);
+    }
+
+    if (btnConfirmacionConfirmar) {
+        btnConfirmacionConfirmar.addEventListener("click", () => {
+            if (empleadoAEliminar === 'restore_all') {
+                confirmarLimpiar();
+            } else {
+                confirmarEliminacion();
+            }
+        });
+    }
+
+    if (modalConfirmacion) {
+        modalConfirmacion.addEventListener("click", (event) => {
+            if (event.target === modalConfirmacion) {
+                cerrarModalConfirmacion();
+            }
+        });
     }
 
     // Cargar empleados en la tabla
