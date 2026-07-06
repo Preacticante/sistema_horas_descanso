@@ -37,15 +37,6 @@ class CambiarPassword(BaseModel):
     actual_password: str
     new_password: str
 
-class SystemConfig(BaseModel):
-    max_horas_mes: float
-    max_horas_diarias: float
-    min_horas_compensacion: float
-    horas_descanso_por_hora: float
-    dias_maximos_descanso: int
-    permitir_recuperacion_otro_dia: bool
-    alertas_exceso: bool
-
 class RegistroUsuario(BaseModel):
     nombre: Annotated[str, Field(min_length=3, max_length=150)]
     nombre_usuario: Annotated[str, Field(min_length=4, max_length=50, pattern=r"^[A-Za-z0-9_]+$")]
@@ -612,6 +603,75 @@ def listar_empleados(
         print(f"Error al procesar la consulta de horas: {e}")
         raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
 
+class ActualizarEmpleado(BaseModel):
+    nombre: str
+    total_horas: Optional[float] = None
+    salidas_temprano: Optional[int] = None
+
+@app.patch("/api/empleados/{empleado_id}")
+def actualizar_empleado(empleado_id: int, datos: ActualizarEmpleado):
+    if not datos.nombre or not datos.nombre.strip():
+        raise HTTPException(status_code=400, detail="El nombre del empleado es obligatorio.")
+
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        cursor.execute("SELECT iEmployeeNum FROM dbo.tblEmployees WHERE iEmployeeNum = ?", empleado_id)
+        empleado_existente = cursor.fetchone()
+        if not empleado_existente:
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="Empleado no encontrado.")
+
+        nombre_completo = datos.nombre.strip()
+        partes = nombre_completo.split()
+        tFirstName = partes[0]
+        tLastName = partes[-1] if len(partes) > 1 else ''
+        tMiddleName = ' '.join(partes[1:-1]) if len(partes) > 2 else ''
+
+        cursor.execute(
+            "UPDATE dbo.tblEmployees SET tFirstName = ?, tMiddleName = ?, tLastName = ? WHERE iEmployeeNum = ?",
+            tFirstName, tMiddleName, tLastName, empleado_id,
+        )
+
+        if datos.total_horas is not None:
+            cursor.execute("SELECT SUM(fHoras) FROM dbo.tblBancoHorasKardex WHERE IdEmpNum = ?", empleado_id)
+            total_horas_actual = cursor.fetchone()
+            current_horas = float(total_horas_actual[0] or 0.0) if total_horas_actual else 0.0
+            diff = float(datos.total_horas) - current_horas
+            if abs(diff) >= 0.01:
+                observaciones = f"Ajuste de horas por edición de empleado {empleado_id}"
+                cursor.execute(
+                    "INSERT INTO dbo.tblBancoHorasKardex (IdEmpNum, FechaAfectacion, fHoras, tTipoTransaccion, tObservaciones, IdUsuarioAutoriza, bActivo, dtFechaEliminacion, IdUsuarioElimina) VALUES (?, ?, ?, 'Ajuste', ?, NULL, 1, '1900-01-01', NULL)",
+                    empleado_id, date.today(), diff, observaciones,
+                )
+
+        if datos.salidas_temprano is not None:
+            cursor.execute("SELECT COUNT(*) FROM dbo.tblBancoHorasKardex WHERE IdEmpNum = ? AND fHoras < 0", empleado_id)
+            current_salidas = cursor.fetchone()
+            current_salidas = int(current_salidas[0] or 0) if current_salidas else 0
+            diferencia_salidas = datos.salidas_temprano - current_salidas
+            if diferencia_salidas > 0:
+                for _ in range(diferencia_salidas):
+                    observaciones = f"Ajuste de salida temprana por edición de empleado {empleado_id}"
+                    cursor.execute(
+                        "INSERT INTO dbo.tblBancoHorasKardex (IdEmpNum, FechaAfectacion, fHoras, tTipoTransaccion, tObservaciones, IdUsuarioAutoriza, bActivo, dtFechaEliminacion, IdUsuarioElimina) VALUES (?, ?, ?, 'Ajuste', ?, NULL, 1, '1900-01-01', NULL)",
+                        empleado_id, date.today(), -1.0, observaciones,
+                    )
+            elif diferencia_salidas < 0:
+                raise HTTPException(status_code=400, detail="No es posible reducir el número de salidas tempranas a través de esta edición.")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"status": "success", "mensaje": "Empleado actualizado en la base de datos."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al actualizar el empleado: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo actualizar el empleado en la base de datos.")
+
 @app.get("/api/reportes")
 def obtener_reportes(
     fecha_inicio: Optional[date] = None,
@@ -834,27 +894,7 @@ def cambiar_password(datos: CambiarPassword):
     except Exception as e:
         print(f"Error al cambiar contraseña: {e}")
         raise HTTPException(status_code=500, detail="No se pudo cambiar la contraseña.")
-@app.post("/api/configuracion")
-async def guardar_configuracion(config: SystemConfig):
-    try:
-        conn = obtener_conexion()
-        cursor = conn.cursor()
-        # Aquí debes adaptar el UPDATE a tu estructura de tabla real
-        # cursor.execute("UPDATE dbo.tblConfiguracion SET ...") 
-        # conn.commit()
-        cursor.close()
-        conn.close()
-        return {"status": "success", "mensaje": "Configuración guardada"}
-    except Exception as e:
-        print(f"Error al guardar config: {e}")
-        raise HTTPException(status_code=500, detail="Error al actualizar configuración.")
 
-@app.get("/api/configuracion")
-async def obtener_configuracion():
-    # Aquí un SELECT a tu tabla de configuración
-    return {"status": "success", "data": "Valores actuales"}
-
-    
 @app.post("/api/registrar")
 def registrar_horas(datos: RegistroHoras):
     if not datos.dias_semana:

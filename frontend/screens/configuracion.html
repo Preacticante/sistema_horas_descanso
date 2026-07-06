@@ -1,53 +1,90 @@
 <div class="card">
     <h1>Configuración del Sistema</h1>
-    <p class="subtitle">Define los parámetros operativos y políticas de horas extras.</p>
+    <p class="subtitle">Ajusta los límites, reglas de compensación y comportamiento de registros del sistema.</p>
 
     <form id="config-form">
         <div class="config-grid">
             <section class="settings-section">
-                <h2>Límites de Horas</h2>
+                <h2>Compensación de horas extras</h2>
                 <div class="form-group">
-                    <label>Máximo mensual (hrs)</label>
-                    <input type="number" id="max-horas-mes" placeholder="Ej: 40">
+                    <label for="max-horas-mes">Máximo de horas extra por mes</label>
+                    <input id="max-horas-mes" type="number" min="0" step="1">
+                    <small>Límite mensual para detectar exceso y alertar al área de control.</small>
                 </div>
                 <div class="form-group">
-                    <label>Máximo diario (hrs)</label>
-                    <input type="number" id="max-horas-diarias" placeholder="Ej: 2.0" step="0.5">
+                    <label for="max-horas-diarias">Máximo de horas extra por día</label>
+                    <input id="max-horas-diarias" type="number" min="0" step="0.5">
+                    <small>Límite diario antes de que el exceso se compense con salida anticipada.</small>
+                </div>
+                <div class="form-group">
+                    <label for="min-horas-compensacion">Horas mínimas para compensar</label>
+                    <input id="min-horas-compensacion" type="number" min="0" step="0.25">
+                    <small>Las horas extra deben superar este umbral para generar descanso compensatorio.</small>
+                </div>
+                <div class="form-group">
+                    <label for="horas-descanso-por-hora">Horas de descanso por hora extra</label>
+                    <input id="horas-descanso-por-hora" type="number" min="0" step="0.25">
+                    <small>Cuántas horas de salida anticipada se otorgan por cada hora extra trabajada.</small>
+                </div>
+                <div class="form-group">
+                    <label for="dias-maximos-descanso">Plazo máximo para usar descanso</label>
+                    <input id="dias-maximos-descanso" type="number" min="0" step="1">
+                    <small>Días máximos permitidos para consumir el descanso compensatorio.</small>
                 </div>
             </section>
 
             <section class="settings-section">
-                <h2>Reglas de Compensación</h2>
-                <div class="form-group">
-                    <label>Umbral mínimo para compensar</label>
-                    <input type="number" id="min-horas-compensacion" placeholder="0.25" step="0.25">
+                <h2>Ajustes de control</h2>
+                <div class="checkbox-group">
+                    <input id="permitir-recuperacion-otro-dia" type="checkbox">
+                    <label for="permitir-recuperacion-otro-dia">Permitir recuperación en otro día</label>
                 </div>
-                <div class="form-group">
-                    <label>Factor de descanso (x por cada hora)</label>
-                    <input type="number" id="horas-descanso-por-hora" placeholder="1.0" step="0.25">
+                <div class="checkbox-group">
+                    <input id="alertas-exceso" type="checkbox">
+                    <label for="alertas-exceso">Generar alertas al superar límites</label>
                 </div>
             </section>
         </div>
 
-        <section class="settings-section" style="margin-top: 1.4rem;">
-            <div class="checkbox-group">
-                <input id="permitir-recuperacion-otro-dia" type="checkbox">
-                <label for="permitir-recuperacion-otro-dia">Permitir compensar en días distintos</label>
-            </div>
-            <div class="checkbox-group">
-                <input id="alertas-exceso" type="checkbox">
-                <label for="alertas-exceso">Activar alertas de exceso de horas</label>
-            </div>
-        </section>
-
         <div class="actions-row">
-            <button class="btn primary" type="submit">Guardar cambios</button>
-            <button class="btn secondary" type="button" id="btn-reset-config">Restaurar defaults</button>
-        </div>
-        
-        <div class="actions-row" style="margin-top: 1rem; border-top: 1px solid #eee; padding-top: 1rem;">
+            <button class="btn primary" type="submit">Guardar preferencias</button>
+            <button class="btn secondary" type="button" id="btn-reset-config">Restaurar valores predeterminados</button>
             <button class="btn tertiary" type="button" id="btn-export-config">Exportar JSON</button>
             <button class="btn tertiary" type="button" id="btn-import-config">Importar JSON</button>
+            <input type="file" id="import-config-file" accept="application/json" style="display:none;" />
         </div>
     </form>
+
+    <div id="config-notice" class="notice"></div>
 </div>
+
+<style>
+    .subtitle { margin: 0.5rem 0 1.8rem; color: #55615f; }
+    .config-grid { display: grid; gap: 1.4rem; width: 100%; min-width: 0; }
+    .settings-section { background: #fafafa; border: 1px solid #e3e7ea; border-radius: 18px; padding: 1.4rem; min-width: 0; }
+    .settings-section h2 { margin-top: 0; font-size: 1.05rem; color: #124416; }
+    .form-group { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; min-width: 0; }
+    .form-group label { font-weight: 600; color: #24372d; }
+    .form-group input, .form-group select { width: 100%; max-width: 100%; box-sizing: border-box; padding: 0.95rem 1rem; border: 1px solid #c4cacf; border-radius: 14px; background: white; font-size: 0.96rem; }
+    .form-group small { color: #677279; }
+    .checkbox-group { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1rem; }
+    .checkbox-group input { width: auto; }
+    .checkbox-group label { margin: 0; font-weight: 500; color: #24372d; }
+    .actions-row { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 1.8rem; }
+    .btn { border: 0; border-radius: 14px; padding: 0.95rem 1.4rem; font-weight: 700; cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0, 0, 0, 0.12); }
+    .btn.primary { background: #124416; color: white; }
+    .btn.secondary { background: #f5f5f5; color: #124416; }
+    .btn.tertiary { background: transparent; color: #124416; border: 1px solid #c1d8ca; }
+    .notice { margin-top: 1.2rem; padding: 1rem 1.2rem; border-radius: 14px; background: #e7f5eb; color: #164c2f; opacity: 0; transform: translateY(8px); transition: opacity 0.25s ease, transform 0.25s ease; }
+    .notice.show { opacity: 1; transform: translateY(0); }
+    @media (min-width: 900px) { .config-grid { grid-template-columns: 1fr 1fr; } }
+    body.theme-dark { background: #11151f; color: #e6edf6; }
+    body.theme-dark .card { background: #161f2d; border-color: #3c5c55; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28); }
+    body.theme-dark .settings-section { background: #1d2736; border-color: #32415d; }
+    body.theme-dark .form-group input, body.theme-dark .form-group select { background: #111b29; border-color: #2f4560; color: #e6edf6; }
+    body.theme-dark .checkbox-group label, body.theme-dark .form-group label, body.theme-dark .subtitle { color: #dbe6f3; }
+    body.theme-dark .btn.secondary { background: #23303f; color: #e6edf6; }
+    body.theme-dark .btn.tertiary { background: transparent; color: #9db8c9; border-color: #3b566d; }
+    body.theme-dark .notice { background: #203244; color: #d8e5ef; }
+</style>
