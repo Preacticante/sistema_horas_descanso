@@ -1,4 +1,26 @@
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "http://172.16.6.86:8000";
+
+function aplicarCambiosVisualesLocal(empleados) {
+    try {
+        const raw = localStorage.getItem('empleados_visual_changes');
+        if (!raw) return empleados;
+        const parsed = JSON.parse(raw);
+        const deleted = new Set(parsed.deleted || []);
+        const edited = parsed.edited || {};
+        const added = parsed.added || [];
+        const result = empleados
+            .filter(emp => !deleted.has(String(emp.id)))
+            .map(emp => {
+                const e = edited[String(emp.id)];
+                return e ? { ...emp, ...e } : emp;
+            })
+            .concat(added || []);
+        return result;
+    } catch (e) {
+        console.warn('No se pudieron aplicar cambios visuales locales:', e);
+        return empleados;
+    }
+}
 
 async function obtenerDatosDashboard() {
     const tablaBody = document.querySelector("#dashboard-empleados-table tbody");
@@ -21,7 +43,8 @@ async function obtenerDatosDashboard() {
             throw new Error("No se pudo obtener la lista de empleados");
         }
 
-        const empleados = await respuesta.json();
+        let empleados = await respuesta.json();
+        empleados = aplicarCambiosVisualesLocal(Array.isArray(empleados) ? empleados : []);
         
         // Limpiamos la tabla (quitamos el mensaje de "Cargando datos...")
         tablaBody.innerHTML = "";

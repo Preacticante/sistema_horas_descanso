@@ -88,6 +88,140 @@ function mostrarNotificacion(tipo, titulo, mensaje, duracion = 4000) {
     return notif;
 }
 
+let notificacionesSalida = [];
+let contadorNotificaciones = 0;
+
+function generarIdNotificacionSalida() {
+    return `salida-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+}
+
+function actualizarBadgeNotificaciones() {
+    const badge = document.getElementById('sidebar-notificaciones-badge');
+    if (!badge) return;
+    if (contadorNotificaciones > 0) {
+        badge.textContent = contadorNotificaciones;
+        badge.style.display = 'inline-flex';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function incrementarBadgeNotificaciones() {
+    contadorNotificaciones += 1;
+    actualizarBadgeNotificaciones();
+}
+
+function decrementarBadgeNotificaciones() {
+    contadorNotificaciones = Math.max(0, contadorNotificaciones - 1);
+    actualizarBadgeNotificaciones();
+}
+
+function crearItemNotificacionSalida(notificacion) {
+    const { id, empleadoId, empleadoNombre, cantidadHoras, dias, estado } = notificacion;
+    const diasTexto = dias.length === 1 ? dias[0] : dias.join(', ');
+    const item = document.createElement('div');
+    item.className = 'salida-notificacion-item';
+    item.dataset.id = id;
+    item.style.border = '1px solid #c7d2fe';
+    item.style.borderRadius = '14px';
+    item.style.padding = '1rem';
+    item.style.background = estado === 'pendiente' ? '#faf5ff' : estado === 'autorizada' ? '#eef6f1' : '#fff3f0';
+    item.style.display = 'flex';
+    item.style.flexDirection = 'column';
+    item.style.gap = '0.75rem';
+    const estadoColor = estado === 'autorizada' ? '#2f855a' : estado === 'rechazada' ? '#c53030' : '#340C51';
+    const borderColor = estado === 'autorizada' ? '#2f855a' : estado === 'rechazada' ? '#c53030' : '#c7d2fe';
+    item.style.border = `1px solid ${borderColor}`;
+    item.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;">
+            <div>
+                <div style="font-weight:700; color:#340C51;">Solicitud de salida ${estado === 'pendiente' ? 'pendiente' : estado}</div>
+                <div style="margin-top:0.35rem; color:#475569; font-size:0.95rem;">Empleado: <strong>${empleadoNombre}</strong></div>
+                <div style="margin-top:0.35rem; color:#475569; font-size:0.95rem;">Horas solicitadas: <strong>${cantidadHoras.toFixed(2)} hrs</strong></div>
+                <div style="margin-top:0.35rem; color:#475569; font-size:0.95rem;">Fechas: <strong>${diasTexto}</strong></div>
+            </div>
+            <div style="display:flex; gap:0.5rem; flex-wrap:wrap; margin-top:4px;">
+                <button type="button" class="btn-autorizar" style="background:#340C51; color:#ffffff; border:none; border-radius:10px; padding:10px 16px; cursor:pointer; font-weight:700; ${estado !== 'pendiente' ? 'opacity:0.65; cursor:not-allowed;' : ''}">Autorizar</button>
+                <button type="button" class="btn-rechazar" style="background:#ffffff; color:#340C51; border:2px solid #340C51; border-radius:10px; padding:10px 16px; cursor:pointer; font-weight:700; ${estado !== 'pendiente' ? 'opacity:0.65; cursor:not-allowed;' : ''}">Rechazar</button>
+            </div>
+        </div>
+        <div class="salida-estado-texto" style="color:${estadoColor}; font-size:0.95rem; font-weight:700;">Solicitud ${estado === 'pendiente' ? 'pendiente' : estado}.</div>
+        <div style="color:#6b7280; font-size:0.85rem;">Puedes autorizar o rechazar esta solicitud cuando esté lista.</div>
+    `;
+    const btnAutorizar = item.querySelector('.btn-autorizar');
+    const btnRechazar = item.querySelector('.btn-rechazar');
+    if (estado === 'pendiente') {
+        btnAutorizar.addEventListener('click', () => manejarDecisionSalida(id, true));
+        btnRechazar.addEventListener('click', () => manejarDecisionSalida(id, false));
+    } else {
+        btnAutorizar.disabled = true;
+        btnRechazar.disabled = true;
+    }
+    return item;
+}
+
+function renderNotificacionesSalida() {
+    const panel = document.getElementById('salida-notifications-panel');
+    if (!panel) return;
+    panel.innerHTML = '';
+    if (!notificacionesSalida.length) {
+        panel.innerHTML = '<div data-empty-notifications style="color:#475569; font-size:0.95rem; padding:1rem; border:1px dashed #c7d2fe; border-radius:12px; background:#f8f5ff;">No hay notificaciones activas.</div>';
+        return;
+    }
+    notificacionesSalida.forEach(notificacion => panel.appendChild(crearItemNotificacionSalida(notificacion)));
+}
+
+function agregarNotificacionSalida(empleadoId, empleadoNombre, cantidadHoras, dias) {
+    const id = generarIdNotificacionSalida();
+    notificacionesSalida.unshift({ id, empleadoId, empleadoNombre, cantidadHoras, dias, estado: 'pendiente' });
+    incrementarBadgeNotificaciones();
+    renderNotificacionesSalida();
+}
+
+function manejarDecisionSalida(id, autorizado) {
+    const registro = notificacionesSalida.find(n => n.id === id);
+    if (!registro || registro.estado !== 'pendiente') return;
+    registro.estado = autorizado ? 'autorizada' : 'rechazada';
+    decrementarBadgeNotificaciones();
+    renderNotificacionesSalida();
+    if (autorizado) {
+        mostrarNotificacion('success', 'Salida autorizada', 'La solicitud de salida fue autorizada.');
+    } else {
+        // Devolver las horas registradas al empleado en el cache local
+        try {
+            const diasCount = Array.isArray(registro.dias) ? registro.dias.length : 0;
+            const refund = (Number(registro.cantidadHoras) || 0) * diasCount;
+            if (registro.empleadoId != null && refund > 0) {
+                const emp = empleadosCache.find(e => String(e.id) === String(registro.empleadoId));
+                if (emp) {
+                    emp.total_horas = (Number(emp.total_horas) || 0) + refund;
+                    mostrarHorasActuales();
+                    mostrarNotificacion('success', 'Horas devueltas', `Se devolvieron ${refund.toFixed(2)} hrs a ${emp.nombre || 'el empleado'}.`);
+                } else {
+                    mostrarNotificacion('info', 'Empleado no encontrado', 'No se encontró el empleado para devolver las horas en la cache local.');
+                }
+            } else {
+                mostrarNotificacion('warning', 'Sin horas a devolver', 'No hay horas válidas para devolver.' );
+            }
+        } catch (e) {
+            console.error('Error al devolver horas:', e);
+            mostrarNotificacion('error', 'Error', 'No se pudieron devolver las horas al empleado.');
+        }
+        mostrarNotificacion('warning', 'Salida rechazada', 'La solicitud de salida fue rechazada.');
+    }
+}
+
+function limpiarPanelNotificacionesSalida() {
+    notificacionesSalida = [];
+    contadorNotificaciones = 0;
+    actualizarBadgeNotificaciones();
+    renderNotificacionesSalida();
+}
+
+function inicializarNotificaciones() {
+    renderNotificacionesSalida();
+}
+
 async function cargarEmpleados(ids = null) {
     const tabla = document.getElementById("tabla-empleados");
     if (!tabla) {
@@ -510,7 +644,9 @@ async function cargarEmpleadosParaRegistro() {
         }
 
         const empleados = await respuesta.json();
-        empleadosCache = Array.isArray(empleados) ? empleados : [];
+        // Aplicar cambios visuales locales igual que en la vista de empleados
+        cargarEmpleadosLocales();
+        empleadosCache = aplicarCambiosVisuales(Array.isArray(empleados) ? empleados : []);
         actualizarSelectEmpleados();
         configurarDropdownEmpleados();
     } catch (error) {
@@ -918,14 +1054,14 @@ function construirCalendarioRegistro(year, month) {
         celda.style.border = '1px solid #cbd5e1';
         celda.style.borderRadius = '12px';
         celda.style.padding = '10px 0';
-        celda.style.background = registroFechasSeleccionadas.has(fechaStr) ? '#e0f2fe' : '#ffffff';
-        celda.style.color = '#111827';
+        celda.style.background = registroFechasSeleccionadas.has(fechaStr) ? '#ede9fe' : '#ffffff';
+        celda.style.color = registroFechasSeleccionadas.has(fechaStr) ? '#340C51' : '#111827';
         celda.style.cursor = 'pointer';
         celda.style.minHeight = '42px';
         celda.style.fontWeight = registroFechasSeleccionadas.has(fechaStr) ? '700' : '400';
 
         if (registroFechasSeleccionadas.has(fechaStr)) {
-            celda.style.borderColor = '#38bdf8';
+            celda.style.borderColor = '#340C51';
         }
 
         celda.addEventListener('click', () => {
@@ -997,6 +1133,13 @@ async function enviarRegistroHoras(event) {
         return;
     }
 
+    // Validación: el empleado debe tener saldo de horas extra mayor a 0
+    const empleadoSeleccionado = empleadosCache.find(e => Number(e?.id) === numeroEmpleado);
+    if (!empleadoSeleccionado || Number(empleadoSeleccionado.total_horas || 0) <= 0) {
+        mostrarNotificacion('warning', 'Sin saldo', 'No se pueden registrar horas: el empleado no tiene horas extra disponibles.');
+        return;
+    }
+
     if (!diasSeleccionados.length) {
         mostrarNotificacion('warning', 'Sin fechas', 'Selecciona al menos una fecha en el calendario.');
         return;
@@ -1019,6 +1162,7 @@ async function enviarRegistroHoras(event) {
         }
 
         mostrarNotificacion('success', 'Éxito', 'Asignación de horas guardada correctamente.');
+        agregarNotificacionSalida(empleadoSeleccionado?.id, empleadoSeleccionado?.nombre || `Empleado ${numeroEmpleado}`, cantidadHoras, diasSeleccionados);
         event.target.reset();
         registroFechasSeleccionadas.clear();
         actualizarResumenFechasRegistro();
@@ -1427,10 +1571,11 @@ async function cargarReportes() {
 
         tbody.innerHTML = '';
         ultimoReporteData.forEach(emp => {
+            const horasTomadas = Math.abs(Number(emp.total_horas) || 0).toFixed(2);
             tbody.innerHTML += `
                 <tr>
                     <td>${emp.nombre}</td>
-                    <td>${(Number(emp.total_horas) || 0).toFixed(2)} hrs</td>
+                    <td>${horasTomadas} hrs</td>
                     <td>${emp.salidas_temprano}</td>
                     <td>
                         <button type="button" class="reportes-btn reportes-btn-secondary btn-detalle" data-id="${emp.id}" data-nombre="${emp.nombre}" data-fecha-inicio="${fechaInicio}" data-fecha-fin="${fechaFin}">Ver detalles</button>
@@ -1485,7 +1630,7 @@ async function abrirDetalleEmpleado(id, nombre, fechaInicio, fechaFin) {
                 ${detalles.map(det => `
                     <li class="reportes-detalle-item">
                         <strong>${det.fecha}</strong>
-                        <div>Horas: ${Number(det.horas || 0).toFixed(2)} hrs</div>
+                        <div>Horas tomadas: ${Math.abs(Number(det.horas || 0)).toFixed(2)} hrs</div>
                         <div>${det.observaciones || 'Sin observaciones'}</div>
                     </li>
                 `).join('')}
@@ -1602,6 +1747,10 @@ async function loadPage(pageName, element) {
 
             if (pageName === 'registros') {
                 await inicializarRegistros();
+            }
+
+            if (pageName === 'notificaciones') {
+                inicializarNotificaciones();
             }
 
             if (pageName === 'dashboard') {
