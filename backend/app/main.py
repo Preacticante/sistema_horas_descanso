@@ -89,9 +89,23 @@ def generar_hash_salt(password: str, salt: bytes | None = None) -> tuple[bytes, 
 
 
 def verificar_password(stored_hash: bytes, stored_salt: bytes, password: str) -> bool:
-    _, hash_bytes = generar_hash_salt(password, stored_salt)
-    return hash_bytes == stored_hash
-
+    # 1. Forzar la conversión a bytes puros por si vienen como memoryview/bytearray
+    stored_hash_bytes = bytes(stored_hash)
+    stored_salt_bytes = bytes(stored_salt)
+    
+    # 2. Generar el hash con la contraseña que escribió el usuario
+    _, computed_hash = generar_hash_salt(password, stored_salt_bytes)
+    
+    # 3. IMPRIMIR EN CONSOLA (Para ver qué está fallando)
+    print("\n====== DEBUG DE CONTRASEÑA ======")
+    print(f"Contraseña ingresada: '{password}'")
+    print(f"Salt usado (Hex):     {stored_salt_bytes.hex()}")
+    print(f"Hash guardado (Hex):  {stored_hash_bytes.hex()} (Longitud: {len(stored_hash_bytes)})")
+    print(f"Hash calculado (Hex): {computed_hash.hex()} (Longitud: {len(computed_hash)})")
+    print(f"¿Son iguales?:        {computed_hash == stored_hash_bytes}")
+    print("=================================\n")
+    
+    return computed_hash == stored_hash_bytes
 
 def rol_db_desde_normalizado(rol: str) -> str:
     rol_norm = normalizar_rol(rol)
@@ -159,13 +173,21 @@ def _obtener_jerarquia_autorizacion_por_empleado(cursor, id_empleado: int) -> tu
 
 
 def obtener_usuario_por_login(cursor, username_or_email: str):
+    # 1. Imprimimos el valor que viene desde el formulario de login
+    print(f"\n[DEBUG] Buscando en la base de datos el correo/usuario: '{username_or_email}'")
+    
     cursor.execute(
-        "SELECT id, Nombre, NombreUsuario, email, PasswordHash, PasswordSalt, Rol, bActivo FROM dbo.tblUsuarios "
-        "WHERE (NombreUsuario = ? OR email = ?) AND bActivo = 1",
-        username_or_email,
-        username_or_email,
+        "SELECT id_usuario_sistema, nombre_completo, email, email, PasswordHash, PasswordSalt, rol, estatus "
+        "FROM dbo.tbl_usuarios_sistema "
+        "WHERE email = ?",
+        (username_or_email,)
     )
-    return cursor.fetchone()
+    resultado = cursor.fetchone()
+    
+    # 2. Imprimimos qué nos devolvió exactamente SQL Server
+    print(f"[DEBUG] Resultado devuelto por SQL Server: {resultado}\n")
+    
+    return resultado
 
 EMPLEADOS_DASHBOARD = {
     1,
