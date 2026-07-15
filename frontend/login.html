@@ -97,6 +97,12 @@
     </div>
 
     <script>
+        const API_URL = `${window.location.protocol}//${window.location.hostname}:8000`;
+        const AUTH_TOKEN_KEY = 'auth_token';
+        const AUTH_USER_KEY = 'auth_user';
+        if (sessionStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(AUTH_TOKEN_KEY)) {
+            window.location.href = 'index.html';
+        }
         const forgotModal = document.getElementById('forgotModal');
         const registerModal = document.getElementById('registerModal');
         function openModal(){ forgotModal.style.display='flex'; }
@@ -114,20 +120,106 @@
             document.getElementById('login-password').type = t;
         });
 
-        document.getElementById('login-form').addEventListener('submit', (ev)=>{
+        function guardarSesion(token, usuario, recordar) {
+            sessionStorage.removeItem(AUTH_TOKEN_KEY);
+            sessionStorage.removeItem(AUTH_USER_KEY);
+            localStorage.removeItem(AUTH_TOKEN_KEY);
+            localStorage.removeItem(AUTH_USER_KEY);
+
+            if (recordar) {
+                localStorage.setItem(AUTH_TOKEN_KEY, token);
+                localStorage.setItem(AUTH_USER_KEY, JSON.stringify(usuario || {}));
+            } else {
+                sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+                sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(usuario || {}));
+            }
+        }
+
+        document.getElementById('login-form').addEventListener('submit', async (ev)=>{
             ev.preventDefault();
-            sessionStorage.setItem('isAuth', 'true');
-            window.location.href = 'index.html';
+            const errorEl = document.getElementById('login-error');
+            const loginBtn = document.getElementById('loginBtn');
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            const remember = document.getElementById('rememberMe').checked;
+
+            if (!username || !password) {
+                errorEl.textContent = 'Captura usuario/correo y contraseña.';
+                return;
+            }
+
+            errorEl.textContent = '';
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner"></span>';
+
+            try {
+                const resp = await fetch(`${API_URL}/api/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username_or_email: username,
+                        password,
+                    }),
+                });
+
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    throw new Error(data?.detail || 'No se pudo iniciar sesión.');
+                }
+
+                if (!data?.access_token) {
+                    throw new Error('Respuesta inválida del servidor: token no recibido.');
+                }
+
+                guardarSesion(data.access_token, data.usuario || {}, remember);
+                window.location.href = 'index.html';
+            } catch (error) {
+                errorEl.textContent = error.message || 'Error al iniciar sesión.';
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'ENTRAR';
+            }
         });
 
         document.getElementById('openRegisterBtn').addEventListener('click', openRegisterModal);
         
-        document.getElementById('register-form').addEventListener('submit', (ev)=>{
+        document.getElementById('register-form').addEventListener('submit', async (ev)=>{
             ev.preventDefault();
-            const perfil = { nombre: document.getElementById('register-name').value, email: document.getElementById('register-email').value };
-            localStorage.setItem('perfilPrincipal', JSON.stringify(perfil));
-            mostrarAlerta("¡Perfil configurado con éxito!");
-            closeRegisterModal();
+            const nombre = document.getElementById('register-name').value.trim();
+            const nombreUsuario = document.getElementById('register-username').value.trim();
+            const email = document.getElementById('register-email').value.trim();
+            const password = document.getElementById('register-password').value;
+            const confirmPassword = document.getElementById('register-confirm-password').value;
+
+            if (!nombre || !nombreUsuario || !email || !password || !confirmPassword) {
+                mostrarAlerta('Completa todos los campos para registrarte.');
+                return;
+            }
+
+            try {
+                const resp = await fetch(`${API_URL}/api/auth/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        nombre,
+                        nombre_usuario: nombreUsuario,
+                        email,
+                        password,
+                        confirm_password: confirmPassword,
+                        rol: 'empleado',
+                    }),
+                });
+
+                const data = await resp.json().catch(() => ({}));
+                if (!resp.ok) {
+                    throw new Error(data?.detail || 'No se pudo registrar la cuenta.');
+                }
+
+                mostrarAlerta(data?.mensaje || 'Cuenta registrada correctamente. Ahora puedes iniciar sesión.');
+                closeRegisterModal();
+            } catch (error) {
+                mostrarAlerta(error.message || 'Error al registrar cuenta.');
+            }
         });
 
         function sendRecovery(){ alert('Se ha enviado un correo (simulado).'); closeModal(); }

@@ -1,13 +1,22 @@
 import re
-from typing import Optional, Annotated
+from typing import Optional, Annotated, Any
 from datetime import datetime, date, timedelta
 import hashlib
 import os
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 from app.database import obtener_conexion
+from app.rbac_rules import create_access_token, get_current_user, require_roles, normalizar_rol
+from app.models import (
+    UsuarioCreate as UsuarioCreateSchema,
+    UsuarioUpdate as UsuarioUpdateSchema,
+    UsuarioOut as UsuarioOutSchema,
+    SolicitudReposicionCreate as SolicitudReposicionCreateSchema,
+    SolicitudReposicionOut as SolicitudReposicionOutSchema,
+    SolicitudAutorizacionPatch as SolicitudAutorizacionPatchSchema,
+)
 
 app = FastAPI(title="Sistema de Horas Extra API")
 
@@ -82,6 +91,71 @@ def generar_hash_salt(password: str, salt: bytes | None = None) -> tuple[bytes, 
 def verificar_password(stored_hash: bytes, stored_salt: bytes, password: str) -> bool:
     _, hash_bytes = generar_hash_salt(password, stored_salt)
     return hash_bytes == stored_hash
+
+
+def rol_db_desde_normalizado(rol: str) -> str:
+    rol_norm = normalizar_rol(rol)
+    mapa = {
+        "admin": "Administrador",
+        "jefe": "Jefe",
+        "empleado": "Empleado",
+    }
+    return mapa.get(rol_norm, "Empleado")
+
+
+def _estado_normalizado(valor: str | None) -> str:
+    estado = (valor or "pendiente").strip().lower()
+    if estado in {"aprobado", "aprobada"}:
+        return "aprobada"
+    if estado in {"rechazado", "rechazada"}:
+        return "rechazada"
+    return "pendiente"
+
+
+def _to_solicitud_out(row: Any) -> dict[str, Any]:
+    return {
+        "id_solicitud": int(row[0]),
+        "id_empleado": int(row[1]),
+        "fecha": row[2],
+        "horas_solicitadas": float(row[3]),
+        "motivo": row[4],
+        "estado_jefe_directo": _estado_normalizado(str(row[5])),
+        "estado_jefe_superior": _estado_normalizado(str(row[6])),
+        "estado_final": _estado_normalizado(str(row[7])),
+        "fecha_creacion": row[8],
+    }
+
+
+def _obtener_id_empleado_por_usuario(cursor, id_usuario: int) -> Optional[int]:
+    cursor.execute(
+        "SELECT IdEmpleado FROM dbo.tblUsuarios WHERE IdUsuario = ? AND Activo = 1",
+        id_usuario,
+    )
+    row = cursor.fetchone()
+    if not row:
+        return None
+    return int(row[0]) if row[0] is not None else None
+
+
+def _obtener_jerarquia_autorizacion_por_empleado(cursor, id_empleado: int) -> tuple[Optional[int], Optional[int]]:
+    cursor.execute("SELECT OBJECT_ID('dbo.tbl_jerarquia_autorizacion', 'U')")
+    existe_tabla = cursor.fetchone()
+    if not existe_tabla or existe_tabla[0] is None:
+        return (None, None)
+
+    cursor.execute(
+        "SELECT TOP 1 id_jefe_directo, id_jefe_superior "
+        "FROM dbo.tbl_jerarquia_autorizacion "
+        "WHERE id_empleado = ? AND activo = 1",
+        id_empleado,
+    )
+    row = cursor.fetchone()
+    if not row:
+        return (None, None)
+    return (
+        int(row[0]) if row[0] is not None else None,
+        int(row[1]) if row[1] is not None else None,
+    )
 
 
 def obtener_usuario_por_login(cursor, username_or_email: str):
@@ -281,14 +355,26 @@ def login_usuario(datos: LoginRequest):
         cursor.close()
         conn.close()
 
+        rol_normalizado = normalizar_rol(str(rol))
+        token = create_access_token(
+            payload={
+                "id_usuario": int(id_usuario),
+                "nombre": nombre,
+                "nombre_usuario": nombre_usuario,
+                "rol": rol_normalizado,
+            }
+        )
+
         return {
             "status": "success",
+            "access_token": token,
+            "token_type": "bearer",
             "usuario": {
                 "id": id_usuario,
                 "nombre": nombre,
                 "usuario": nombre_usuario,
                 "email": email,
-                "rol": rol,
+                "rol": rol_normalizado,
             },
         }
     except HTTPException:
@@ -296,6 +382,583 @@ def login_usuario(datos: LoginRequest):
     except Exception as e:
         print(f"Error al iniciar sesión: {e}")
         raise HTTPException(status_code=500, detail="No se pudo iniciar sesión.")
+
+
+@app.get("/api/auth/me")
+def auth_me(current_user: dict = Depends(get_current_user)):
+    return {
+        "status": "success",
+        "usuario": current_user,
+    }
+
+
+@app.get("/api/usuarios", response_model=list[UsuarioOutSchema])
+def listar_usuarios_sistema(
+    activos_solo: bool = True,
+    _: dict = Depends(require_roles("admin", "jefe")),
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        query = (
+            "SELECT IdUsuario, Nombre, NombreUsuario, Email, Rol, IdEmpleado, Activo, FechaCreacion "
+            "FROM dbo.tblUsuarios "
+        )
+        if activos_solo:
+            query += "WHERE Activo = 1 "
+        query += "ORDER BY IdUsuario DESC"
+
+        cursor.execute(query)
+        filas = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        return [
+            {
+                "id_usuario": int(fila[0]),
+                "nombre": fila[1],
+                "nombre_usuario": fila[2],
+                "email": fila[3],
+                "rol": normalizar_rol(str(fila[4])),
+                "id_empleado": fila[5],
+                "activo": bool(fila[6]),
+                "fecha_creacion": fila[7],
+            }
+            for fila in filas
+        ]
+    except Exception as e:
+        print(f"Error al listar usuarios del sistema: {e}")
+        raise HTTPException(status_code=500, detail="No se pudieron consultar los usuarios del sistema.")
+
+
+@app.get("/api/usuarios/{id_usuario}", response_model=UsuarioOutSchema)
+def obtener_usuario_sistema(
+    id_usuario: int,
+    _: dict = Depends(require_roles("admin", "jefe")),
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT IdUsuario, Nombre, NombreUsuario, Email, Rol, IdEmpleado, Activo, FechaCreacion "
+            "FROM dbo.tblUsuarios WHERE IdUsuario = ?",
+            id_usuario,
+        )
+        fila = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not fila:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+        return {
+            "id_usuario": int(fila[0]),
+            "nombre": fila[1],
+            "nombre_usuario": fila[2],
+            "email": fila[3],
+            "rol": normalizar_rol(str(fila[4])),
+            "id_empleado": fila[5],
+            "activo": bool(fila[6]),
+            "fecha_creacion": fila[7],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al obtener usuario del sistema: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo consultar el usuario del sistema.")
+
+
+@app.post("/api/usuarios", response_model=UsuarioOutSchema)
+def crear_usuario_sistema(
+    usuario: UsuarioCreateSchema,
+    _: dict = Depends(require_roles("admin")),
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            "SELECT NombreUsuario, Email FROM dbo.tblUsuarios WHERE NombreUsuario = ? OR Email = ?",
+            usuario.nombre_usuario,
+            usuario.email.lower(),
+        )
+        existente = cursor.fetchone()
+        if existente:
+            if existente[0] == usuario.nombre_usuario:
+                raise HTTPException(status_code=409, detail="El nombre de usuario ya está en uso.")
+            raise HTTPException(status_code=409, detail="El correo electrónico ya está registrado.")
+
+        if usuario.id_empleado is not None:
+            cursor.execute(
+                "SELECT IdEmpNum FROM dbo.tblOrganigramaOficial WHERE IdEmpNum = ?",
+                usuario.id_empleado,
+            )
+            if cursor.fetchone() is None:
+                raise HTTPException(status_code=400, detail="El número de empleado proporcionado no existe.")
+
+        salt, hash_bytes = generar_hash_salt(usuario.password)
+        rol_db = rol_db_desde_normalizado(usuario.rol.value)
+
+        cursor.execute(
+            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, Email, PasswordHash, PasswordSalt, Rol, IdEmpleado, FechaCreacion, Activo) "
+            "OUTPUT INSERTED.IdUsuario, INSERTED.FechaCreacion "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), ?)",
+            usuario.nombre,
+            usuario.nombre_usuario,
+            usuario.email.lower(),
+            hash_bytes,
+            salt,
+            rol_db,
+            usuario.id_empleado,
+            1 if usuario.activo else 0,
+        )
+        inserted = cursor.fetchone()
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {
+            "id_usuario": int(inserted[0]),
+            "nombre": usuario.nombre,
+            "nombre_usuario": usuario.nombre_usuario,
+            "email": usuario.email.lower(),
+            "rol": normalizar_rol(rol_db),
+            "id_empleado": usuario.id_empleado,
+            "activo": usuario.activo,
+            "fecha_creacion": inserted[1],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al crear usuario del sistema: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo crear el usuario del sistema.")
+
+
+@app.patch("/api/usuarios/{id_usuario}", response_model=UsuarioOutSchema)
+def actualizar_usuario_sistema(
+    id_usuario: int,
+    datos: UsuarioUpdateSchema,
+    _: dict = Depends(require_roles("admin")),
+):
+    campos = []
+    params = []
+
+    if datos.nombre is not None:
+        campos.append("Nombre = ?")
+        params.append(datos.nombre)
+
+    if datos.email is not None:
+        campos.append("Email = ?")
+        params.append(datos.email.lower())
+
+    if datos.rol is not None:
+        campos.append("Rol = ?")
+        params.append(rol_db_desde_normalizado(datos.rol.value))
+
+    if datos.activo is not None:
+        campos.append("Activo = ?")
+        params.append(1 if datos.activo else 0)
+
+    if not campos:
+        raise HTTPException(status_code=400, detail="No hay campos para actualizar.")
+
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        if datos.email is not None:
+            cursor.execute(
+                "SELECT IdUsuario FROM dbo.tblUsuarios WHERE Email = ? AND IdUsuario <> ?",
+                datos.email.lower(),
+                id_usuario,
+            )
+            if cursor.fetchone() is not None:
+                raise HTTPException(status_code=409, detail="El correo electrónico ya está registrado.")
+
+        query = (
+            "UPDATE dbo.tblUsuarios SET "
+            + ", ".join(campos)
+            + " WHERE IdUsuario = ?"
+        )
+        params.append(id_usuario)
+        cursor.execute(query, *params)
+
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+        cursor.execute(
+            "SELECT IdUsuario, Nombre, NombreUsuario, Email, Rol, IdEmpleado, Activo, FechaCreacion "
+            "FROM dbo.tblUsuarios WHERE IdUsuario = ?",
+            id_usuario,
+        )
+        fila = cursor.fetchone()
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {
+            "id_usuario": int(fila[0]),
+            "nombre": fila[1],
+            "nombre_usuario": fila[2],
+            "email": fila[3],
+            "rol": normalizar_rol(str(fila[4])),
+            "id_empleado": fila[5],
+            "activo": bool(fila[6]),
+            "fecha_creacion": fila[7],
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al actualizar usuario del sistema: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo actualizar el usuario del sistema.")
+
+
+@app.delete("/api/usuarios/{id_usuario}")
+def desactivar_usuario_sistema(
+    id_usuario: int,
+    _: dict = Depends(require_roles("admin")),
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE dbo.tblUsuarios SET Activo = 0 WHERE IdUsuario = ?",
+            id_usuario,
+        )
+
+        if cursor.rowcount == 0:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return {"status": "success", "mensaje": "Usuario desactivado correctamente."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al desactivar usuario del sistema: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo desactivar el usuario del sistema.")
+
+
+@app.post("/api/registros/solicitudes", response_model=SolicitudReposicionOutSchema)
+def crear_solicitud_reposicion(
+    datos: SolicitudReposicionCreateSchema,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        rol_actual = normalizar_rol(current_user.get("rol"))
+        id_usuario_actual = int(current_user.get("id_usuario"))
+
+        if rol_actual == "empleado":
+            id_emp_usuario = _obtener_id_empleado_por_usuario(cursor, id_usuario_actual)
+            if id_emp_usuario is None:
+                raise HTTPException(status_code=403, detail="Tu usuario no está ligado a un empleado.")
+            if int(datos.id_empleado) != int(id_emp_usuario):
+                raise HTTPException(status_code=403, detail="Solo puedes registrar solicitudes para tu propio usuario.")
+
+        id_jefe_directo = int(datos.id_jefe_directo) if datos.id_jefe_directo is not None else None
+        id_jefe_superior = int(datos.id_jefe_superior) if datos.id_jefe_superior is not None else None
+
+        if id_jefe_directo is None or id_jefe_superior is None:
+            jer_jd, jer_js = _obtener_jerarquia_autorizacion_por_empleado(cursor, int(datos.id_empleado))
+            if id_jefe_directo is None:
+                id_jefe_directo = jer_jd
+            if id_jefe_superior is None:
+                id_jefe_superior = jer_js
+
+        if id_jefe_directo is None or id_jefe_superior is None:
+            raise HTTPException(
+                status_code=400,
+                detail="No se encontró la jerarquía de autorización para el empleado. Configura jefe directo y jefe superior.",
+            )
+
+        if id_jefe_directo == id_jefe_superior:
+            raise HTTPException(status_code=400, detail="El jefe directo y el jefe superior deben ser diferentes.")
+
+        if rol_actual == "empleado" and (id_usuario_actual == id_jefe_directo or id_usuario_actual == id_jefe_superior):
+            raise HTTPException(status_code=400, detail="Un empleado no puede autorizar su propia solicitud.")
+
+        cursor.execute(
+            "SELECT IdEmpNum FROM dbo.tblOrganigramaOficial WHERE IdEmpNum = ?",
+            datos.id_empleado,
+        )
+        if cursor.fetchone() is None:
+            raise HTTPException(status_code=400, detail="El empleado no existe en el organigrama oficial.")
+
+        cursor.execute(
+            "SELECT COUNT(*) FROM dbo.tblUsuarios WHERE IdUsuario IN (?, ?) AND Activo = 1",
+            id_jefe_directo,
+            id_jefe_superior,
+        )
+        jefes_validos = int(cursor.fetchone()[0] or 0)
+        if jefes_validos != 2:
+            raise HTTPException(status_code=400, detail="Los usuarios autorizadores no existen o están inactivos.")
+
+        cursor.execute(
+            "INSERT INTO dbo.tbl_solicitudes_reposicion "
+            "(id_empleado, fecha_solicitud, horas_solicitadas, motivo, id_jefe_directo, id_jefe_superior, "
+            "estado_jefe_directo, estado_jefe_superior, estado_final, fecha_creacion, fecha_actualizacion, activo) "
+            "OUTPUT INSERTED.id_solicitud, INSERTED.fecha_creacion "
+            "VALUES (?, ?, ?, ?, ?, ?, 'pendiente', 'pendiente', 'pendiente', SYSUTCDATETIME(), SYSUTCDATETIME(), 1)",
+            datos.id_empleado,
+            datos.fecha,
+            float(datos.horas_solicitadas),
+            datos.motivo,
+            id_jefe_directo,
+            id_jefe_superior,
+        )
+        inserted = cursor.fetchone()
+
+        id_solicitud = int(inserted[0])
+        fecha_creacion = inserted[1]
+
+        cursor.execute(
+            "INSERT INTO dbo.tbl_historial_movimientos "
+            "(id_solicitud, id_empleado, tipo_movimiento, horas, referencia, id_usuario_accion, fecha_movimiento, detalles) "
+            "VALUES (?, ?, 'SOLICITUD_CREADA', ?, ?, ?, SYSUTCDATETIME(), ?)",
+            id_solicitud,
+            datos.id_empleado,
+            float(datos.horas_solicitadas),
+            "Solicitud de reposición creada",
+            id_usuario_actual,
+            datos.motivo,
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {
+            "id_solicitud": id_solicitud,
+            "id_empleado": int(datos.id_empleado),
+            "fecha": datos.fecha,
+            "horas_solicitadas": float(datos.horas_solicitadas),
+            "motivo": datos.motivo,
+            "estado_jefe_directo": "pendiente",
+            "estado_jefe_superior": "pendiente",
+            "estado_final": "pendiente",
+            "fecha_creacion": fecha_creacion,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al crear solicitud de reposición: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo crear la solicitud de reposición.")
+
+
+@app.get("/api/registros/solicitudes", response_model=list[SolicitudReposicionOutSchema])
+def listar_solicitudes_reposicion(
+    estado: Optional[str] = None,
+    id_empleado: Optional[int] = None,
+    current_user: dict = Depends(get_current_user),
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        rol_actual = normalizar_rol(current_user.get("rol"))
+        id_usuario_actual = int(current_user.get("id_usuario"))
+
+        query = (
+            "SELECT id_solicitud, id_empleado, fecha_solicitud, horas_solicitadas, motivo, "
+            "estado_jefe_directo, estado_jefe_superior, estado_final, fecha_creacion "
+            "FROM dbo.tbl_solicitudes_reposicion WHERE activo = 1"
+        )
+        params: list[Any] = []
+
+        if rol_actual == "admin":
+            if id_empleado is not None:
+                query += " AND id_empleado = ?"
+                params.append(id_empleado)
+        elif rol_actual == "jefe":
+            query += " AND (id_jefe_directo = ? OR id_jefe_superior = ?)"
+            params.extend([id_usuario_actual, id_usuario_actual])
+            if id_empleado is not None:
+                query += " AND id_empleado = ?"
+                params.append(id_empleado)
+        else:
+            id_emp_usuario = _obtener_id_empleado_por_usuario(cursor, id_usuario_actual)
+            if id_emp_usuario is None:
+                raise HTTPException(status_code=403, detail="Tu usuario no está ligado a un empleado.")
+            query += " AND id_empleado = ?"
+            params.append(id_emp_usuario)
+
+        if estado:
+            query += " AND estado_final = ?"
+            params.append(_estado_normalizado(estado))
+
+        query += " ORDER BY id_solicitud DESC"
+
+        cursor.execute(query, *params)
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return [_to_solicitud_out(row) for row in rows]
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al listar solicitudes de reposición: {e}")
+        raise HTTPException(status_code=500, detail="No se pudieron consultar las solicitudes de reposición.")
+
+
+@app.patch("/api/registros/solicitudes/{id_solicitud}/autorizacion", response_model=SolicitudReposicionOutSchema)
+def autorizar_solicitud_reposicion(
+    id_solicitud: int,
+    datos: SolicitudAutorizacionPatchSchema,
+    current_user: dict = Depends(require_roles("admin", "jefe")),
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        id_usuario_actual = int(current_user.get("id_usuario"))
+        rol_actual = normalizar_rol(current_user.get("rol"))
+        nuevo_estado = "aprobada" if datos.accion.value == "aprobar" else "rechazada"
+
+        cursor.execute(
+            "SELECT id_solicitud, id_empleado, fecha_solicitud, horas_solicitadas, motivo, "
+            "id_jefe_directo, id_jefe_superior, estado_jefe_directo, estado_jefe_superior, estado_final, fecha_creacion "
+            "FROM dbo.tbl_solicitudes_reposicion WITH (UPDLOCK, ROWLOCK) "
+            "WHERE id_solicitud = ? AND activo = 1",
+            id_solicitud,
+        )
+        row = cursor.fetchone()
+        if not row:
+            raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
+
+        id_empleado = int(row[1])
+        horas_solicitadas = float(row[3])
+        id_jefe_directo = int(row[5])
+        id_jefe_superior = int(row[6])
+        estado_directo = _estado_normalizado(str(row[7]))
+        estado_superior = _estado_normalizado(str(row[8]))
+        estado_final_actual = _estado_normalizado(str(row[9]))
+
+        if estado_final_actual != "pendiente":
+            raise HTTPException(status_code=409, detail="La solicitud ya fue resuelta y no admite más cambios.")
+
+        es_admin = rol_actual == "admin"
+        es_jefe_directo = id_usuario_actual == id_jefe_directo
+        es_jefe_superior = id_usuario_actual == id_jefe_superior
+
+        if not es_admin and not es_jefe_directo and not es_jefe_superior:
+            raise HTTPException(status_code=403, detail="No tienes permisos para autorizar esta solicitud.")
+
+        if es_jefe_superior and not es_admin and estado_directo != "aprobada":
+            raise HTTPException(status_code=409, detail="El jefe superior solo puede autorizar después del jefe directo.")
+
+        if es_jefe_directo and estado_directo != "pendiente":
+            raise HTTPException(status_code=409, detail="El jefe directo ya emitió una decisión para esta solicitud.")
+
+        if es_jefe_superior and estado_superior != "pendiente":
+            raise HTTPException(status_code=409, detail="El jefe superior ya emitió una decisión para esta solicitud.")
+
+        if es_admin and not es_jefe_directo and not es_jefe_superior:
+            if estado_directo == "pendiente":
+                es_jefe_directo = True
+            elif estado_superior == "pendiente":
+                es_jefe_superior = True
+            else:
+                raise HTTPException(status_code=409, detail="La solicitud ya no tiene etapas pendientes.")
+
+        if es_jefe_directo:
+            cursor.execute(
+                "UPDATE dbo.tbl_solicitudes_reposicion "
+                "SET estado_jefe_directo = ?, comentario_jefe_directo = ?, fecha_autorizacion_jefe_directo = SYSUTCDATETIME(), fecha_actualizacion = SYSUTCDATETIME() "
+                "WHERE id_solicitud = ?",
+                nuevo_estado,
+                datos.comentario,
+                id_solicitud,
+            )
+            estado_directo = nuevo_estado
+            etapa = "JEFE_DIRECTO"
+        else:
+            cursor.execute(
+                "UPDATE dbo.tbl_solicitudes_reposicion "
+                "SET estado_jefe_superior = ?, comentario_jefe_superior = ?, fecha_autorizacion_jefe_superior = SYSUTCDATETIME(), fecha_actualizacion = SYSUTCDATETIME() "
+                "WHERE id_solicitud = ?",
+                nuevo_estado,
+                datos.comentario,
+                id_solicitud,
+            )
+            estado_superior = nuevo_estado
+            etapa = "JEFE_SUPERIOR"
+
+        if estado_directo == "rechazada" or estado_superior == "rechazada":
+            estado_final_nuevo = "rechazada"
+        elif estado_directo == "aprobada" and estado_superior == "aprobada":
+            estado_final_nuevo = "aprobada"
+        else:
+            estado_final_nuevo = "pendiente"
+
+        cursor.execute(
+            "UPDATE dbo.tbl_solicitudes_reposicion "
+            "SET estado_final = ?, fecha_actualizacion = SYSUTCDATETIME() "
+            "WHERE id_solicitud = ?",
+            estado_final_nuevo,
+            id_solicitud,
+        )
+
+        cursor.execute(
+            "INSERT INTO dbo.tbl_historial_movimientos "
+            "(id_solicitud, id_empleado, tipo_movimiento, horas, referencia, id_usuario_accion, fecha_movimiento, detalles) "
+            "VALUES (?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), ?)",
+            id_solicitud,
+            id_empleado,
+            f"AUTORIZACION_{etapa}_{nuevo_estado.upper()}",
+            horas_solicitadas,
+            "Autorización de reposición",
+            id_usuario_actual,
+            datos.comentario,
+        )
+
+        if estado_final_nuevo == "aprobada":
+            observaciones = f"Reposición aprobada (solicitud {id_solicitud})"
+            cursor.execute(
+                "INSERT INTO dbo.tblBancoHorasKardex "
+                "(IdEmpNum, FechaAfectacion, fHoras, tTipoTransaccion, tObservaciones, IdUsuarioAutoriza, bActivo, dtFechaEliminacion, IdUsuarioElimina) "
+                "VALUES (?, ?, ?, 'Reposicion', ?, ?, 1, '1900-01-01', NULL)",
+                id_empleado,
+                date.today(),
+                horas_solicitadas,
+                observaciones,
+                id_usuario_actual,
+            )
+
+            cursor.execute(
+                "INSERT INTO dbo.tbl_historial_movimientos "
+                "(id_solicitud, id_empleado, tipo_movimiento, horas, referencia, id_usuario_accion, fecha_movimiento, detalles) "
+                "VALUES (?, ?, 'APLICACION_BANCO_HORAS', ?, ?, ?, SYSUTCDATETIME(), ?)",
+                id_solicitud,
+                id_empleado,
+                horas_solicitadas,
+                "Aplicación de reposición en banco de horas",
+                id_usuario_actual,
+                observaciones,
+            )
+
+        cursor.execute(
+            "SELECT id_solicitud, id_empleado, fecha_solicitud, horas_solicitadas, motivo, "
+            "estado_jefe_directo, estado_jefe_superior, estado_final, fecha_creacion "
+            "FROM dbo.tbl_solicitudes_reposicion WHERE id_solicitud = ?",
+            id_solicitud,
+        )
+        updated = cursor.fetchone()
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return _to_solicitud_out(updated)
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al autorizar solicitud de reposición: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo autorizar la solicitud de reposición.")
 
 
 # ==========================================================
@@ -609,7 +1272,11 @@ class ActualizarEmpleado(BaseModel):
     salidas_temprano: Optional[int] = None
 
 @app.patch("/api/empleados/{empleado_id}")
-def actualizar_empleado(empleado_id: int, datos: ActualizarEmpleado):
+def actualizar_empleado(
+    empleado_id: int,
+    datos: ActualizarEmpleado,
+    _: dict = Depends(require_roles("admin", "jefe")),
+):
     if not datos.nombre or not datos.nombre.strip():
         raise HTTPException(status_code=400, detail="El nombre del empleado es obligatorio.")
 
@@ -847,11 +1514,14 @@ def obtener_dashboard_resumen():
         raise HTTPException(status_code=500, detail="No se pudo generar el resumen del dashboard.")
 
 @app.get("/api/perfil")
-def obtener_perfil():
+def obtener_perfil(_: dict = Depends(get_current_user)):
     return PERFIL_DATA
 
 @app.post("/api/perfil")
-def guardar_perfil(perfil: ActualizarPerfil):
+def guardar_perfil(
+    perfil: ActualizarPerfil,
+    _: dict = Depends(get_current_user),
+):
     try:
         PERFIL_DATA["nombre"] = perfil.nombre
         PERFIL_DATA["rol"] = perfil.rol
@@ -866,7 +1536,10 @@ def guardar_perfil(perfil: ActualizarPerfil):
         raise HTTPException(status_code=500, detail="No se pudo guardar el perfil.")
 
 @app.post("/api/perfil-password")
-def cambiar_password(datos: CambiarPassword):
+def cambiar_password(
+    datos: CambiarPassword,
+    _: dict = Depends(get_current_user),
+):
     """
     Cambiar la contraseña del usuario. 
     En un sistema real, esto verificaría la contraseña actual en la BD.
@@ -896,7 +1569,10 @@ def cambiar_password(datos: CambiarPassword):
         raise HTTPException(status_code=500, detail="No se pudo cambiar la contraseña.")
 
 @app.post("/api/registrar")
-def registrar_horas(datos: RegistroHoras):
+def registrar_horas(
+    datos: RegistroHoras,
+    _: dict = Depends(require_roles("admin", "jefe")),
+):
     if not datos.dias_semana:
         raise HTTPException(status_code=400, detail="Debes seleccionar al menos un día de la semana.")
 

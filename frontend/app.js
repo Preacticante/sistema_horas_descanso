@@ -11,6 +11,42 @@ let empleadoModalEditingId = null;
 let tempEmpleadoId = -1;
 
 const STORAGE_KEY_EMPLEADOS = 'empleados_visual_changes';
+const AUTH_TOKEN_KEY = 'auth_token';
+const AUTH_USER_KEY = 'auth_user';
+
+function obtenerTokenAuth() {
+    return sessionStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(AUTH_TOKEN_KEY) || '';
+}
+
+function obtenerUsuarioAuth() {
+    const raw = sessionStorage.getItem(AUTH_USER_KEY) || localStorage.getItem(AUTH_USER_KEY);
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch (_error) {
+        return null;
+    }
+}
+
+function limpiarSesionAuth() {
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+    sessionStorage.removeItem(AUTH_USER_KEY);
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    localStorage.removeItem(AUTH_USER_KEY);
+}
+
+function construirHeadersAuth(extraHeaders = {}) {
+    const token = obtenerTokenAuth();
+    const headers = { ...extraHeaders };
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
+    return headers;
+}
+
+function esSesionValida() {
+    return Boolean(obtenerTokenAuth());
+}
 
 function cargarEmpleadosLocales() {
     try {
@@ -353,9 +389,7 @@ async function actualizarEmpleadoEnBD(empleado) {
     try {
         const response = await fetch(`${API_URL}/api/empleados/${empleado.id}`, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/json',
-            },
+            headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
                 nombre: empleado.nombre,
                 total_horas: empleado.total_horas,
@@ -629,7 +663,9 @@ async function cargarDashboardEmpleados() {
 
 async function cargarEmpleadosParaRegistro() {
     try {
-        const respuesta = await fetch(`${API_URL}/api/empleados?all=true`);
+        const respuesta = await fetch(`${API_URL}/api/empleados?all=true`, {
+            headers: construirHeadersAuth(),
+        });
         if (!respuesta.ok) {
             let mensajeError = `No se pudo cargar la lista de empleados para registrar horas (${respuesta.status})`;
             try {
@@ -698,7 +734,9 @@ function mostrarFuerzaContraseña(password) {
 
 async function cargarPerfil() {
     try {
-        const response = await fetch(`${API_URL}/api/perfil`);
+        const response = await fetch(`${API_URL}/api/perfil`, {
+            headers: construirHeadersAuth(),
+        });
         if (!response.ok) {
             throw new Error(`No se pudo cargar el perfil (${response.status})`);
         }
@@ -814,7 +852,7 @@ function inicializarPerfil() {
             try {
                 const response = await fetch(`${API_URL}/api/perfil-password`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         actual_password: actual,
                         new_password: nueva,
@@ -873,7 +911,7 @@ function inicializarPerfil() {
             try {
                 const response = await fetch(`${API_URL}/api/perfil`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({
                         nombre,
                         rol,
@@ -1122,21 +1160,22 @@ async function enviarRegistroHoras(event) {
 
     const selectEmpleado = document.getElementById("reg-empleado");
     const inputHoras = document.getElementById("reg-horas");
-    if (!selectEmpleado || !inputHoras) return;
+    const inputMotivo = document.getElementById("reg-motivo");
+    const inputJefeDirecto = document.getElementById("reg-jefe-directo");
+    const inputJefeSuperior = document.getElementById("reg-jefe-superior");
+    if (!selectEmpleado || !inputHoras || !inputMotivo || !inputJefeDirecto || !inputJefeSuperior) return;
 
     const numeroEmpleado = parseInt(selectEmpleado.value, 10);
     const cantidadHoras = parseFloat(inputHoras.value);
     const diasSeleccionados = Array.from(registroFechasSeleccionadas);
+    const motivo = inputMotivo.value.trim();
+    const idJefeDirectoRaw = (inputJefeDirecto.value || '').trim();
+    const idJefeSuperiorRaw = (inputJefeSuperior.value || '').trim();
+    const idJefeDirecto = idJefeDirectoRaw ? parseInt(idJefeDirectoRaw, 10) : null;
+    const idJefeSuperior = idJefeSuperiorRaw ? parseInt(idJefeSuperiorRaw, 10) : null;
 
     if (Number.isNaN(numeroEmpleado) || Number.isNaN(cantidadHoras) || cantidadHoras <= 0) {
         mostrarNotificacion('warning', 'Campos incompletos', 'Selecciona un empleado válido e ingresa una cantidad de horas mayor a cero.');
-        return;
-    }
-
-    // Validación: el empleado debe tener saldo de horas extra mayor a 0
-    const empleadoSeleccionado = empleadosCache.find(e => Number(e?.id) === numeroEmpleado);
-    if (!empleadoSeleccionado || Number(empleadoSeleccionado.total_horas || 0) <= 0) {
-        mostrarNotificacion('warning', 'Sin saldo', 'No se pueden registrar horas: el empleado no tiene horas extra disponibles.');
         return;
     }
 
@@ -1146,31 +1185,181 @@ async function enviarRegistroHoras(event) {
     }
 
     try {
-        const respuesta = await fetch(`${API_URL}/api/registrar`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                numero_empleado: numeroEmpleado,
-                cantidad_horas: cantidadHoras,
-                dias_semana: diasSeleccionados,
-            }),
-        });
+        let exitos = 0;
+        let errores = 0;
 
-        if (!respuesta.ok) {
-            const error = await respuesta.json();
-            throw new Error(error.detail || "Error al registrar las horas");
+        for (const fecha of diasSeleccionados) {
+            const payload = {
+                id_empleado: numeroEmpleado,
+                fecha,
+                horas_solicitadas: cantidadHoras,
+                motivo,
+            };
+
+            if (idJefeDirecto !== null && !Number.isNaN(idJefeDirecto)) {
+                payload.id_jefe_directo = idJefeDirecto;
+            }
+            if (idJefeSuperior !== null && !Number.isNaN(idJefeSuperior)) {
+                payload.id_jefe_superior = idJefeSuperior;
+            }
+
+            const respuesta = await fetch(`${API_URL}/api/registros/solicitudes`, {
+                method: "POST",
+                headers: construirHeadersAuth({ "Content-Type": "application/json" }),
+                body: JSON.stringify(payload),
+            });
+
+            if (!respuesta.ok) {
+                errores += 1;
+                continue;
+            }
+
+            exitos += 1;
+        }
+
+        if (exitos) {
+            mostrarNotificacion('success', 'Solicitud creada', `Se crearon ${exitos} solicitud(es) correctamente.`);
         }
 
         mostrarNotificacion('success', 'Éxito', 'Asignación de horas guardada correctamente.');
-        agregarNotificacionSalida(empleadoSeleccionado?.id, empleadoSeleccionado?.nombre || `Empleado ${numeroEmpleado}`, cantidadHoras, diasSeleccionados);
         event.target.reset();
         registroFechasSeleccionadas.clear();
         actualizarResumenFechasRegistro();
         construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
         mostrarHorasActuales();
+        await cargarSolicitudesReposicion();
     } catch (error) {
         console.error("Error al registrar horas:", error);
-        mostrarNotificacion('error', 'Error', `No se pudo guardar la asignación: ${error.message}`);
+        mostrarNotificacion('error', 'Error', `No se pudo guardar la solicitud: ${error.message}`);
+    }
+}
+
+function obtenerColorEstado(estado) {
+    if (estado === 'aprobada') return '#15803d';
+    if (estado === 'rechazada') return '#b91c1c';
+    return '#b45309';
+}
+
+function renderSolicitudesReposicion(solicitudes) {
+    const tbody = document.getElementById('registros-solicitudes-body');
+    if (!tbody) return;
+
+    if (!Array.isArray(solicitudes) || !solicitudes.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:14px;">No hay solicitudes para mostrar.</td>
+            </tr>
+        `;
+        return;
+    }
+
+    tbody.innerHTML = '';
+    solicitudes.forEach((sol) => {
+        const estadoJD = String(sol.estado_jefe_directo || 'pendiente').toLowerCase();
+        const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
+        const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
+        const puedeAccionar = estadoFinal === 'pendiente';
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${sol.id_solicitud}</td>
+                <td>${sol.id_empleado}</td>
+                <td>${sol.fecha}</td>
+                <td>${Number(sol.horas_solicitadas || 0).toFixed(2)}</td>
+                <td style="font-weight:600; color:${obtenerColorEstado(estadoJD)};">${estadoJD}</td>
+                <td style="font-weight:600; color:${obtenerColorEstado(estadoJS)};">${estadoJS}</td>
+                <td style="font-weight:700; color:${obtenerColorEstado(estadoFinal)};">${estadoFinal}</td>
+                <td>
+                    ${puedeAccionar ? `
+                    <button type="button" class="btn-autorizar-sol" data-id="${sol.id_solicitud}" data-accion="aprobar" style="margin-right:6px; border:none; border-radius:8px; padding:6px 10px; background:#166534; color:#fff; cursor:pointer;">Aprobar</button>
+                    <button type="button" class="btn-autorizar-sol" data-id="${sol.id_solicitud}" data-accion="rechazar" style="border:none; border-radius:8px; padding:6px 10px; background:#b91c1c; color:#fff; cursor:pointer;">Rechazar</button>
+                    ` : `<span style="color:#64748b;">Sin acciones</span>`}
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.querySelectorAll('.btn-autorizar-sol').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+            const idSolicitud = parseInt(btn.dataset.id, 10);
+            const accion = btn.dataset.accion;
+            if (!idSolicitud || !accion) return;
+
+            const comentario = window.prompt('Comentario (opcional):', '') || '';
+            await autorizarSolicitudReposicion(idSolicitud, accion, comentario);
+        });
+    });
+}
+
+async function cargarSolicitudesReposicion() {
+    const tbody = document.getElementById('registros-solicitudes-body');
+    const filtroEstado = document.getElementById('registros-filtro-estado');
+    if (!tbody) return;
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="8" style="text-align:center; padding:14px;">Cargando solicitudes...</td>
+        </tr>
+    `;
+
+    const estado = filtroEstado?.value?.trim() || '';
+    const query = estado ? `?estado=${encodeURIComponent(estado)}` : '';
+
+    try {
+        const response = await fetch(`${API_URL}/api/registros/solicitudes${query}`, {
+            headers: construirHeadersAuth(),
+        });
+
+        if (response.status === 401) {
+            limpiarSesionAuth();
+            window.location.href = 'login.html';
+            return;
+        }
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || `No se pudieron consultar solicitudes (${response.status})`);
+        }
+
+        const data = await response.json();
+        renderSolicitudesReposicion(data);
+    } catch (error) {
+        console.error('Error al cargar solicitudes:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:14px; color:#b91c1c;">${error.message || 'No se pudieron cargar las solicitudes.'}</td>
+            </tr>
+        `;
+    }
+}
+
+async function autorizarSolicitudReposicion(idSolicitud, accion, comentario = '') {
+    try {
+        const response = await fetch(`${API_URL}/api/registros/solicitudes/${idSolicitud}/autorizacion`, {
+            method: 'PATCH',
+            headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({
+                accion,
+                comentario,
+            }),
+        });
+
+        if (response.status === 401) {
+            limpiarSesionAuth();
+            window.location.href = 'login.html';
+            return;
+        }
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || `No se pudo ${accion} la solicitud.`);
+        }
+
+        mostrarNotificacion('success', 'Solicitud actualizada', `La solicitud ${idSolicitud} se ${accion === 'aprobar' ? 'aprobó' : 'rechazó'} correctamente.`);
+        await cargarSolicitudesReposicion();
+    } catch (error) {
+        console.error('Error al autorizar solicitud:', error);
+        mostrarNotificacion('error', 'Error', error.message || 'No fue posible actualizar la solicitud.');
     }
 }
 
@@ -1353,6 +1542,8 @@ function inicializarEmpleados() {
 async function inicializarRegistros() {
     const registroForm = document.getElementById("registroForm");
     const selectEmpleado = document.getElementById("reg-empleado");
+    const filtroEstado = document.getElementById('registros-filtro-estado');
+    const btnRecargar = document.getElementById('btn-recargar-solicitudes');
 
     console.log("Inicializando registros...");
     console.log("registroForm:", registroForm);
@@ -1366,8 +1557,21 @@ async function inicializarRegistros() {
         selectEmpleado.addEventListener("change", mostrarHorasActuales);
     }
 
+    if (filtroEstado) {
+        filtroEstado.addEventListener('change', () => {
+            cargarSolicitudesReposicion();
+        });
+    }
+
+    if (btnRecargar) {
+        btnRecargar.addEventListener('click', () => {
+            cargarSolicitudesReposicion();
+        });
+    }
+
     inicializarCalendarioRegistro();
     await cargarEmpleadosParaRegistro();
+    await cargarSolicitudesReposicion();
 }
 
 const CONFIG_KEY = "sistema_horas_configuracion";
@@ -1781,5 +1985,19 @@ async function loadPage(pageName, element) {
 
 // Carga inicial
 document.addEventListener("DOMContentLoaded", () => {
+    if (!esSesionValida()) {
+        window.location.href = 'login.html';
+        return;
+    }
+
+    const logoutLink = document.getElementById('logout-link');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            limpiarSesionAuth();
+            window.location.href = 'login.html';
+        });
+    }
+
     loadPage('dashboard', document.querySelector('.sidebar a'));
 });
