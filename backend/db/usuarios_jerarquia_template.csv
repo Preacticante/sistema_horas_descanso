@@ -1,0 +1,6 @@
+id_empleado,nombre,nombre_usuario,email,rol,password,id_jefe_directo_empleado,id_jefe_superior_empleado
+100,Leticia Macías Zúñiga,lmacias,lmacias@prepauco.edu.mx,admin,Cambio123!*,,
+103,Martha Eugenia Montes Gómez,martha.montes,martha.montes@prepauco.edu.mx,jefe,Cambio123!*,100,1
+115,Roberto Carlos Matehuala Vargas,rmatehuala,rmatehuala@prepauco.edu.mx,jefe,Cambio123!*,105,100
+55,Martín Bocanegra Lucio,mbocanegra,mbocanegra@prepauco.edu.mx,empleado,Cambio123!*,115,105
+58,Juan Dominguez Morales,jdominguez,jdominguez@prepauco.edu.mx,empleado,Cambio123!*,115,105

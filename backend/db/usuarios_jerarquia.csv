@@ -1,0 +1,41 @@
+id_empleado,nombre,nombre_usuario,email,rol,password,id_jefe_directo_empleado,id_jefe_superior_empleado
+100,Leticia Macías Zúñiga,lmacias,lmacias@prepauco.edu.mx,admin,,,
+101,Álvaro Patiño Botello,apatino,apatino@prepauco.edu.mx,jefe,,100,1
+102,Irma Lilian Cedillo Reyes,lcedillo,lcedillo@prepauco.edu.mx,jefe,,100,1
+103,Martha Eugenia Montes Gómez,martha.montes,martha.montes@prepauco.edu.mx,jefe,,100,1
+104,Baruch Alberto Rosales Sánchez,brosales,brosales@prepauco.edu.mx,jefe,,100,1
+1,Nelson Hernán Torres Cervantes,ntorres,ntorres@prepauco.edu.mx,jefe,,100,102
+105,Diana Sánchez Espino,dsancheze,dsancheze@prepauco.edu.mx,jefe,,100,1
+106,Daniela Fernanda Jiménez Vázquez,djimenez,djimenez@prepauco.edu.mx,jefe,,100,1
+107,Armando Ramírez Mejía,aramirez,aramirez@prepauco.edu.mx,jefe,,100,1
+108,Nuria Novell Monroy,nnovell,nnovell@prepauco.edu.mx,jefe,,100,1
+109,Cecilia de Lourdes Bracho Rodríguez,cbracho,cbracho@prepauco.edu.mx,jefe,,103,100
+110,María Teresa Serrano Lazcano,teresa.serrano,teresa.serrano@prepauco.edu.mx,jefe,,103,100
+111,Christopher Arturo Muciño González,chmucino,chmucino@prepauco.edu.mx,jefe,,103,100
+112,Laura Leticia González González,lgonzalez,lgonzalez@prepauco.edu.mx,jefe,,103,100
+113,María del Carmen Mendoza Aldape,mmendoza,mmendoza@prepauco.edu.mx,jefe,,103,100
+114,Francisco Javier Limón Naranjo,flimon,flimon@prepauco.edu.mx,jefe,,103,100
+115,Roberto Carlos Matehuala Vargas,rmatehuala,rmatehuala@prepauco.edu.mx,jefe,,105,100
+116,Alma Leticia Muñiz Núñez,amuniz,amuniz@prepauco.edu.mx,empleado,,102,100
+117,Viridiana Ramírez Rojas,vramirez,vramirez@prepauco.edu.mx,empleado,,104,100
+118,Salvador Ordoñez Martínez,sordonez,sordonez@prepauco.edu.mx,empleado,,104,100
+119,Cinthia Flores López,cflores,cflores@prepauco.edu.mx,empleado,,104,100
+2,Luis Francisco Valencia Villasana,fvalencia,fvalencia@prepauco.edu.mx,empleado,,1,100
+120,Omar Rodríguez Montoya,orodriguez,orodriguez@prepauco.edu.mx,empleado,,1,100
+121,María Eugenia Montalvo Cosme,mmonstalvo,mmonstalvo@prepauco.edu.mx,empleado,,105,100
+122,Diana Laura Uribe Núñez,duribe,duribe@prepauco.edu.mx,empleado,,105,100
+123,José Manuel Martínez Alonso,jmartinez,jmartinez@prepauco.edu.mx,empleado,,112,103
+124,Tania Ibette León Flores,tleon,tleon@prepauco.edu.mx,empleado,,112,103
+125,Alicia Ruiz García,aruiz,aruiz@prepauco.edu.mx,empleado,,112,103
+126,Alma Cristina Rodríguez Zúñiga,crodriguez,crodriguez@prepauco.edu.mx,empleado,,112,103
+127,Yeniffer Gutiérrez Andrade,ygutierrez,ygutierrez@prepauco.edu.mx,empleado,,113,103
+128,Luis Roberto López Yáñez,lrlopez,lrlopez@prepauco.edu.mx,empleado,,109,103
+129,María Guadalupe Garrido García,mgarrido,mgarrido@prepauco.edu.mx,empleado,,109,103
+130,Monserrat Mier Avila,mmier,mmier@prepauco.edu.mx,empleado,,110,103
+131,Erik Gabriel Rojas López,erojas,erojas@prepauco.edu.mx,empleado,,111,103
+55,Martín Bocanegra Lucio,mbocanegra,mbocanegra@prepauco.edu.mx,empleado,,115,105
+58,Juan Dominguez Morales,jdominguez,jdominguez@prepauco.edu.mx,empleado,,115,105
+57,Gabriel Vallejo Balderas,gvallejo,gvallejo@prepauco.edu.mx,empleado,,115,105
+740,Rolando Aranda Gutiérrez,raranda,raranda@prepauco.edu.mx,empleado,,115,105
+72,Juan Alberto Zamora Gutiérrez,jzamora,jzamora@prepauco.edu.mx,empleado,,115,105
+76,José Arreola Morales,jarreola,jarreola@prepauco.edu.mx,empleado,,115,105
