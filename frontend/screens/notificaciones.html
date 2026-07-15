@@ -1,0 +1,16 @@
+<div class="card">
+    <h1 style="margin-top: 0; margin-bottom: 1.5rem; color: #1f2d19; font-size: 1.8rem; font-weight: 600;">Notificaciones</h1>
+    <p style="margin-bottom: 1.5rem; color: #475569; font-size: 0.95rem;">Aquí se muestran todas las solicitudes de salida pendientes y las decisiones tomadas.</p>
+    <div style="background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 1.5rem; box-shadow: 0 6px 18px rgba(0,0,0,0.04);">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:1rem;">
+            <div>
+                <h2 style="margin:0; color:#340C51; font-size:1.25rem; font-weight:700;">Solicitudes de salida</h2>
+                <p style="margin:0.5rem 0 0; color:#475569; font-size:0.95rem;">Autoriza o rechaza las solicitudes desde esta vista.</p>
+            </div>
+            <button type="button" class="btn" onclick="limpiarPanelNotificacionesSalida()" style="background:#AA7F31; color:#ffffff; border:none; border-radius:10px; padding:10px 18px; font-weight:700;">Limpiar notificaciones</button>
+        </div>
+        <div id="salida-notifications-panel" style="display:flex; flex-direction:column; gap:0.75rem; min-height:120px;">
+            <div data-empty-notifications style="color:#475569; font-size:0.95rem; padding:1rem; border:1px dashed #c7d2fe; border-radius:12px; background:#f8f5ff;">No hay notificaciones activas.</div>
+        </div>
+    </div>
+</div>
