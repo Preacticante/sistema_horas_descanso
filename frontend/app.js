@@ -586,7 +586,11 @@ function cerrarModalHorario() {
 
 async function cargarDashboard() {
     try {
-        const response = await fetch(`${API_URL}/api/dashboard-resumen`);
+        // Modificamos esta línea para enviar el token de autenticación
+        const response = await fetch(`${API_URL}/api/dashboard-resumen`, {
+            headers: construirHeadersAuth()
+        });
+
         if (!response.ok) {
             throw new Error(`Error al cargar resumen (${response.status})`);
         }
@@ -621,22 +625,29 @@ async function cargarDashboardEmpleados() {
     `;
 
     try {
-        const response = await fetch(`${API_URL}/api/empleados?all=true`);
+        // Hacemos el fetch directo a nuestro nuevo endpoint seguro
+        const response = await fetch(`${API_URL}/api/dashboard-empleados`, {
+            headers: construirHeadersAuth()
+        });
+
         if (!response.ok) {
             throw new Error(`Error al cargar empleados (${response.status})`);
         }
 
         const empleados = await response.json();
+
         if (!Array.isArray(empleados) || empleados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align:center; padding:16px;">No se encontraron empleados.</td>
+                    <td colspan="5" style="text-align:center; padding:16px;">No se encontraron empleados a tu cargo.</td>
                 </tr>
             `;
             return;
         }
 
         tbody.innerHTML = '';
+        
+        // Renderizamos los empleados autorizados
         empleados.slice(0, 8).forEach(emp => {
             const colorHoras = emp.total_horas >= 0 ? '#124416' : '#c0392b';
             tbody.innerHTML += `
@@ -657,7 +668,6 @@ async function cargarDashboardEmpleados() {
         `;
     }
 }
-
 // Ejecutar al cargar la vista
 // La función se llamará desde loadPage() cuando la vista dashboard se cargue.
 

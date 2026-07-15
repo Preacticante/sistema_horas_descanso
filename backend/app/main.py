@@ -490,6 +490,57 @@ def obtener_usuario_sistema(
         print(f"Error al obtener usuario del sistema: {e}")
         raise HTTPException(status_code=500, detail="No se pudo consultar el usuario del sistema.")
 
+@app.get("/api/usuarios/mis-reportes")
+def obtener_empleados_a_cargo(
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Devuelve la lista de empleados que le reportan directamente 
+    al usuario que tiene la sesión iniciada.
+    """
+    try:
+        # 1. Obtenemos el ID del jefe desde el token del usuario logueado
+        id_jefe_conectado = int(current_user.get("id_usuario"))
+
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        # 2. Query para buscar los subordinados directos en tbl_usuarios_sistema
+        query = """
+            SELECT 
+                sub.[id_usuario_sistema],
+                sub.[id_usuario_original],
+                sub.[nombre_completo],
+                sub.[email],
+                sub.[rol]
+            FROM [dbo].[tbl_usuarios_sistema] sub
+            WHERE sub.[id_jefe] = ?
+        """
+        
+        cursor.execute(query, (id_jefe_conectado,))
+        filas = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+
+        # 3. Formateamos y retornamos los datos en formato JSON
+        return [
+            {
+                "id_usuario_sistema": int(fila[0]),
+                "id_usuario_original": int(fila[1]) if fila[1] is not None else None,
+                "nombre_completo": fila[2],
+                "email": fila[3],
+                "rol": fila[4]
+            }
+            for fila in filas
+        ]
+
+    except Exception as e:
+        print(f"Error al obtener empleados a cargo: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="No se pudo consultar la lista de tus empleados a cargo."
+        )
 
 @app.post("/api/usuarios", response_model=UsuarioOutSchema)
 def crear_usuario_sistema(
@@ -1455,6 +1506,56 @@ def obtener_detalle_salidas_temprano(
     except Exception as e:
         print(f"Error al obtener el detalle de salidas temprano: {e}")
         raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
+    
+
+    
+@app.get("/api/dashboard-empleados")
+def obtener_empleados_dashboard(
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        # 1. ID del jefe conectado desde el token decodificado
+        id_jefe_conectado = int(current_user.get("id_usuario"))
+
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        # 2. Tu consulta SQL exacta para obtener los IDs de los subordinados
+        query = """
+            SELECT sub.[id_usuario_original]
+            FROM [dbo].[tbl_usuarios_sistema] sub
+            INNER JOIN [dbo].[tbl_usuarios_sistema] jefe 
+                ON sub.[id_jefe] = jefe.[id_usuario_sistema]
+            WHERE jefe.[id_usuario_sistema] = ?
+        """
+        cursor.execute(query, (id_jefe_conectado,))
+        mis_empleados_ids = [row[0] for row in cursor.fetchall() if row[0] is not None]
+        
+        cursor.close()
+        conn.close()
+
+        # 3. Si no tiene personal a cargo, retornamos una lista vacía de inmediato
+        if not mis_empleados_ids:
+            return []
+
+        # 4. Traemos la lista completa de asistencias recalculadas por tu función original
+        todos_empleados = listar_empleados(all=True)
+
+        # 5. Filtramos en memoria para quedarnos únicamente con los suyos
+        empleados_filtrados = [
+            emp for emp in todos_empleados
+            if emp.get("id") in mis_empleados_ids or emp.get("id_empleado") in mis_empleados_ids
+        ]
+
+        return empleados_filtrados
+
+    except Exception as e:
+        print(f"Error al obtener empleados del dashboard: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail="No se pudieron cargar tus empleados a cargo."
+        )
+    
 
 @app.get("/api/empleados/{empleado_id}/horario")
 def obtener_horario_empleado(
@@ -1516,25 +1617,54 @@ def obtener_horario_empleado(
         raise HTTPException(status_code=500, detail=f"Error en el servidor: {str(e)}")
 
 @app.get("/api/dashboard-resumen")
-def obtener_dashboard_resumen():
+def obtener_dashboard_resumen(current_user: dict = Depends(get_current_user)):
     try:
-        empleados = listar_empleados(all=True)
+        # 1. Obtenemos el ID de usuario del jefe en sesión
+        id_jefe_conectado = int(current_user.get("id_usuario"))
+
+        # 2. Buscamos en la base de datos los IDs de los empleados que tiene a cargo
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id_usuario_original 
+            FROM dbo.tbl_usuarios_sistema 
+            WHERE id_jefe = ?
+        """, (id_jefe_conectado,))
+        
+        # Guardamos los IDs originales en un set para una búsqueda súper rápida
+        mis_empleados_ids = {row[0] for row in cursor.fetchall() if row[0] is not None}
+        
+        cursor.close()
+        conn.close()
+
+        # 3. Traemos todos los empleados calculados por tu función original
+        todos_empleados = listar_empleados(all=True)
+
+        # 4. Filtramos la lista para quedarnos ÚNICAMENTE con sus subordinados directos
+        # (Comprobamos tanto 'id' como 'id_empleado' por seguridad de la estructura de tu diccionario)
+        empleados = [
+            emp for emp in todos_empleados 
+            if emp.get("id") in mis_empleados_ids or emp.get("id_empleado") in mis_empleados_ids
+        ]
+
+        # 5. Calculamos las métricas únicamente sobre este grupo filtrado
         total_horas = sum(float(emp.get("total_horas", 0) or 0) for emp in empleados)
         empleados_pendientes = sum(1 for emp in empleados if emp.get("salidas_temprano", 0) > 0)
         empleados_aprobadas = sum(1 for emp in empleados if emp.get("salidas_temprano", 0) == 0)
         eficiencia = round((empleados_aprobadas / len(empleados) * 100) if empleados else 0.0, 2)
+
         return {
             "total_horas": total_horas,
             "empleados_pendientes": empleados_pendientes,
             "empleados_aprobadas": empleados_aprobadas,
             "eficiencia": eficiencia,
         }
+
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error al generar resumen del dashboard: {e}")
         raise HTTPException(status_code=500, detail="No se pudo generar el resumen del dashboard.")
-
 @app.get("/api/perfil")
 def obtener_perfil(_: dict = Depends(get_current_user)):
     return PERFIL_DATA
