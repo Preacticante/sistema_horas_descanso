@@ -128,7 +128,7 @@ def _to_solicitud_out(row: Any) -> dict[str, Any]:
 
 def _obtener_id_empleado_por_usuario(cursor, id_usuario: int) -> Optional[int]:
     cursor.execute(
-        "SELECT IdEmpleado FROM dbo.tblUsuarios WHERE IdUsuario = ? AND Activo = 1",
+        "SELECT iEmployeeNum FROM dbo.tblUsuarios WHERE id = ? AND bActivo = 1",
         id_usuario,
     )
     row = cursor.fetchone()
@@ -160,8 +160,8 @@ def _obtener_jerarquia_autorizacion_por_empleado(cursor, id_empleado: int) -> tu
 
 def obtener_usuario_por_login(cursor, username_or_email: str):
     cursor.execute(
-        "SELECT IdUsuario, Nombre, NombreUsuario, Email, PasswordHash, PasswordSalt, Rol, Activo FROM dbo.tblUsuarios "
-        "WHERE (NombreUsuario = ? OR Email = ?) AND Activo = 1",
+        "SELECT id, Nombre, NombreUsuario, email, PasswordHash, PasswordSalt, Rol, bActivo FROM dbo.tblUsuarios "
+        "WHERE (NombreUsuario = ? OR email = ?) AND bActivo = 1",
         username_or_email,
         username_or_email,
     )
@@ -294,7 +294,7 @@ def registrar_usuario(usuario: RegistroUsuario):
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT NombreUsuario, Email FROM dbo.tblUsuarios WHERE NombreUsuario = ? OR Email = ?",
+            "SELECT NombreUsuario, email FROM dbo.tblUsuarios WHERE NombreUsuario = ? OR email = ?",
             usuario.nombre_usuario,
             usuario.email.lower(),
         )
@@ -316,7 +316,7 @@ def registrar_usuario(usuario: RegistroUsuario):
         salt, hash_bytes = generar_hash_salt(usuario.password)
 
         cursor.execute(
-            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, Email, PasswordHash, PasswordSalt, Rol, IdEmpleado, FechaCreacion, Activo) "
+            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, email, PasswordHash, PasswordSalt, Rol, iEmployeeNum, FechaCreacion, bActivo) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), 1)",
             usuario.nombre,
             usuario.nombre_usuario,
@@ -402,12 +402,12 @@ def listar_usuarios_sistema(
         cursor = conn.cursor()
 
         query = (
-            "SELECT IdUsuario, Nombre, NombreUsuario, Email, Rol, IdEmpleado, Activo, FechaCreacion "
+            "SELECT id, Nombre, NombreUsuario, email, Rol, iEmployeeNum, bActivo, FechaCreacion "
             "FROM dbo.tblUsuarios "
         )
         if activos_solo:
-            query += "WHERE Activo = 1 "
-        query += "ORDER BY IdUsuario DESC"
+            query += "WHERE bActivo = 1 "
+        query += "ORDER BY id DESC"
 
         cursor.execute(query)
         filas = cursor.fetchall()
@@ -441,8 +441,8 @@ def obtener_usuario_sistema(
         conn = obtener_conexion()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT IdUsuario, Nombre, NombreUsuario, Email, Rol, IdEmpleado, Activo, FechaCreacion "
-            "FROM dbo.tblUsuarios WHERE IdUsuario = ?",
+            "SELECT id, Nombre, NombreUsuario, email, Rol, iEmployeeNum, bActivo, FechaCreacion "
+            "FROM dbo.tblUsuarios WHERE id = ?",
             id_usuario,
         )
         fila = cursor.fetchone()
@@ -479,7 +479,7 @@ def crear_usuario_sistema(
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT NombreUsuario, Email FROM dbo.tblUsuarios WHERE NombreUsuario = ? OR Email = ?",
+            "SELECT NombreUsuario, email FROM dbo.tblUsuarios WHERE NombreUsuario = ? OR email = ?",
             usuario.nombre_usuario,
             usuario.email.lower(),
         )
@@ -501,8 +501,8 @@ def crear_usuario_sistema(
         rol_db = rol_db_desde_normalizado(usuario.rol.value)
 
         cursor.execute(
-            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, Email, PasswordHash, PasswordSalt, Rol, IdEmpleado, FechaCreacion, Activo) "
-            "OUTPUT INSERTED.IdUsuario, INSERTED.FechaCreacion "
+            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, email, PasswordHash, PasswordSalt, Rol, iEmployeeNum, FechaCreacion, bActivo) "
+            "OUTPUT INSERTED.id, INSERTED.FechaCreacion "
             "VALUES (?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), ?)",
             usuario.nombre,
             usuario.nombre_usuario,
@@ -569,7 +569,7 @@ def actualizar_usuario_sistema(
 
         if datos.email is not None:
             cursor.execute(
-                "SELECT IdUsuario FROM dbo.tblUsuarios WHERE Email = ? AND IdUsuario <> ?",
+                "SELECT id FROM dbo.tblUsuarios WHERE email = ? AND id <> ?",
                 datos.email.lower(),
                 id_usuario,
             )
@@ -579,7 +579,7 @@ def actualizar_usuario_sistema(
         query = (
             "UPDATE dbo.tblUsuarios SET "
             + ", ".join(campos)
-            + " WHERE IdUsuario = ?"
+            + " WHERE id = ?"
         )
         params.append(id_usuario)
         cursor.execute(query, *params)
@@ -588,8 +588,8 @@ def actualizar_usuario_sistema(
             raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
         cursor.execute(
-            "SELECT IdUsuario, Nombre, NombreUsuario, Email, Rol, IdEmpleado, Activo, FechaCreacion "
-            "FROM dbo.tblUsuarios WHERE IdUsuario = ?",
+            "SELECT id, Nombre, NombreUsuario, email, Rol, iEmployeeNum, bActivo, FechaCreacion "
+            "FROM dbo.tblUsuarios WHERE id = ?",
             id_usuario,
         )
         fila = cursor.fetchone()
@@ -624,7 +624,7 @@ def desactivar_usuario_sistema(
         conn = obtener_conexion()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE dbo.tblUsuarios SET Activo = 0 WHERE IdUsuario = ?",
+            "UPDATE dbo.tblUsuarios SET bActivo = 0 WHERE id = ?",
             id_usuario,
         )
 
@@ -691,7 +691,7 @@ def crear_solicitud_reposicion(
             raise HTTPException(status_code=400, detail="El empleado no existe en el organigrama oficial.")
 
         cursor.execute(
-            "SELECT COUNT(*) FROM dbo.tblUsuarios WHERE IdUsuario IN (?, ?) AND Activo = 1",
+            "SELECT COUNT(*) FROM dbo.tblUsuarios WHERE id IN (?, ?) AND bActivo = 1",
             id_jefe_directo,
             id_jefe_superior,
         )

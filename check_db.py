@@ -8,18 +8,17 @@ from app.database import obtener_conexion
 conn = obtener_conexion()
 cur = conn.cursor()
 
-cur.execute("SELECT OBJECT_ID('dbo.tblUsuarios', 'U')")
-r = cur.fetchone()
-print("tblUsuarios existe:", r[0] is not None)
-
-if r[0]:
-    cur.execute("SELECT COUNT(*) FROM dbo.tblUsuarios")
-    print("Total usuarios:", cur.fetchone()[0])
-    cur.execute("SELECT TOP 5 IdUsuario, NombreUsuario, Email, Rol, Activo FROM dbo.tblUsuarios")
-    for row in cur.fetchall():
-        print(row)
-else:
-    print("TABLA NO EXISTE - ejecuta backend/db/crear_tabla_usuarios.sql primero")
+for tabla in ["tblUsuarios", "tblUsuariosSistema"]:
+    cur.execute(f"SELECT OBJECT_ID('dbo.{tabla}', 'U')")
+    r = cur.fetchone()
+    if r[0]:
+        cur.execute(f"SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_NAME = '{tabla}' ORDER BY ORDINAL_POSITION")
+        cols = [c[0] for c in cur.fetchall()]
+        cur.execute(f"SELECT COUNT(*) FROM dbo.{tabla}")
+        cnt = cur.fetchone()[0]
+        print(f"[{tabla}] filas={cnt} cols={cols}")
+    else:
+        print(f"[{tabla}] NO EXISTE")
 
 cur.close()
 conn.close()
