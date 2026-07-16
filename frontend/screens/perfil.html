@@ -8,7 +8,7 @@
             color: #1f2937;
             font-family: Segoe UI, Tahoma, Geneva, Verdana, sans-serif;
         }
-
+    
         .perfil-header {
             display: flex;
             justify-content: space-between;
@@ -338,6 +338,7 @@
                 grid-template-columns: 1fr;
             }
         }
+        
     </style>
 
     <div class="perfil-header">
@@ -399,10 +400,13 @@
                 <div class="perfil-modal-footer">
                     <button type="button" class="perfil-btn perfil-btn-secondary" id="cancelar-modal-nombre">Cancelar</button>
                     <button type="submit" class="perfil-btn perfil-btn-primary">Guardar nombre</button>
+                
                 </div>
             </form>
         </div>
     </div>
+
+    
 
     <div class="modal-overlay" id="modal-password">
         <div class="perfil-modal">
@@ -435,4 +439,103 @@
     </div>
 
     <div class="perfil-notice" id="perfil-notice"></div>
+    <script>
+        // Referencias a los elementos del modal de nombre
+        const formNombre = document.getElementById('form-nombre');
+        const modalNombre = document.getElementById('modal-nombre');
+        const btnCancelarNombre = document.getElementById('cancelar-modal-nombre');
+        const btnCerrarNombre = document.getElementById('close-modal-nombre');
+
+        // 1. Lógica para guardar el nombre en el backend
+        formNombre.addEventListener('submit', async (e) => {
+            e.preventDefault(); // Evita que la página se recargue
+            
+            const nuevoNombre = document.getElementById('nuevo-nombre').value;
+            const errorDiv = document.getElementById('error-nombre');
+
+            if (!nuevoNombre) {
+                errorDiv.innerText = "El nombre no puede estar vacío.";
+                return;
+            }
+
+            try {
+                // Petición a tu servidor FastAPI
+                const response = await fetch('/api/perfil/actualizar-nombre', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ nombre: nuevoNombre })
+                });
+
+                if (response.ok) {
+                    alert("Nombre actualizado correctamente");
+                    
+                    // Cierra el modal
+                    modalNombre.classList.remove('show');
+                    
+                    // Actualiza los textos en la pantalla para que veas el cambio
+                    document.getElementById('perfil-nombre').innerText = nuevoNombre;
+                    document.getElementById('nombre').value = nuevoNombre;
+                    
+                    // Limpia el input del modal
+                    document.getElementById('nuevo-nombre').value = '';
+                } else {
+                    errorDiv.innerText = "Error al guardar en el servidor.";
+                }
+            } catch (error) {
+                console.error("Error de conexión:", error);
+                errorDiv.innerText = "Error de conexión con el servidor.";
+            }
+        });
+
+        // 2. Lógica para cerrar el modal si te arrepientes
+        btnCancelarNombre.addEventListener('click', () => {
+            modalNombre.classList.remove('show');
+        });
+        
+        btnCerrarNombre.addEventListener('click', () => {
+            modalNombre.classList.remove('show');
+        });
+        // --- LÓGICA PARA EL FORMULARIO PRINCIPAL (Botón Guardar) ---
+        const formPerfilPrincipal = document.getElementById('form-perfil');
+
+        if (formPerfilPrincipal) {
+            formPerfilPrincipal.addEventListener('submit', async (e) => {
+                e.preventDefault(); // Evita que la página intente recargarse sola
+
+                // 1. Capturamos los datos de los inputs de tu pantalla principal
+                const nombrePrincipal = document.getElementById('nombre').value;
+                const emailPrincipal = document.getElementById('email').value;
+                
+                // Si agregaste el campo de puesto, descomenta la siguiente línea:
+                // const puestoPrincipal = document.getElementById('puesto').value;
+
+                try {
+                    // 2. Enviamos los datos a tu backend en FastAPI
+                    // Asegúrate de que esta ruta exista en tu main.py
+                    const response = await fetch('/api/perfil/actualizar', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ 
+                            nombre: nombrePrincipal, 
+                            correo: emailPrincipal
+                            // puesto: puestoPrincipal 
+                        })
+                    });
+
+                    if (response.ok) {
+                        alert("¡Perfil actualizado con éxito!");
+                        
+                        // 3. Actualizamos el título visualmente
+                        document.getElementById('perfil-nombre').innerText = nombrePrincipal;
+                    } else {
+                        alert("Hubo un error al guardar en el servidor. Revisa los logs de Docker.");
+                    }
+                } catch (error) {
+                    console.error("Error de conexión:", error);
+                    alert("No se pudo conectar con el servidor.");
+                }
+            });
+        }
+    </script>
+    
 </div>
