@@ -275,7 +275,12 @@ async function cargarEmpleados(ids = null) {
     console.log("cargarEmpleados: fetch", `${API_URL}/api/empleados${query}`);
 
     try {
-        const respuesta = await fetch(`${API_URL}/api/empleados${query}`);
+        // 1. Ejecutamos ambas peticiones al mismo tiempo
+        const [respuesta, resSubordinados] = await Promise.all([
+            fetch(`${API_URL}/api/empleados${query}`),
+            fetch(`${API_URL}/api/dashboard-empleados`, { headers: construirHeadersAuth() })
+        ]);
+
         if (!respuesta.ok) {
             let mensajeError = `Error al obtener la lista de empleados (${respuesta.status})`;
             try {
@@ -290,19 +295,42 @@ async function cargarEmpleados(ids = null) {
         }
 
         const empleados = await respuesta.json();
+        const subordinados = resSubordinados.ok ? await resSubordinados.json() : [];
+
+        // 2. Extraemos los IDs de tus subordinados autorizados como texto limpio
+        const idsAutorizados = (Array.isArray(subordinados) ? subordinados : []).map(emp => {
+            const idVal = emp.id !== undefined ? emp.id : emp.id_usuario_original;
+            return String(idVal).trim();
+        });
+
+        // 3. Ejecutamos exactamente tus procesos originales (sin alterar nada)
         cargarEmpleadosLocales();
+        
+        // Guardamos los empleados completos en la caché tal y como tu sistema lo espera originalmente
         empleadosCache = aplicarCambiosVisuales(Array.isArray(empleados) ? empleados : []);
+
+        // 4. 🔥 EL TRUCO: Filtramos la variable 'empleadosCache' final
+        // De esta manera, aseguramos que los horarios, ediciones y eliminaciones queden intactos.
+        empleadosCache = empleadosCache.filter(emp => {
+            const idNomina = emp.id_usuario_original !== undefined 
+                ? emp.id_usuario_original 
+                : (emp.iEmployeeNum !== undefined ? emp.iEmployeeNum : emp.id);
+            
+            return idsAutorizados.includes(String(idNomina).trim());
+        });
+
         tabla.innerHTML = "";
 
         if (!empleadosCache.length) {
             tabla.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align: center;">No se encontraron empleados.</td>
+                    <td colspan="5" style="text-align: center;">No se encontraron empleados a tu cargo.</td>
                 </tr>
             `;
             return;
         }
 
+        // 5. Renderizamos la tabla con los datos completos y protegidos
         renderEmpleadosTabla(tabla, empleadosCache);
 
     } catch (error) {
@@ -314,6 +342,7 @@ async function cargarEmpleados(ids = null) {
         `;
     }
 }
+
 
 function renderEmpleadosTabla(tabla, empleados) {
     tabla.innerHTML = '';
