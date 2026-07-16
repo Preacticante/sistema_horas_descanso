@@ -1212,9 +1212,17 @@ async function enviarRegistroHoras(event) {
     const idJefeSuperiorRaw = (inputJefeSuperior.value || '').trim();
     const idJefeDirecto = idJefeDirectoRaw ? parseInt(idJefeDirectoRaw, 10) : null;
     const idJefeSuperior = idJefeSuperiorRaw ? parseInt(idJefeSuperiorRaw, 10) : null;
+    
+    
 
     if (Number.isNaN(numeroEmpleado) || Number.isNaN(cantidadHoras) || cantidadHoras <= 0) {
         mostrarNotificacion('warning', 'Campos incompletos', 'Selecciona un empleado válido e ingresa una cantidad de horas mayor a cero.');
+        return;
+    }
+
+    // 🛡️ NUEVA VALIDACIÓN: Evita que se envíe si el motivo tiene menos de 5 caracteres (Error 422 anterior)
+    if (motivo.length < 5) {
+        mostrarNotificacion('warning', 'Motivo muy corto', 'Por favor, escribe un motivo más detallado (mínimo 5 caracteres).');
         return;
     }
 
@@ -1228,19 +1236,22 @@ async function enviarRegistroHoras(event) {
         let errores = 0;
 
         for (const fecha of diasSeleccionados) {
+            // 🛠️ CORRECCIÓN CLAVE: Volvemos a cambiar "fecha_solicitud" por "fecha" para que coincida con tu backend
             const payload = {
-                id_empleado: numeroEmpleado,
-                fecha,
-                horas_solicitadas: cantidadHoras,
-                motivo,
+                id_empleado: Number(numeroEmpleado),
+                fecha: fecha,                                      // 👈 ¡LISTO! Ahora coincide con el backend
+                horas_solicitadas: parseFloat(cantidadHoras),
+                motivo: motivo,
+                id_jefe_directo: idJefeDirecto,
+                id_jefe_superior: idJefeSuperior
             };
 
-            if (idJefeDirecto !== null && !Number.isNaN(idJefeDirecto)) {
+            //if (idJefeDirecto !== null && !Number.isNaN(idJefeDirecto)) {
                 payload.id_jefe_directo = idJefeDirecto;
-            }
-            if (idJefeSuperior !== null && !Number.isNaN(idJefeSuperior)) {
+            //}
+            //if (idJefeSuperior !== null && !Number.isNaN(idJefeSuperior)) {
                 payload.id_jefe_superior = idJefeSuperior;
-            }
+            //}
 
             const respuesta = await fetch(`${API_URL}/api/registros/solicitudes`, {
                 method: "POST",
@@ -1249,6 +1260,10 @@ async function enviarRegistroHoras(event) {
             });
 
             if (!respuesta.ok) {
+                // Si quieres ver en la consola por qué falló una de las fechas:
+                const errorData = await respuesta.json().catch(() => ({}));
+                console.error(`Error en fecha ${fecha}:`, errorData);
+                
                 errores += 1;
                 continue;
             }
@@ -1256,23 +1271,29 @@ async function enviarRegistroHoras(event) {
             exitos += 1;
         }
 
-        if (exitos) {
-            mostrarNotificacion('success', 'Solicitud creada', `Se crearon ${exitos} solicitud(es) correctamente.`);
+        // Mostramos las notificaciones correspondientes según el resultado
+        if (exitos && !errores) {
+            mostrarNotificacion('success', 'Éxito', 'Asignación de horas guardada correctamente.');
+        } else if (exitos && errores) {
+            mostrarNotificacion('warning', 'Registro parcial', `Se crearon ${exitos} solicitud(es) correctamente, pero fallaron ${errores}.`);
+        } else if (errores) {
+            mostrarNotificacion('error', 'Errores en registro', `No se pudieron crear las solicitudes.`);
         }
 
-        mostrarNotificacion('success', 'Éxito', 'Asignación de horas guardada correctamente.');
-        event.target.reset();
-        registroFechasSeleccionadas.clear();
-        actualizarResumenFechasRegistro();
-        construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
-        mostrarHorasActuales();
-        await cargarSolicitudesReposicion();
+        // Limpieza y actualización de la vista si hubo al menos un éxito
+        if (exitos > 0) {
+            event.target.reset();
+            registroFechasSeleccionadas.clear();
+            actualizarResumenFechasRegistro();
+            construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
+            mostrarHorasActuales();
+            await cargarSolicitudesReposicion();
+        }
     } catch (error) {
         console.error("Error al registrar horas:", error);
         mostrarNotificacion('error', 'Error', `No se pudo guardar la solicitud: ${error.message}`);
     }
 }
-
 function obtenerColorEstado(estado) {
     if (estado === 'aprobada') return '#15803d';
     if (estado === 'rechazada') return '#b91c1c';
@@ -1292,43 +1313,102 @@ function renderSolicitudesReposicion(solicitudes) {
         return;
     }
 
+    // 🕵️‍♂️ Obtenemos y decodificamos el usuario logueado desde el sessionStorage
+    let usuarioLogueado = null;
+    try {
+        const authUserRaw = sessionStorage.getItem("auth_user");
+        if (authUserRaw) {
+            usuarioLogueado = JSON.parse(authUserRaw);
+        }
+    } catch (e) {
+        console.error("Error al leer el usuario de la sesión:", e);
+    }
+
+    // 🎯 Leemos las propiedades exactas que confirmamos en la consola: 'id' y 'rol'
+    const rolActual = String(usuarioLogueado?.rol || "").toLowerCase();
+    const idUsuarioActual = Number(usuarioLogueado?.id || 0);
+
     tbody.innerHTML = '';
     solicitudes.forEach((sol) => {
         const estadoJD = String(sol.estado_jefe_directo || 'pendiente').toLowerCase();
         const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
         const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
-        const puedeAccionar = estadoFinal === 'pendiente';
+        
+        // ID del creador de la solicitud (Mariana = 35)
+        const idCreador = Number(sol.id_empleado); 
+
+        // 🛡️ CONDICIÓN DE ACCIÓN PERFECTA:
+        // - Debe estar pendiente la solicitud.
+        // - El usuario actual debe tener rol de 'jefe' o 'admin', O en su defecto, no debe ser el creador de la solicitud.
+        const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
+        const esAutorizador = idUsuarioActual > 0 && idUsuarioActual !== idCreador;
+
+        const puedeAccionar = estadoFinal === 'pendiente' && (esJefeOAdmin || esAutorizador);
 
         tbody.innerHTML += `
             <tr>
                 <td>${sol.id_solicitud}</td>
                 <td>${sol.id_empleado}</td>
-                <td>${sol.fecha}</td>
+                <td>${sol.fecha_solicitud || sol.fecha || ''}</td>
                 <td>${Number(sol.horas_solicitadas || 0).toFixed(2)}</td>
                 <td style="font-weight:600; color:${obtenerColorEstado(estadoJD)};">${estadoJD}</td>
                 <td style="font-weight:600; color:${obtenerColorEstado(estadoJS)};">${estadoJS}</td>
                 <td style="font-weight:700; color:${obtenerColorEstado(estadoFinal)};">${estadoFinal}</td>
-                <td>
-                    ${puedeAccionar ? `
-                    <button type="button" class="btn-autorizar-sol" data-id="${sol.id_solicitud}" data-accion="aprobar" style="margin-right:6px; border:none; border-radius:8px; padding:6px 10px; background:#166534; color:#fff; cursor:pointer;">Aprobar</button>
-                    <button type="button" class="btn-autorizar-sol" data-id="${sol.id_solicitud}" data-accion="rechazar" style="border:none; border-radius:8px; padding:6px 10px; background:#b91c1c; color:#fff; cursor:pointer;">Rechazar</button>
-                    ` : `<span style="color:#64748b;">Sin acciones</span>`}
-                </td>
+                    <td>
+                        ${puedeAccionar ? `
+                        <button type="button" 
+                                class="btn-autorizar-sol" 
+                                onclick="procesarAutorizacion(${sol.id_solicitud}, 'aprobar')" 
+                                style="margin-right:6px; border:none; border-radius:8px; padding:6px 10px; background:#166534; color:#fff; cursor:pointer;">
+                            Aprobar
+                        </button>
+                        <button type="button" 
+                                class="btn-autorizar-sol" 
+                                onclick="procesarAutorizacion(${sol.id_solicitud}, 'rechazar')" 
+                                style="border:none; border-radius:8px; padding:6px 10px; background:#b91c1c; color:#fff; cursor:pointer;">
+                            Rechazar
+                        </button>
+                        ` : `<span style="color:#64748b;">Sin acciones</span>`}
+                    </td>
             </tr>
         `;
     });
-
-    tbody.querySelectorAll('.btn-autorizar-sol').forEach((btn) => {
-        btn.addEventListener('click', async () => {
-            const idSolicitud = parseInt(btn.dataset.id, 10);
-            const accion = btn.dataset.accion;
-            if (!idSolicitud || !accion) return;
-
-            const comentario = window.prompt('Comentario (opcional):', '') || '';
-            await autorizarSolicitudReposicion(idSolicitud, accion, comentario);
-        });
-    });
 }
+
+// Función global para aprobar o rechazar solicitudes
+window.procesarAutorizacion = async function(idSolicitud, accion) {
+    // 1. Pedimos confirmación al usuario
+    const confirmacion = confirm(`¿Estás seguro de que deseas ${accion} la solicitud #${idSolicitud}?`);
+    if (!confirmacion) return;
+
+    try {
+        console.log(`Procesando solicitud ${idSolicitud} con acción: ${accion}`);
+
+        // 2. Enviamos la petición a tu backend de Python (FastAPI)
+        // ⚠️ Nota: Revisa que esta URL coincida con la que tienes en Python
+        const response = await fetch(`${API_URL}/api/registros/solicitudes/${idSolicitud}/estado`, {
+            method: 'PUT', // o POST, dependiendo de cómo lo tengas en Python
+            headers: construirHeadersAuth({
+                'Content-Type': 'application/json'
+            }),
+            body: JSON.stringify({ estado: accion }) // Mandamos 'aprobar' o 'rechazar'
+        });
+
+        // 3. Manejamos la respuesta
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || `Error del servidor (${response.status})`);
+        }
+
+        // 4. Si todo salió bien, avisamos y recargamos la tabla
+        alert(`La solicitud ha sido marcada como: ${accion}`);
+        await cargarSolicitudesReposicion(); // Refresca la tabla para que cambie el estado y desaparezcan los botones
+
+    } catch (error) {
+        console.error("Error al procesar la autorización:", error);
+        alert(`No se pudo ${accion} la solicitud. Error: ${error.message}`);
+    }
+};
 
 async function cargarSolicitudesReposicion() {
     const tbody = document.getElementById('registros-solicitudes-body');
@@ -1341,7 +1421,22 @@ async function cargarSolicitudesReposicion() {
         </tr>
     `;
 
-    const estado = filtroEstado?.value?.trim() || '';
+    // 1. Obtenemos el valor del filtro
+    let estado = filtroEstado?.value?.trim() || '';
+
+    // 🎯 TRADUCTOR DE ESTADOS (Mapeo de plural/femenino a singular/masculino)
+    const estadoLower = estado.toLowerCase();
+    if (estadoLower === 'aprobadas' || estadoLower === 'aprobada' || estadoLower === 'aprobado') {
+        estado = 'aprobada';
+    } else if (estadoLower === 'rechazadas' || estadoLower === 'rechazada' || estadoLower === 'rechazado') {
+        estado = 'rechazada';
+    } else if (estadoLower === 'pendientes' || estadoLower === 'pendiente') {
+        estado = 'pendiente';
+    } else if (estadoLower === 'todos' || estadoLower === 'todas') {
+        estado = '';
+    }
+
+    // 2. Construimos la query con el estado limpio
     const query = estado ? `?estado=${encodeURIComponent(estado)}` : '';
 
     try {

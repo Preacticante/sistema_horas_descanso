@@ -142,14 +142,13 @@ def _to_solicitud_out(row: Any) -> dict[str, Any]:
 
 def _obtener_id_empleado_por_usuario(cursor, id_usuario: int) -> Optional[int]:
     cursor.execute(
-        "SELECT iEmployeeNum FROM dbo.tblUsuarios WHERE id = ? AND bActivo = 1",
+        "SELECT id_usuario_original FROM tbl_usuarios_sistema WHERE id_usuario_sistema = ? AND estatus = 1",
         id_usuario,
     )
     row = cursor.fetchone()
     if not row:
         return None
     return int(row[0]) if row[0] is not None else None
-
 
 def _obtener_jerarquia_autorizacion_por_empleado(cursor, id_empleado: int) -> tuple[Optional[int], Optional[int]]:
     cursor.execute("SELECT OBJECT_ID('dbo.tbl_jerarquia_autorizacion', 'U')")
@@ -729,6 +728,9 @@ def crear_solicitud_reposicion(
 
         if rol_actual == "empleado":
             id_emp_usuario = _obtener_id_empleado_por_usuario(cursor, id_usuario_actual)
+
+            print(f"DEBUG: id_usuario_actual={id_usuario_actual} -> Encontró id_emp_usuario={id_emp_usuario}")
+
             if id_emp_usuario is None:
                 raise HTTPException(status_code=403, detail="Tu usuario no está ligado a un empleado.")
             if int(datos.id_empleado) != int(id_emp_usuario):
@@ -763,8 +765,9 @@ def crear_solicitud_reposicion(
         if cursor.fetchone() is None:
             raise HTTPException(status_code=400, detail="El empleado no existe en el organigrama oficial.")
 
+        # 🔔 CAMBIO CLAVE AQUÍ: Usamos 'id_usuario_sistema' y 'estatus' en lugar de 'id_usuario' y 'activo'
         cursor.execute(
-            "SELECT COUNT(*) FROM dbo.tblUsuarios WHERE id IN (?, ?) AND bActivo = 1",
+            "SELECT COUNT(*) FROM tbl_usuarios_sistema WHERE id_usuario_sistema IN (?, ?) AND estatus = 1",
             id_jefe_directo,
             id_jefe_superior,
         )
@@ -772,34 +775,39 @@ def crear_solicitud_reposicion(
         if jefes_validos != 2:
             raise HTTPException(status_code=400, detail="Los usuarios autorizadores no existen o están inactivos.")
 
+        # ==========================================
+        # 1. INSERTAR EN LA TABLA DE SOLICITUDES
+        # ==========================================
         cursor.execute(
             "INSERT INTO dbo.tbl_solicitudes_reposicion "
-            "(id_empleado, fecha_solicitud, horas_solicitadas, motivo, id_jefe_directo, id_jefe_superior, "
-            "estado_jefe_directo, estado_jefe_superior, estado_final, fecha_creacion, fecha_actualizacion, activo) "
-            "OUTPUT INSERTED.id_solicitud, INSERTED.fecha_creacion "
-            "VALUES (?, ?, ?, ?, ?, ?, 'pendiente', 'pendiente', 'pendiente', SYSUTCDATETIME(), SYSUTCDATETIME(), 1)",
-            datos.id_empleado,
+            "(id_usuario_sistema, fecha_solicitada, horas_a_reponer, comentarios, id_jefe_directo, id_jefe_superior, "
+            "estado_jefe_directo, estado_jefe_superior, estado_final, created_at, updated_at) "
+            "OUTPUT INSERTED.id_reposicion, INSERTED.created_at "
+            "VALUES (?, ?, ?, ?, ?, ?, 'pendiente', 'pendiente', 'pendiente', SYSUTCDATETIME(), SYSUTCDATETIME())",
+            id_usuario_actual,       # Guardamos el ID de usuario del sistema (ej. 35 en el caso de Mariana)
             datos.fecha,
             float(datos.horas_solicitadas),
-            datos.motivo,
+            datos.motivo,            # Entra en la columna 'comentarios'
             id_jefe_directo,
             id_jefe_superior,
         )
         inserted = cursor.fetchone()
 
-        id_solicitud = int(inserted[0])
-        fecha_creacion = inserted[1]
+        id_solicitud = int(inserted[0])  # Ahora lee de 'id_reposicion'
+        fecha_creacion = inserted[1]     # Ahora lee de 'created_at'
 
+        # ==========================================
+        # 2. INSERTAR EN LA TABLA DE HISTORIAL
+        # ==========================================
         cursor.execute(
             "INSERT INTO dbo.tbl_historial_movimientos "
-            "(id_solicitud, id_empleado, tipo_movimiento, horas, referencia, id_usuario_accion, fecha_movimiento, detalles) "
-            "VALUES (?, ?, 'SOLICITUD_CREADA', ?, ?, ?, SYSUTCDATETIME(), ?)",
-            id_solicitud,
-            datos.id_empleado,
-            float(datos.horas_solicitadas),
-            "Solicitud de reposición creada",
-            id_usuario_actual,
-            datos.motivo,
+            "(tabla_afectada, id_registro_afectado, accion, usuario_responsable, fecha_movimiento, descripcion) "
+            "VALUES (?, ?, ?, ?, SYSUTCDATETIME(), ?)",
+            "tbl_solicitudes_reposicion",  # tabla_afectada
+            id_solicitud,                  # id_registro_afectado
+            "SOLICITUD_CREADA",            # accion
+            id_usuario_actual,             # usuario_responsable
+            f"Solicitud de reposición creada por {datos.horas_solicitadas} horas para el día {datos.fecha}. Motivo: {datos.motivo}" # descripcion
         )
 
         conn.commit()
@@ -823,7 +831,6 @@ def crear_solicitud_reposicion(
         print(f"Error al crear solicitud de reposición: {e}")
         raise HTTPException(status_code=500, detail="No se pudo crear la solicitud de reposición.")
 
-
 @app.get("/api/registros/solicitudes", response_model=list[SolicitudReposicionOutSchema])
 def listar_solicitudes_reposicion(
     estado: Optional[str] = None,
@@ -834,32 +841,49 @@ def listar_solicitudes_reposicion(
         conn = obtener_conexion()
         cursor = conn.cursor()
 
+        # Normalizamos a minúsculas para evitar problemas de "Jefe" vs "jefe"
         rol_actual = normalizar_rol(current_user.get("rol"))
         id_usuario_actual = int(current_user.get("id_usuario"))
 
+        # Consulta base
         query = (
-            "SELECT id_solicitud, id_empleado, fecha_solicitud, horas_solicitadas, motivo, "
-            "estado_jefe_directo, estado_jefe_superior, estado_final, fecha_creacion "
-            "FROM dbo.tbl_solicitudes_reposicion WHERE activo = 1"
+            "SELECT id_reposicion AS id_solicitud, id_usuario_sistema AS id_empleado, "
+            "fecha_solicitada AS fecha_solicitud, horas_a_reponer AS horas_solicitadas, "
+            "comentarios AS motivo, estado_jefe_directo, estado_jefe_superior, "
+            "estado_final, created_at AS fecha_creacion "
+            "FROM dbo.tbl_solicitudes_reposicion WHERE 1=1"
         )
         params: list[Any] = []
 
         if rol_actual == "admin":
             if id_empleado is not None:
-                query += " AND id_empleado = ?"
+                query += " AND id_usuario_sistema = ?"
                 params.append(id_empleado)
+                
         elif rol_actual == "jefe":
-            query += " AND (id_jefe_directo = ? OR id_jefe_superior = ?)"
-            params.extend([id_usuario_actual, id_usuario_actual])
+            # Si el jefe está usando un filtro de estado (ej: buscar aprobadas/rechazadas),
+            # le permitimos ver todo su historial de participación.
+            if estado:
+                query += """ AND (id_jefe_directo = ? OR id_jefe_superior = ?) """
+                params.extend([id_usuario_actual, id_usuario_actual])
+            else:
+                # Si no hay filtro, actúa como Bandeja de Pendientes (Secuencia de aprobación)
+                # 🎯 Corregido 'aprobado' por 'aprobada' para que coincida con tu Base de Datos
+                query += """ AND (
+                    (id_jefe_directo = ? AND estado_jefe_directo = 'pendiente') 
+                    OR 
+                    (id_jefe_superior = ? AND (estado_jefe_directo = 'aprobada' OR estado_jefe_directo = 'aprobado') AND estado_jefe_superior = 'pendiente')
+                )"""
+                params.extend([id_usuario_actual, id_usuario_actual])
+            
             if id_empleado is not None:
-                query += " AND id_empleado = ?"
+                query += " AND id_usuario_sistema = ?"
                 params.append(id_empleado)
+                
         else:
-            id_emp_usuario = _obtener_id_empleado_por_usuario(cursor, id_usuario_actual)
-            if id_emp_usuario is None:
-                raise HTTPException(status_code=403, detail="Tu usuario no está ligado a un empleado.")
-            query += " AND id_empleado = ?"
-            params.append(id_emp_usuario)
+            # Empleado común: estrictamente SOLO ve las que él mismo creó
+            query += " AND id_usuario_sistema = ?"
+            params.append(id_usuario_actual)
 
         if estado:
             query += " AND estado_final = ?"
@@ -872,167 +896,14 @@ def listar_solicitudes_reposicion(
         cursor.close()
         conn.close()
         return [_to_solicitud_out(row) for row in rows]
+        
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error al listar solicitudes de reposición: {e}")
-        raise HTTPException(status_code=500, detail="No se pudieron consultar las solicitudes de reposición.")
-
-
-@app.patch("/api/registros/solicitudes/{id_solicitud}/autorizacion", response_model=SolicitudReposicionOutSchema)
-def autorizar_solicitud_reposicion(
-    id_solicitud: int,
-    datos: SolicitudAutorizacionPatchSchema,
-    current_user: dict = Depends(require_roles("admin", "jefe")),
-):
-    try:
-        conn = obtener_conexion()
-        cursor = conn.cursor()
-
-        id_usuario_actual = int(current_user.get("id_usuario"))
-        rol_actual = normalizar_rol(current_user.get("rol"))
-        nuevo_estado = "aprobada" if datos.accion.value == "aprobar" else "rechazada"
-
-        cursor.execute(
-            "SELECT id_solicitud, id_empleado, fecha_solicitud, horas_solicitadas, motivo, "
-            "id_jefe_directo, id_jefe_superior, estado_jefe_directo, estado_jefe_superior, estado_final, fecha_creacion "
-            "FROM dbo.tbl_solicitudes_reposicion WITH (UPDLOCK, ROWLOCK) "
-            "WHERE id_solicitud = ? AND activo = 1",
-            id_solicitud,
-        )
-        row = cursor.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Solicitud no encontrada.")
-
-        id_empleado = int(row[1])
-        horas_solicitadas = float(row[3])
-        id_jefe_directo = int(row[5])
-        id_jefe_superior = int(row[6])
-        estado_directo = _estado_normalizado(str(row[7]))
-        estado_superior = _estado_normalizado(str(row[8]))
-        estado_final_actual = _estado_normalizado(str(row[9]))
-
-        if estado_final_actual != "pendiente":
-            raise HTTPException(status_code=409, detail="La solicitud ya fue resuelta y no admite más cambios.")
-
-        es_admin = rol_actual == "admin"
-        es_jefe_directo = id_usuario_actual == id_jefe_directo
-        es_jefe_superior = id_usuario_actual == id_jefe_superior
-
-        if not es_admin and not es_jefe_directo and not es_jefe_superior:
-            raise HTTPException(status_code=403, detail="No tienes permisos para autorizar esta solicitud.")
-
-        if es_jefe_superior and not es_admin and estado_directo != "aprobada":
-            raise HTTPException(status_code=409, detail="El jefe superior solo puede autorizar después del jefe directo.")
-
-        if es_jefe_directo and estado_directo != "pendiente":
-            raise HTTPException(status_code=409, detail="El jefe directo ya emitió una decisión para esta solicitud.")
-
-        if es_jefe_superior and estado_superior != "pendiente":
-            raise HTTPException(status_code=409, detail="El jefe superior ya emitió una decisión para esta solicitud.")
-
-        if es_admin and not es_jefe_directo and not es_jefe_superior:
-            if estado_directo == "pendiente":
-                es_jefe_directo = True
-            elif estado_superior == "pendiente":
-                es_jefe_superior = True
-            else:
-                raise HTTPException(status_code=409, detail="La solicitud ya no tiene etapas pendientes.")
-
-        if es_jefe_directo:
-            cursor.execute(
-                "UPDATE dbo.tbl_solicitudes_reposicion "
-                "SET estado_jefe_directo = ?, comentario_jefe_directo = ?, fecha_autorizacion_jefe_directo = SYSUTCDATETIME(), fecha_actualizacion = SYSUTCDATETIME() "
-                "WHERE id_solicitud = ?",
-                nuevo_estado,
-                datos.comentario,
-                id_solicitud,
-            )
-            estado_directo = nuevo_estado
-            etapa = "JEFE_DIRECTO"
-        else:
-            cursor.execute(
-                "UPDATE dbo.tbl_solicitudes_reposicion "
-                "SET estado_jefe_superior = ?, comentario_jefe_superior = ?, fecha_autorizacion_jefe_superior = SYSUTCDATETIME(), fecha_actualizacion = SYSUTCDATETIME() "
-                "WHERE id_solicitud = ?",
-                nuevo_estado,
-                datos.comentario,
-                id_solicitud,
-            )
-            estado_superior = nuevo_estado
-            etapa = "JEFE_SUPERIOR"
-
-        if estado_directo == "rechazada" or estado_superior == "rechazada":
-            estado_final_nuevo = "rechazada"
-        elif estado_directo == "aprobada" and estado_superior == "aprobada":
-            estado_final_nuevo = "aprobada"
-        else:
-            estado_final_nuevo = "pendiente"
-
-        cursor.execute(
-            "UPDATE dbo.tbl_solicitudes_reposicion "
-            "SET estado_final = ?, fecha_actualizacion = SYSUTCDATETIME() "
-            "WHERE id_solicitud = ?",
-            estado_final_nuevo,
-            id_solicitud,
-        )
-
-        cursor.execute(
-            "INSERT INTO dbo.tbl_historial_movimientos "
-            "(id_solicitud, id_empleado, tipo_movimiento, horas, referencia, id_usuario_accion, fecha_movimiento, detalles) "
-            "VALUES (?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), ?)",
-            id_solicitud,
-            id_empleado,
-            f"AUTORIZACION_{etapa}_{nuevo_estado.upper()}",
-            horas_solicitadas,
-            "Autorización de reposición",
-            id_usuario_actual,
-            datos.comentario,
-        )
-
-        if estado_final_nuevo == "aprobada":
-            observaciones = f"Reposición aprobada (solicitud {id_solicitud})"
-            cursor.execute(
-                "INSERT INTO dbo.tblBancoHorasKardex "
-                "(IdEmpNum, FechaAfectacion, fHoras, tTipoTransaccion, tObservaciones, IdUsuarioAutoriza, bActivo, dtFechaEliminacion, IdUsuarioElimina) "
-                "VALUES (?, ?, ?, 'Reposicion', ?, ?, 1, '1900-01-01', NULL)",
-                id_empleado,
-                date.today(),
-                horas_solicitadas,
-                observaciones,
-                id_usuario_actual,
-            )
-
-            cursor.execute(
-                "INSERT INTO dbo.tbl_historial_movimientos "
-                "(id_solicitud, id_empleado, tipo_movimiento, horas, referencia, id_usuario_accion, fecha_movimiento, detalles) "
-                "VALUES (?, ?, 'APLICACION_BANCO_HORAS', ?, ?, ?, SYSUTCDATETIME(), ?)",
-                id_solicitud,
-                id_empleado,
-                horas_solicitadas,
-                "Aplicación de reposición en banco de horas",
-                id_usuario_actual,
-                observaciones,
-            )
-
-        cursor.execute(
-            "SELECT id_solicitud, id_empleado, fecha_solicitud, horas_solicitadas, motivo, "
-            "estado_jefe_directo, estado_jefe_superior, estado_final, fecha_creacion "
-            "FROM dbo.tbl_solicitudes_reposicion WHERE id_solicitud = ?",
-            id_solicitud,
-        )
-        updated = cursor.fetchone()
-
-        conn.commit()
-        cursor.close()
-        conn.close()
-        return _to_solicitud_out(updated)
-    except HTTPException:
-        raise
-    except Exception as e:
-        print(f"Error al autorizar solicitud de reposición: {e}")
-        raise HTTPException(status_code=500, detail="No se pudo autorizar la solicitud de reposición.")
-
+        print("=========================================================")
+        print(f"⚠️ ERROR AL LISTAR SOLICITUDES EN BASE DE DATOS: {e}")
+        print("=========================================================")
+        return []
 
 # ==========================================================
 # RUTA ACTUALIZADA: PROCESA LAS ENTRADAS/SALIDAS DE LA VISTA
@@ -1779,3 +1650,93 @@ def registrar_horas(
     except HTTPException:
         raise
     
+@app.put("/api/registros/solicitudes/{id_reposicion}/estado")
+def actualizar_estado_solicitud(
+    id_reposicion: int,
+    datos: dict, # Recibimos un JSON con {"estado": "aprobar"} o {"estado": "rechazar"}
+    current_user: dict = Depends(get_current_user)
+):
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+
+        # 1. Validar el nuevo estado que nos envía el frontend
+        accion = datos.get("estado")
+        if accion not in ["aprobar", "rechazar"]:
+            raise HTTPException(status_code=400, detail="Acción no válida. Debe ser 'aprobar' o 'rechazar'")
+
+        # Mapeamos la acción al estado de la base de datos
+        nuevo_estado = "aprobada" if accion == "aprobar" else "rechazada"
+        id_usuario_actual = int(current_user.get("id_usuario"))
+        rol_actual = normalizar_rol(current_user.get("rol"))
+
+        # 2. Consultar la solicitud actual para saber quién la autoriza
+        cursor.execute(
+            "SELECT id_jefe_directo, id_jefe_superior, estado_jefe_directo, estado_jefe_superior "
+            "FROM dbo.tbl_solicitudes_reposicion WHERE id_reposicion = ?", 
+            id_reposicion
+        )
+        solicitud = cursor.fetchone()
+        if not solicitud:
+            raise HTTPException(status_code=404, detail="La solicitud de reposición no existe.")
+
+        id_jd, id_js, estado_jd, estado_js = solicitud
+
+        # 3. Determinar qué jefe está firmando y actualizar su columna correspondiente
+        columna_a_actualizar = None
+        if id_usuario_actual == id_jd:
+            columna_a_actualizar = "estado_jefe_directo"
+            estado_jd = nuevo_estado
+        elif id_usuario_actual == id_js:
+            columna_a_actualizar = "estado_jefe_superior"
+            estado_js = nuevo_estado
+        elif rol_actual == "admin":
+            # Si es admin, puede actuar por cualquiera que falte
+            if estado_jd == "pendiente":
+                columna_a_actualizar = "estado_jefe_directo"
+                estado_jd = nuevo_estado
+            else:
+                columna_a_actualizar = "estado_jefe_superior"
+                estado_js = nuevo_estado
+        else:
+            raise HTTPException(status_code=403, detail="No tienes permisos para autorizar esta solicitud.")
+
+        # 4. Calcular el estado final de la solicitud
+        # Si alguno rechaza, el final es rechazada. Si ambos aprueban, el final es aprobada.
+        estado_final = "pendiente"
+        if estado_jd == "rechazada" or estado_js == "rechazada":
+            estado_final = "rechazada"
+        elif estado_jd == "aprobada" and estado_js == "aprobada":
+            estado_final = "aprobada"
+
+        # 5. Ejecutar la actualización en la base de datos
+        cursor.execute(
+            f"UPDATE dbo.tbl_solicitudes_reposicion "
+            f"SET {columna_a_actualizar} = ?, estado_final = ?, updated_at = SYSUTCDATETIME() "
+            f"WHERE id_reposicion = ?",
+            nuevo_estado, estado_final, id_reposicion
+        )
+
+        # 6. Registrar en el historial de movimientos
+        cursor.execute(
+            "INSERT INTO dbo.tbl_historial_movimientos "
+            "(tabla_afectada, id_registro_afectado, accion, usuario_responsable, fecha_movimiento, descripcion) "
+            "VALUES (?, ?, ?, ?, SYSUTCDATETIME(), ?)",
+            "tbl_solicitudes_reposicion",
+            id_reposicion,
+            f"SOLICITUD_{nuevo_estado.upper()}",
+            id_usuario_actual,
+            f"El usuario {current_user.get('nombre')} cambió el estado a '{nuevo_estado}'."
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {"status": "success", "mensaje": f"Solicitud actualizada a {nuevo_estado} con éxito.", "estado_final": estado_final}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al actualizar la solicitud: {e}")
+        raise HTTPException(status_code=500, detail="Error interno al procesar la actualización.")
