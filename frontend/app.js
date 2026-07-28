@@ -613,54 +613,63 @@ function cerrarModalHorario() {
     }
 }
 
+// 1. Carga las métricas superiores (Tarjetas)
 async function cargarDashboard() {
     try {
-        // Modificamos esta línea para enviar el token de autenticación
         const response = await fetch(`${API_URL}/api/dashboard-resumen`, {
-            headers: construirHeadersAuth()
+            headers: construirHeadersAuth() // 👈 Requisito clave para evitar 401
         });
 
+        if (response.status === 401) {
+            limpiarSesionAuth();
+            window.location.href = 'login.html';
+            return;
+        }
+
         if (!response.ok) {
-            throw new Error(`Error al cargar resumen (${response.status})`);
+            throw new Error(`Error HTTP ${response.status}`);
         }
 
         const data = await response.json();
-        document.getElementById('kpi-total').textContent = `${data.total_horas.toFixed(2)} hrs`;
-        document.getElementById('kpi-pendientes').textContent = `${data.empleados_pendientes}`;
-        document.getElementById('kpi-aprobadas').textContent = `${data.empleados_aprobadas}`;
-        document.getElementById('kpi-eficiencia').textContent = `${data.eficiencia.toFixed(2)}%`;
-    } catch (err) {
-        console.error('No se pudieron cargar los datos del servidor:', err);
-        document.getElementById('kpi-total').textContent = 'Error';
-        document.getElementById('kpi-pendientes').textContent = 'Error';
-        document.getElementById('kpi-aprobadas').textContent = 'Error';
-        document.getElementById('kpi-eficiencia').textContent = 'Error';
+
+        // Inyectamos los datos en las tarjetas del HTML (si existen los IDs)
+        // Ajusta los IDs si en tu dashboard.html se llaman diferente:
+        const elTotal = document.getElementById('dashboard-total-acumulado') || document.querySelector('[data-stat="total"]');
+        const elPendientes = document.getElementById('dashboard-empleados-pendientes') || document.querySelector('[data-stat="pendientes"]');
+        const elAprobados = document.getElementById('dashboard-empleados-aprobados') || document.querySelector('[data-stat="aprobados"]');
+        const elEficiencia = document.getElementById('dashboard-eficiencia') || document.querySelector('[data-stat="eficiencia"]');
+
+        if (elTotal) elTotal.textContent = `${data.total_acumulado || 0} hrs`;
+        if (elPendientes) elPendientes.textContent = data.empleados_pendientes || 0;
+        if (elAprobados) elAprobados.textContent = data.empleados_aprobados || 0;
+        if (elEficiencia) elEficiencia.textContent = `${data.eficiencia || 0}%`;
+
+    } catch (error) {
+        console.error("Error al cargar tarjetas del dashboard:", error);
     }
 
-    cargarDashboardEmpleados();
+    // Cargamos también la tabla inferior
+    await cargarDashboardEmpleados();
 }
 
+// 2. Carga la tabla inferior de resultados
 async function cargarDashboardEmpleados() {
-    const tabla = document.getElementById('dashboard-empleados-table');
-    if (!tabla) return;
-
-    const tbody = tabla.querySelector('tbody');
+    const tbody = document.getElementById('dashboard-empleados-body') || document.querySelector('table tbody');
     if (!tbody) return;
 
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="5" style="text-align:center; padding:16px;">Cargando resultados de empleados...</td>
-        </tr>
-    `;
-
     try {
-        // Hacemos el fetch directo a nuestro nuevo endpoint seguro
         const response = await fetch(`${API_URL}/api/dashboard-empleados`, {
-            headers: construirHeadersAuth()
+            headers: construirHeadersAuth() // 👈 Requisito clave
         });
 
+        if (response.status === 401) {
+            limpiarSesionAuth();
+            window.location.href = 'login.html';
+            return;
+        }
+
         if (!response.ok) {
-            throw new Error(`Error al cargar empleados (${response.status})`);
+            throw new Error(`Error HTTP ${response.status}`);
         }
 
         const empleados = await response.json();
@@ -668,37 +677,36 @@ async function cargarDashboardEmpleados() {
         if (!Array.isArray(empleados) || empleados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" style="text-align:center; padding:16px;">No se encontraron empleados a tu cargo.</td>
-                </tr>
-            `;
+                    <td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">
+                        No hay datos de empleados disponibles.
+                    </td>
+                </tr>`;
             return;
         }
 
-        tbody.innerHTML = '';
-        
-        // Renderizamos los empleados autorizados
-        empleados.slice(0, 8).forEach(emp => {
-            const colorHoras = emp.total_horas >= 0 ? '#124416' : '#c0392b';
-            tbody.innerHTML += `
-                <tr>
-                    <td>${emp.id}</td>
-                    <td>${emp.nombre}</td>
-                    <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
-                    <td>${emp.salidas_temprano || 0}</td>
-                </tr>
-            `;
-        });
+        tbody.innerHTML = empleados.map(emp => `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding:12px;">#${emp.id || emp.id_empleado}</td>
+                <td style="padding:12px;">${emp.nombre || emp.nombre_empleado}</td>
+                <td style="padding:12px;">${emp.horas || 0} hrs</td>
+                <td style="padding:12px;">${emp.salidas_tempranas || 0}</td>
+            </tr>
+        `).join('');
+
     } catch (error) {
-        console.error('Error al cargar empleados en el dashboard:', error);
+        console.error("Error al cargar tabla del dashboard:", error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" style="color: red; text-align: center; font-weight: bold;">No se pudieron cargar los resultados de empleados.</td>
-            </tr>
-        `;
+                <td colspan="4" style="text-align:center; padding:1rem; color:#b91c1c;">
+                    No se pudieron cargar los datos del servidor.
+                </td>
+            </tr>`;
     }
 }
-// Ejecutar al cargar la vista
-// La función se llamará desde loadPage() cuando la vista dashboard se cargue.
+
+// 💡 EXPOSICIÓN OBLIGATORIA A WINDOW
+window.cargarDashboard = cargarDashboard;
+window.cargarDashboardEmpleados = cargarDashboardEmpleados;
 
 async function cargarEmpleadosParaRegistro() {
     try {
@@ -1202,25 +1210,23 @@ async function enviarRegistroHoras(event) {
     const inputMotivo = document.getElementById("reg-motivo");
     const inputJefeDirecto = document.getElementById("reg-jefe-directo");
     const inputJefeSuperior = document.getElementById("reg-jefe-superior");
-    if (!selectEmpleado || !inputHoras || !inputMotivo || !inputJefeDirecto || !inputJefeSuperior) return;
+
+    if (!selectEmpleado || !inputHoras || !inputMotivo) return;
 
     const numeroEmpleado = parseInt(selectEmpleado.value, 10);
     const cantidadHoras = parseFloat(inputHoras.value);
     const diasSeleccionados = Array.from(registroFechasSeleccionadas);
     const motivo = inputMotivo.value.trim();
-    const idJefeDirectoRaw = (inputJefeDirecto.value || '').trim();
-    const idJefeSuperiorRaw = (inputJefeSuperior.value || '').trim();
-    const idJefeDirecto = idJefeDirectoRaw ? parseInt(idJefeDirectoRaw, 10) : null;
-    const idJefeSuperior = idJefeSuperiorRaw ? parseInt(idJefeSuperiorRaw, 10) : null;
-    
-    
+
+    // Obtenemos los valores de los jefes si es que los escribieron
+    const idJefeDirectoRaw = inputJefeDirecto ? inputJefeDirecto.value.trim() : '';
+    const idJefeSuperiorRaw = inputJefeSuperior ? inputJefeSuperior.value.trim() : '';
 
     if (Number.isNaN(numeroEmpleado) || Number.isNaN(cantidadHoras) || cantidadHoras <= 0) {
         mostrarNotificacion('warning', 'Campos incompletos', 'Selecciona un empleado válido e ingresa una cantidad de horas mayor a cero.');
         return;
     }
 
-    // 🛡️ NUEVA VALIDACIÓN: Evita que se envíe si el motivo tiene menos de 5 caracteres (Error 422 anterior)
     if (motivo.length < 5) {
         mostrarNotificacion('warning', 'Motivo muy corto', 'Por favor, escribe un motivo más detallado (mínimo 5 caracteres).');
         return;
@@ -1234,24 +1240,25 @@ async function enviarRegistroHoras(event) {
     try {
         let exitos = 0;
         let errores = 0;
+        let ultimoMensajeError = '';
 
         for (const fecha of diasSeleccionados) {
-            // 🛠️ CORRECCIÓN CLAVE: Volvemos a cambiar "fecha_solicitud" por "fecha" para que coincida con tu backend
+            // 1. Armamos el payload base
             const payload = {
                 id_empleado: Number(numeroEmpleado),
-                fecha: fecha,                                      // 👈 ¡LISTO! Ahora coincide con el backend
+                fecha: fecha,
                 horas_solicitadas: parseFloat(cantidadHoras),
-                motivo: motivo,
-                id_jefe_directo: idJefeDirecto,
-                id_jefe_superior: idJefeSuperior
+                motivo: motivo
             };
 
-            //if (idJefeDirecto !== null && !Number.isNaN(idJefeDirecto)) {
-                payload.id_jefe_directo = idJefeDirecto;
-            //}
-            //if (idJefeSuperior !== null && !Number.isNaN(idJefeSuperior)) {
-                payload.id_jefe_superior = idJefeSuperior;
-            //}
+            // 2. Solo agregamos jefes si se especificaron
+            if (idJefeDirectoRaw !== '' && !isNaN(parseInt(idJefeDirectoRaw, 10))) {
+                payload.id_jefe_directo = parseInt(idJefeDirectoRaw, 10);
+            }
+
+            if (idJefeSuperiorRaw !== '' && !isNaN(parseInt(idJefeSuperiorRaw, 10))) {
+                payload.id_jefe_superior = parseInt(idJefeSuperiorRaw, 10);
+            }
 
             const respuesta = await fetch(`${API_URL}/api/registros/solicitudes`, {
                 method: "POST",
@@ -1260,10 +1267,9 @@ async function enviarRegistroHoras(event) {
             });
 
             if (!respuesta.ok) {
-                // Si quieres ver en la consola por qué falló una de las fechas:
                 const errorData = await respuesta.json().catch(() => ({}));
                 console.error(`Error en fecha ${fecha}:`, errorData);
-                
+                ultimoMensajeError = errorData.detail || 'Error al procesar la solicitud.';
                 errores += 1;
                 continue;
             }
@@ -1271,24 +1277,28 @@ async function enviarRegistroHoras(event) {
             exitos += 1;
         }
 
-        // Mostramos las notificaciones correspondientes según el resultado
-        if (exitos && !errores) {
-            mostrarNotificacion('success', 'Éxito', 'Asignación de horas guardada correctamente.');
-        } else if (exitos && errores) {
+        // 3. Notificaciones según el resultado final
+        if (exitos > 0 && errores === 0) {
+            mostrarNotificacion('success', 'Éxito', `Se crearon ${exitos} solicitud(es) correctamente.`);
+        } else if (exitos > 0 && errores > 0) {
             mostrarNotificacion('warning', 'Registro parcial', `Se crearon ${exitos} solicitud(es) correctamente, pero fallaron ${errores}.`);
-        } else if (errores) {
-            mostrarNotificacion('error', 'Errores en registro', `No se pudieron crear las solicitudes.`);
+        } else {
+            mostrarNotificacion('error', 'Errores en registro', ultimoMensajeError || 'No se pudieron crear las solicitudes.');
         }
 
-        // Limpieza y actualización de la vista si hubo al menos un éxito
+        // 4. Limpieza de interfaz si al menos uno tuvo éxito
         if (exitos > 0) {
             event.target.reset();
-            registroFechasSeleccionadas.clear();
-            actualizarResumenFechasRegistro();
-            construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
-            mostrarHorasActuales();
-            await cargarSolicitudesReposicion();
+            if (typeof registroFechasSeleccionadas !== 'undefined') registroFechasSeleccionadas.clear();
+            if (typeof actualizarResumenFechasRegistro === 'function') actualizarResumenFechasRegistro();
+            if (typeof construirCalendarioRegistro === 'function' && typeof registroCalendarioMes !== 'undefined') {
+                construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
+            }
+            if (typeof mostrarHorasActuales === 'function') mostrarHorasActuales();
+            if (typeof cargarSolicitudesNotificaciones === 'function') cargarSolicitudesNotificaciones();
+            if (typeof cargarSolicitudesReposicion === 'function') await cargarSolicitudesReposicion();
         }
+
     } catch (error) {
         console.error("Error al registrar horas:", error);
         mostrarNotificacion('error', 'Error', `No se pudo guardar la solicitud: ${error.message}`);
@@ -1301,61 +1311,63 @@ function obtenerColorEstado(estado) {
 }
 
 function renderSolicitudesReposicion(solicitudes) {
-    const tbody = document.getElementById('registros-solicitudes-body');
-    if (!tbody) return;
+    // 💡 Intenta buscar el contenedor de la tabla de notificaciones o de solicitudes
+    const tbody = document.getElementById('registros-solicitudes-body') 
+               || document.getElementById('notificaciones-solicitudes-body')
+               || document.querySelector('.bandeja-solicitudes table tbody');
 
+    if (!tbody) {
+        console.error("❌ No se encontró el elemento <tbody> en el HTML.");
+        return;
+    }
+
+    // 1. Manejo de lista vacía (limpia el "Cargando...")
     if (!Array.isArray(solicitudes) || !solicitudes.length) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align:center; padding:14px;">No hay solicitudes para mostrar.</td>
+                <td colspan="8" style="text-align:center; padding:14px; color:#64748b;">
+                    No hay solicitudes pendientes.
+                </td>
             </tr>
         `;
         return;
     }
 
-    // 🕵️‍♂️ Obtenemos y decodificamos el usuario logueado desde el sessionStorage
+    // 2. Leemos la sesión
     let usuarioLogueado = null;
     try {
         const authUserRaw = sessionStorage.getItem("auth_user");
-        if (authUserRaw) {
-            usuarioLogueado = JSON.parse(authUserRaw);
-        }
+        if (authUserRaw) usuarioLogueado = JSON.parse(authUserRaw);
     } catch (e) {
         console.error("Error al leer el usuario de la sesión:", e);
     }
 
-    // 🎯 Leemos las propiedades exactas que confirmamos en la consola: 'id' y 'rol'
     const rolActual = String(usuarioLogueado?.rol || "").toLowerCase();
     const idUsuarioActual = Number(usuarioLogueado?.id || 0);
+    const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
 
-    tbody.innerHTML = '';
-    solicitudes.forEach((sol) => {
+    // 3. Renderizado directo
+    tbody.innerHTML = solicitudes.map((sol) => {
         const estadoJD = String(sol.estado_jefe_directo || 'pendiente').toLowerCase();
         const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
         const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
-        
-        // ID del creador de la solicitud (Mariana = 35)
         const idCreador = Number(sol.id_empleado); 
 
-        // 🛡️ CONDICIÓN DE ACCIÓN PERFECTA:
-        // - Debe estar pendiente la solicitud.
-        // - El usuario actual debe tener rol de 'jefe' o 'admin', O en su defecto, no debe ser el creador de la solicitud.
-        const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
-        const esAutorizador = idUsuarioActual > 0 && idUsuarioActual !== idCreador;
+        const puedeAccionar = estadoFinal === 'pendiente' && esJefeOAdmin && (idUsuarioActual !== idCreador);
+        const nombreEmpleado = sol.nombre_empleado || `Empleado #${sol.id_empleado}`;
+        const fecha = sol.fecha || sol.fecha_solicitud || '';
 
-        const puedeAccionar = estadoFinal === 'pendiente' && (esJefeOAdmin || esAutorizador);
-
-        tbody.innerHTML += `
+        return `
             <tr>
-                <td>${sol.id_solicitud}</td>
-                <td>${sol.id_empleado}</td>
-                <td>${sol.fecha_solicitud || sol.fecha || ''}</td>
-                <td>${Number(sol.horas_solicitadas || 0).toFixed(2)}</td>
+                <td><strong>#${sol.id_solicitud}</strong></td>
+                <td>${nombreEmpleado}</td>
+                <td>${fecha}</td>
+                <td>${Number(sol.horas_solicitadas || 0).toFixed(2)} hrs</td>
                 <td style="font-weight:600; color:${obtenerColorEstado(estadoJD)};">${estadoJD}</td>
                 <td style="font-weight:600; color:${obtenerColorEstado(estadoJS)};">${estadoJS}</td>
                 <td style="font-weight:700; color:${obtenerColorEstado(estadoFinal)};">${estadoFinal}</td>
-                    <td>
-                        ${puedeAccionar ? `
+                <td>
+                    ${puedeAccionar ? `
                         <button type="button" 
                                 class="btn-autorizar-sol" 
                                 onclick="procesarAutorizacion(${sol.id_solicitud}, 'aprobar')" 
@@ -1368,11 +1380,11 @@ function renderSolicitudesReposicion(solicitudes) {
                                 style="border:none; border-radius:8px; padding:6px 10px; background:#b91c1c; color:#fff; cursor:pointer;">
                             Rechazar
                         </button>
-                        ` : `<span style="color:#64748b;">Sin acciones</span>`}
-                    </td>
+                    ` : `<span style="color:#64748b; font-size:13px;">Sin acciones</span>`}
+                </td>
             </tr>
         `;
-    });
+    }).join('');
 }
 
 // Función global para aprobar o rechazar solicitudes
@@ -2061,77 +2073,279 @@ function inicializarReportes() {
     }
 }
 
-async function loadPage(pageName, element) {
-    const container = document.getElementById('content-area');
-    const dynamicCard = document.getElementById('dynamic-card');
-    
-    container.classList.add('fade-out');
-    
+async function loadPage(page, element = null) {
     try {
-        const response = await fetch(`./screens/${pageName}.html`);
-        const html = await response.text();
-        
-        setTimeout(async () => {
-            dynamicCard.innerHTML = html;
-            container.classList.remove('fade-out');
-            console.log("loadPage loaded", pageName);
-            
+        // 1. Marcar enlace activo en el menú
+        if (element) {
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-            if(element) element.classList.add('active');
+            element.classList.add('active');
+        }
 
-            if (pageName === 'empleados') {
-                inicializarEmpleados();
+        // 2. Formatear la ruta de la pantalla
+        let pageFile = page.endsWith('.html') ? page : `${page}.html`;
+        let path = pageFile.startsWith('screens/') ? pageFile : `screens/${pageFile}`;
+
+        const response = await fetch(path);
+        if (!response.ok) throw new Error(`No se pudo cargar la vista: ${path}`);
+
+        const html = await response.text();
+        const container = document.getElementById('content-area');
+        
+        if (container) {
+            container.innerHTML = html;
+        } else {
+            console.error("❌ No se encontró el contenedor #content-area");
+            return;
+        }
+
+        // 💡 3. DISPARAR LA CARGA DE DATOS SEGÚN LA PANTALLA ACTIVA
+        const pageClean = pageFile.toLowerCase();
+
+        setTimeout(() => {
+            if (pageClean.includes('dashboard')) {
+                // Ejecuta las funciones de carga del Dashboard si existen
+                if (typeof window.cargarDashboard === 'function') window.cargarDashboard();
+                else if (typeof window.cargarResumenDashboard === 'function') window.cargarResumenDashboard();
+                else if (typeof window.cargarEmpleadoResultados === 'function') window.cargarEmpleadoResultados();
+            } 
+            else if (pageClean.includes('notificaciones')) {
+                if (typeof window.cargarSolicitudesNotificaciones === 'function') {
+                    window.cargarSolicitudesNotificaciones();
+                }
+            } 
+            else if (pageClean.includes('empleados')) {
+                if (typeof window.cargarEmpleados === 'function') window.cargarEmpleados();
+                else if (typeof window.obtenerEmpleados === 'function') window.obtenerEmpleados();
+            } 
+            else if (pageClean.includes('registros')) {
+                if (typeof window.cargarRegistros === 'function') window.cargarRegistros();
+                else if (typeof window.cargarSolicitudesReposicion === 'function') window.cargarSolicitudesReposicion();
+            } 
+            else if (pageClean.includes('reportes')) {
+                if (typeof window.cargarReportes === 'function') window.cargarReportes();
             }
+        }, 60);
+        // Y dentro de tu función loadPage, agrega esta línea para guardar la sección actual:
+        localStorage.setItem('ultima_pagina_vista', page);
 
-            if (pageName === 'registros') {
-                await inicializarRegistros();
-            }
 
-            if (pageName === 'notificaciones') {
-                inicializarNotificaciones();
-            }
-
-            if (pageName === 'dashboard') {
-                cargarDashboard();
-            }
-
-            if (pageName === 'reportes') {
-                inicializarReportes();
-            }
-
-            if (pageName === 'perfil') {
-                inicializarPerfil();
-            }
-
-            if (pageName === 'reportes') {
-                inicializarReportes();
-            }
-
-            if (pageName === 'configuracion') {
-                await inicializarConfiguracion();
-            }
-
-        }, 300);
-    } catch (e) {
-        dynamicCard.innerHTML = "<h1>Error</h1><p>No se pudo cargar la vista.</p>";
+    } catch (error) {
+        console.error("Error en loadPage:", error);
     }
 }
 
-// Carga inicial
-document.addEventListener("DOMContentLoaded", () => {
-    if (!esSesionValida()) {
-        window.location.href = 'login.html';
+// Aseguramos que loadPage sea global
+window.loadPage = loadPage;
+
+// 1. Función que consulta la API y obtiene las solicitudes
+async function cargarSolicitudesNotificaciones() {
+    const tbody = document.getElementById('notificaciones-solicitudes-body');
+    const filtroEstado = document.getElementById('notificaciones-filtro-estado');
+    if (!tbody) return;
+
+    // Estado visual inicial
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="8" style="text-align:center; padding:14px; color:#64748b;">Cargando solicitudes...</td>
+        </tr>
+    `;
+
+    // Leemos el valor del select de filtro en la pantalla
+    let estado = filtroEstado?.value?.trim() || '';
+    const estadoLower = estado.toLowerCase();
+    
+    if (['aprobadas', 'aprobada', 'aprobado'].includes(estadoLower)) {
+        estado = 'aprobada';
+    } else if (['rechazadas', 'rechazada', 'rechazado'].includes(estadoLower)) {
+        estado = 'rechazada';
+    } else if (['pendientes', 'pendiente'].includes(estadoLower)) {
+        estado = 'pendiente';
+    } else {
+        estado = '';
+    }
+
+    const query = estado ? `?estado=${encodeURIComponent(estado)}` : '';
+
+    try {
+        const response = await fetch(`${API_URL}/api/registros/solicitudes${query}`, {
+            headers: construirHeadersAuth(),
+        });
+
+        if (response.status === 401) {
+            limpiarSesionAuth();
+            window.location.href = 'login.html';
+            return;
+        }
+
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.detail || `Error HTTP ${response.status}`);
+        }
+
+        const solicitudes = await response.json();
+
+        // Actualizamos el contador del badge lateral si existe la variable
+        if (typeof contadorNotificaciones !== 'undefined') {
+            const totalPendientes = solicitudes.filter(s => 
+                String(s.estado_final || '').toLowerCase() === 'pendiente'
+            ).length;
+            contadorNotificaciones = totalPendientes;
+            if (typeof actualizarBadgeNotificaciones === 'function') {
+                actualizarBadgeNotificaciones();
+            }
+        }
+
+        // Renderizamos los datos en la tabla
+        renderSolicitudesNotificaciones(solicitudes);
+
+    } catch (error) {
+        console.error('Error al cargar notificaciones:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:14px; color:#b91c1c;">
+                    ${error.message || 'No se pudieron cargar las solicitudes.'}
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// 2. Función que dibuja las filas dentro de la tabla
+function renderSolicitudesNotificaciones(solicitudes) {
+    const tbody = document.getElementById('notificaciones-solicitudes-body');
+    if (!tbody) return;
+
+    if (!Array.isArray(solicitudes) || !solicitudes.length) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:14px; color:#64748b;">
+                    No hay solicitudes para mostrar.
+                </td>
+            </tr>
+        `;
         return;
     }
 
-    const logoutLink = document.getElementById('logout-link');
-    if (logoutLink) {
-        logoutLink.addEventListener('click', (event) => {
-            event.preventDefault();
-            limpiarSesionAuth();
-            window.location.href = 'login.html';
-        });
+    let usuarioLogueado = null;
+    try {
+        const authUserRaw = sessionStorage.getItem("auth_user");
+        if (authUserRaw) usuarioLogueado = JSON.parse(authUserRaw);
+    } catch (e) {
+        console.error("Error al leer sesión:", e);
     }
 
-    loadPage('dashboard', document.querySelector('.sidebar a'));
+    const rolActual = String(usuarioLogueado?.rol || "").toLowerCase();
+    const idUsuarioActual = Number(usuarioLogueado?.id || 0);
+    const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
+
+    tbody.innerHTML = solicitudes.map((sol) => {
+        const estadoJD = String(sol.estado_jefe_directo || 'pendiente').toLowerCase();
+        const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
+        const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
+        
+        const idCreador = Number(sol.id_empleado); 
+        const puedeAccionar = estadoFinal === 'pendiente' && esJefeOAdmin && (idUsuarioActual !== idCreador);
+
+        const nombreEmpleado = sol.nombre_empleado || `Empleado #${sol.id_empleado}`;
+        const fecha = sol.fecha || sol.fecha_solicitud || '';
+
+        return `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 12px;"><strong>#${sol.id_solicitud}</strong></td>
+                <td style="padding: 12px;">${nombreEmpleado}</td>
+                <td style="padding: 12px;">${fecha}</td>
+                <td style="padding: 12px;">${Number(sol.horas_solicitadas || 0).toFixed(2)} hrs</td>
+                <td style="padding: 12px; font-weight:600; color:${typeof obtenerColorEstado === 'function' ? obtenerColorEstado(estadoJD) : '#333'};">${estadoJD}</td>
+                <td style="padding: 12px; font-weight:600; color:${typeof obtenerColorEstado === 'function' ? obtenerColorEstado(estadoJS) : '#333'};">${estadoJS}</td>
+                <td style="padding: 12px; font-weight:700; color:${typeof obtenerColorEstado === 'function' ? obtenerColorEstado(estadoFinal) : '#333'};">${estadoFinal}</td>
+                <td style="padding: 12px;">
+                    ${puedeAccionar ? `
+                        <button type="button" 
+                                onclick="procesarAutorizacion(${sol.id_solicitud}, 'aprobar')" 
+                                style="margin-right:6px; border:none; border-radius:6px; padding:6px 12px; background:#166534; color:#fff; cursor:pointer; font-weight:500;">
+                            Aprobar
+                        </button>
+                        <button type="button" 
+                                onclick="procesarAutorizacion(${sol.id_solicitud}, 'rechazar')" 
+                                style="border:none; border-radius:6px; padding:6px 12px; background:#b91c1c; color:#fff; cursor:pointer; font-weight:500;">
+                            Rechazar
+                        </button>
+                    ` : `<span style="color:#94a3b8; font-size:0.85rem;">Sin acciones</span>`}
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// 💡 3. Exponemos la función a la ventana global obligatoriamente
+window.cargarSolicitudesNotificaciones = cargarSolicitudesNotificaciones;
+window.renderSolicitudesNotificaciones = renderSolicitudesNotificaciones;
+// Busca la función donde cargas el HTML (alrededor de la línea 2074):
+async function cargarVistaNotificaciones() {
+    try {
+        const respuesta = await fetch('notificaciones.html');
+        const html = await respuesta.text();
+        
+        // Inyectar HTML
+        const contenedor = document.getElementById('contenido-principal'); // o tu contenedor main
+        if (contenedor) contenedor.innerHTML = html;
+
+        // 🎯 DISPARAR LA CARGA DE DATOS REALES
+        await cargarSolicitudesNotificaciones();
+
+    } catch (error) {
+        console.error("Error al cargar notificaciones.html:", error);
+    }
+}
+async function procesarAutorizacion(idSolicitud, accion) {
+    const confirmacion = confirm(`¿Estás seguro de que deseas ${accion} la solicitud #${idSolicitud}?`);
+    if (!confirmacion) return;
+
+    try {
+        const response = await fetch(`${API_URL}/api/registros/solicitudes/${idSolicitud}/${accion}`, {
+            method: 'POST',
+            headers: construirHeadersAuth(),
+        });
+
+        if (!response.ok) {
+            const err = await response.json().catch(() => ({}));
+            throw new Error(err.detail || `No se pudo ${accion} la solicitud.`);
+        }
+
+        // Recargamos la tabla y el badge automáticamente
+        await cargarSolicitudesNotificaciones();
+
+    } catch (error) {
+        console.error(`Error al ${accion} la solicitud:`, error);
+        alert(error.message || `Ocurrió un error al procesar la solicitud.`);
+    }
+}
+
+// La exponemos a window
+window.procesarAutorizacion = procesarAutorizacion;
+
+// Cargar la pantalla por defecto (Panel Principal) cuando la página se actualice
+document.addEventListener('DOMContentLoaded', () => {
+    // Buscamos el enlace del Panel Principal en el sidebar para marcarlo como activo
+    const enlaceDashboard = document.querySelector('.sidebar a[onclick*="dashboard"]');
+    
+    // Cargar la pantalla por defecto
+    if (typeof loadPage === 'function') {
+        loadPage('dashboard', enlaceDashboard);
+    }
 });
+
+// Reemplaza el bloque DOMContentLoaded anterior por este si quieres guardar la última vista:
+document.addEventListener('DOMContentLoaded', () => {
+    // Lee la última página visitada o usa 'dashboard' por defecto
+    const ultimaPagina = localStorage.getItem('ultima_pagina_vista') || 'dashboard';
+    
+    const enlaceActivo = document.querySelector(`.sidebar a[onclick*="${ultimaPagina}"]`);
+    
+    if (typeof loadPage === 'function') {
+        loadPage(ultimaPagina, enlaceActivo);
+    }
+});
+
+// Y dentro de tu función loadPage, agrega esta línea para guardar la sección actual:
+// localStorage.setItem('ultima_pagina_vista', page);

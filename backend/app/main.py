@@ -130,13 +130,14 @@ def _to_solicitud_out(row: Any) -> dict[str, Any]:
     return {
         "id_solicitud": int(row[0]),
         "id_empleado": int(row[1]),
-        "fecha": row[2],
-        "horas_solicitadas": float(row[3]),
-        "motivo": row[4],
-        "estado_jefe_directo": _estado_normalizado(str(row[5])),
-        "estado_jefe_superior": _estado_normalizado(str(row[6])),
-        "estado_final": _estado_normalizado(str(row[7])),
-        "fecha_creacion": row[8],
+        "nombre_empleado": str(row[2]) if row[2] else "",  # 👈 Posición 2: nombre_empleado
+        "fecha": str(row[3]),                              # 👈 Posición 3: fecha_solicitada
+        "horas_solicitadas": float(row[4]),                # 👈 Posición 4: horas
+        "motivo": str(row[5]) if row[5] else "",           # 👈 Posición 5: motivo
+        "estado_jefe_directo": _estado_normalizado(str(row[6])),
+        "estado_jefe_superior": _estado_normalizado(str(row[7])),
+        "estado_final": _estado_normalizado(str(row[8])),
+        "fecha_creacion": str(row[9]) if row[9] else None,
     }
 
 
@@ -150,25 +151,30 @@ def _obtener_id_empleado_por_usuario(cursor, id_usuario: int) -> Optional[int]:
         return None
     return int(row[0]) if row[0] is not None else None
 
-def _obtener_jerarquia_autorizacion_por_empleado(cursor, id_empleado: int) -> tuple[Optional[int], Optional[int]]:
-    cursor.execute("SELECT OBJECT_ID('dbo.tbl_jerarquia_autorizacion', 'U')")
-    existe_tabla = cursor.fetchone()
-    if not existe_tabla or existe_tabla[0] is None:
-        return (None, None)
-
-    cursor.execute(
-        "SELECT TOP 1 id_jefe_directo, id_jefe_superior "
-        "FROM dbo.tbl_jerarquia_autorizacion "
-        "WHERE id_empleado = ? AND activo = 1",
-        id_empleado,
-    )
+def _obtener_jerarquia_autorizacion_por_empleado(cursor, id_empleado: int):
+    """
+    Obtiene la jerarquía de jefes usando IdEmpNum y la relación de id_jefe en tbl_usuarios_sistema.
+    """
+    query = """
+        SELECT 
+            u.id_jefe AS id_jefe_directo,
+            jefe_directo.id_jefe AS id_jefe_superior
+        FROM tbl_usuarios_sistema u
+        LEFT JOIN tbl_usuarios_sistema jefe_directo 
+            ON u.id_jefe = jefe_directo.id_usuario_sistema
+        WHERE u.id_usuario_original = ?
+    """
+    
+    cursor.execute(query, (id_empleado,))
     row = cursor.fetchone()
-    if not row:
-        return (None, None)
-    return (
-        int(row[0]) if row[0] is not None else None,
-        int(row[1]) if row[1] is not None else None,
-    )
+
+    if not row or not row.id_jefe_directo or not row.id_jefe_superior:
+        raise HTTPException(
+            status_code=400,
+            detail="No se encontró la jerarquía de autorización completa para este empleado."
+        )
+
+    return row.id_jefe_directo, row.id_jefe_superior
 
 
 def obtener_usuario_por_login(cursor, username_or_email: str):
@@ -831,6 +837,10 @@ def crear_solicitud_reposicion(
         print(f"Error al crear solicitud de reposición: {e}")
         raise HTTPException(status_code=500, detail="No se pudo crear la solicitud de reposición.")
 
+from typing import Optional, Any
+from fastapi import APIRouter, Depends, HTTPException
+
+# Asegúrate de usar 'router' o 'app' según como tengas instanciado tu archivo
 @app.get("/api/registros/solicitudes", response_model=list[SolicitudReposicionOutSchema])
 def listar_solicitudes_reposicion(
     estado: Optional[str] = None,
@@ -841,60 +851,69 @@ def listar_solicitudes_reposicion(
         conn = obtener_conexion()
         cursor = conn.cursor()
 
-        # Normalizamos a minúsculas para evitar problemas de "Jefe" vs "jefe"
         rol_actual = normalizar_rol(current_user.get("rol"))
         id_usuario_actual = int(current_user.get("id_usuario"))
 
-        # Consulta base
+        # 💡 SELECT mejorado con JOIN para traer el nombre del empleado y evitar fallos
         query = (
-            "SELECT id_reposicion AS id_solicitud, id_usuario_sistema AS id_empleado, "
-            "fecha_solicitada AS fecha_solicitud, horas_a_reponer AS horas_solicitadas, "
-            "comentarios AS motivo, estado_jefe_directo, estado_jefe_superior, "
-            "estado_final, created_at AS fecha_creacion "
-            "FROM dbo.tbl_solicitudes_reposicion WHERE 1=1"
+            "SELECT "
+            "   s.id_reposicion AS id_solicitud, "
+            "   s.id_usuario_sistema AS id_empleado, "
+            "   ISNULL(u.nombre_completo, 'Empleado #' + CAST(s.id_usuario_sistema AS VARCHAR)) AS nombre_empleado, "
+            "   s.fecha_solicitada AS fecha_solicitud, "
+            "   s.horas_a_reponer AS horas_solicitadas, "
+            "   s.comentarios AS motivo, "
+            "   s.estado_jefe_directo, "
+            "   s.estado_jefe_superior, "
+            "   s.estado_final, "
+            "   s.created_at AS fecha_creacion "
+            "FROM dbo.tbl_solicitudes_reposicion s "
+            "LEFT JOIN dbo.tbl_usuarios_sistema u ON s.id_usuario_sistema = u.id_usuario_sistema "
+            "WHERE 1=1"
         )
         params: list[Any] = []
 
         if rol_actual == "admin":
             if id_empleado is not None:
-                query += " AND id_usuario_sistema = ?"
+                query += " AND s.id_usuario_sistema = ?"
                 params.append(id_empleado)
                 
         elif rol_actual == "jefe":
-            # Si el jefe está usando un filtro de estado (ej: buscar aprobadas/rechazadas),
-            # le permitimos ver todo su historial de participación.
             if estado:
-                query += """ AND (id_jefe_directo = ? OR id_jefe_superior = ?) """
+                query += " AND (s.id_jefe_directo = ? OR s.id_jefe_superior = ?)"
                 params.extend([id_usuario_actual, id_usuario_actual])
             else:
-                # Si no hay filtro, actúa como Bandeja de Pendientes (Secuencia de aprobación)
-                # 🎯 Corregido 'aprobado' por 'aprobada' para que coincida con tu Base de Datos
+                # Bandeja de Pendientes
                 query += """ AND (
-                    (id_jefe_directo = ? AND estado_jefe_directo = 'pendiente') 
+                    (s.id_jefe_directo = ? AND LOWER(s.estado_jefe_directo) = 'pendiente') 
                     OR 
-                    (id_jefe_superior = ? AND (estado_jefe_directo = 'aprobada' OR estado_jefe_directo = 'aprobado') AND estado_jefe_superior = 'pendiente')
+                    (s.id_jefe_superior = ? AND LOWER(s.estado_jefe_directo) IN ('aprobada', 'aprobado') AND LOWER(s.estado_jefe_superior) = 'pendiente')
                 )"""
                 params.extend([id_usuario_actual, id_usuario_actual])
             
             if id_empleado is not None:
-                query += " AND id_usuario_sistema = ?"
+                query += " AND s.id_usuario_sistema = ?"
                 params.append(id_empleado)
                 
         else:
-            # Empleado común: estrictamente SOLO ve las que él mismo creó
-            query += " AND id_usuario_sistema = ?"
+            # Empleado común
+            query += " AND s.id_usuario_sistema = ?"
             params.append(id_usuario_actual)
 
         if estado:
-            query += " AND estado_final = ?"
-            params.append(_estado_normalizado(estado))
+            query += " AND LOWER(s.estado_final) = ?"
+            params.append(_estado_normalizado(estado).lower())
 
-        query += " ORDER BY id_solicitud DESC"
+        query += " ORDER BY s.id_reposicion DESC"
 
-        cursor.execute(query, *params)
+        # ⚡ CORRECCIÓN CLAVE: Pasar 'params' como lista, sin desempaquetar con '*'
+        cursor.execute(query, params)
         rows = cursor.fetchall()
+
         cursor.close()
         conn.close()
+
+        # Retornar mapeo ordenado
         return [_to_solicitud_out(row) for row in rows]
         
     except HTTPException:
@@ -903,7 +922,8 @@ def listar_solicitudes_reposicion(
         print("=========================================================")
         print(f"⚠️ ERROR AL LISTAR SOLICITUDES EN BASE DE DATOS: {e}")
         print("=========================================================")
-        return []
+        # En lugar de silenciar el error devolviendo [], lanzamos un 500 con el detalle para depurar
+        raise HTTPException(status_code=500, detail=f"Error interno al obtener solicitudes: {str(e)}")
 
 # ==========================================================
 # RUTA ACTUALIZADA: PROCESA LAS ENTRADAS/SALIDAS DE LA VISTA

@@ -1,6 +1,7 @@
 <div class="card">
     <h1 style="margin-top: 0; margin-bottom: 0.5rem; color: #1f2d19; font-size: 1.8rem; font-weight: 600;">Solicitudes de reposición</h1>
-    <p style="margin-top: 0; margin-bottom: 2rem; color: #64748b;">Registra solicitudes y autoriza por niveles (jefe directo y jefe superior).</p>
+    <p style="margin-top: 0; margin-bottom: 2rem; color: #64748b;">Registra solicitudes de reposición de horas.</p>
+
     <form id="registroForm">
         <!-- Empleado -->
         <div style="margin-bottom: 2rem;">
@@ -17,7 +18,9 @@
         </div>
 
         <!-- Horas disponibles -->
-        <div id="horas-actuales" style="margin-bottom: 2rem; padding: 1rem; background: linear-gradient(135deg, rgba(47, 88, 47, 0.08) 0%, rgba(170, 127, 31, 0.08) 100%); border-left: 4px solid #2f582f; border-radius: 8px; font-size: 0.95rem; color: #2f582f; font-weight: 500;">Horas extra disponibles: <strong style="color: #AA7F31;">0.00 hrs</strong></div>
+        <div id="horas-actuales" style="margin-bottom: 2rem; padding: 1rem; background: linear-gradient(135deg, rgba(47, 88, 47, 0.08) 0%, rgba(170, 127, 31, 0.08) 100%); border-left: 4px solid #2f582f; border-radius: 8px; font-size: 0.95rem; color: #2f582f; font-weight: 500;">
+            Horas extra disponibles: <strong style="color: #AA7F31;">0.00 hrs</strong>
+        </div>
 
         <!-- Horas por día -->
         <div style="margin-bottom: 2rem;">
@@ -50,56 +53,7 @@
             <div id="reg-fechas-seleccionadas" style="margin-top: 1.5rem; padding: 0.75rem 1rem; background: #f0f4f0; border-left: 4px solid #AA7F31; border-radius: 6px; font-size: 0.95rem; color: #2f582f;">No hay fechas seleccionadas.</div>
         </div>
 
-        <!-- Botón -->
-        <button type="submit" class="btn" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 220px; box-shadow: 0 4px 12px rgba(170, 127, 31, 0.3);" onmouseover="this.style.boxShadow='0 6px 16px rgba(170, 127, 31, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='0 4px 12px rgba(170, 127, 31, 0.3)'; this.style.transform='translateY(0)';">Guardar asignación</button>
-        <div style="margin-top: 2rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 18px rgba(0,0,0,0.05);">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 1rem;">
-                <div>
-                    <h2 style="margin:0; color:#340C51; font-size:1.25rem; font-weight:700;">Notificaciones de salida</h2>
-                    <p style="margin:0.4rem 0 0; color:#475569; font-size:0.95rem;">Aquí se muestran las solicitudes de salida pendientes para autorizar o rechazar.</p>
-                </div>
-            </div>
-            <div id="salida-notifications-panel" style="display:flex; flex-direction:column; gap:0.75rem; min-height:120px;">
-                <div data-empty-notifications style="color:#475569; font-size:0.95rem; padding:1rem; border:1px dashed #c7d2fe; border-radius:12px; background:#f8f5ff;">No hay notificaciones activas.</div>
-            </div>
-        </div>
-        <button type="submit" class="btn" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 260px; box-shadow: 0 4px 12px rgba(170, 127, 31, 0.3);" onmouseover="this.style.boxShadow='0 6px 16px rgba(170, 127, 31, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='0 4px 12px rgba(170, 127, 31, 0.3)'; this.style.transform='translateY(0)';">Crear solicitud(es)</button>
+        <!-- Un solo botón para crear -->
+        <button type="submit" class="btn" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 260px; box-shadow: 0 4px 12px rgba(170, 127, 31, 0.3);">Crear solicitud(es)</button>
     </form>
-
-    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">
-
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 1rem; flex-wrap: wrap;">
-        <h2 style="margin:0; color:#1f2d19; font-size:1.2rem;">Bandeja de solicitudes</h2>
-        <div style="display:flex; gap:8px; align-items:center;">
-            <select id="registros-filtro-estado" style="width:auto; min-width: 150px;">
-                <option value="">Todos los estados</option>
-                <option value="pendiente">Pendientes</option>
-                <option value="aprobado">Aprobadas</option>
-                <option value="rechazado">Rechazadas</option>
-            </select>
-            <button type="button" id="btn-recargar-solicitudes" class="btn" style="background:#2f582f; color:#fff;">Recargar</button>
-        </div>
-    </div>
-
-    <div style="overflow-x:auto;">
-        <table>
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Empleado</th>
-                    <th>Fecha</th>
-                    <th>Horas</th>
-                    <th>Estado JD</th>
-                    <th>Estado JS</th>
-                    <th>Final</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="registros-solicitudes-body">
-                <tr>
-                    <td colspan="8" style="text-align:center; padding: 14px;">Cargando solicitudes...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
 </div>
