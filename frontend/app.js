@@ -223,7 +223,6 @@ function manejarDecisionSalida(id, autorizado) {
     if (autorizado) {
         mostrarNotificacion('success', 'Salida autorizada', 'La solicitud de salida fue autorizada.');
     } else {
-        // Devolver las horas registradas al empleado en el cache local
         try {
             const diasCount = Array.isArray(registro.dias) ? registro.dias.length : 0;
             const refund = (Number(registro.cantidadHoras) || 0) * diasCount;
@@ -260,98 +259,60 @@ function inicializarNotificaciones() {
 
 async function cargarEmpleados(ids = null) {
     const tabla = document.getElementById("tabla-empleados");
-    if (!tabla) {
-        console.error("tabla-empleados no encontrada");
-        return;
-    }
+    if (!tabla) return;
 
-    // Si no hay IDs específicos, cargamos TODOS los empleados con all=true
     const query = ids ? `?ids=${encodeURIComponent(ids)}` : "?all=true";
-    tabla.innerHTML = `
-        <tr>
-            <td colspan="5" style="padding:15px; text-align:center;">Cargando empleados...</td>
-        </tr>
-    `;
-    console.log("cargarEmpleados: fetch", `${API_URL}/api/empleados${query}`);
-
+    tabla.innerHTML = `<tr><td colspan="5" style="padding:15px; text-align:center;">Cargando empleados...</td></tr>`;
+    
     try {
-        // 1. Ejecutamos ambas peticiones al mismo tiempo
         const [respuesta, resSubordinados] = await Promise.all([
             fetch(`${API_URL}/api/empleados${query}`),
             fetch(`${API_URL}/api/dashboard-empleados`, { headers: construirHeadersAuth() })
         ]);
 
-        if (!respuesta.ok) {
-            let mensajeError = `Error al obtener la lista de empleados (${respuesta.status})`;
-            try {
-                const errorJson = await respuesta.json();
-                if (errorJson?.detail) {
-                    mensajeError += `: ${errorJson.detail}`;
-                }
-            } catch (_e) {
-                // Ignore JSON parse errors for non-JSON responses
-            }
-            throw new Error(mensajeError);
-        }
+        if (!respuesta.ok) throw new Error(`Error al obtener la lista de empleados (${respuesta.status})`);
 
         const empleados = await respuesta.json();
         const subordinados = resSubordinados.ok ? await resSubordinados.json() : [];
 
-        // 2. Extraemos los IDs de tus subordinados autorizados como texto limpio
         const idsAutorizados = (Array.isArray(subordinados) ? subordinados : []).map(emp => {
             const idVal = emp.id !== undefined ? emp.id : emp.id_usuario_original;
             return String(idVal).trim();
         });
 
-        // 3. Ejecutamos exactamente tus procesos originales (sin alterar nada)
         cargarEmpleadosLocales();
-        
-        // Guardamos los empleados completos en la caché tal y como tu sistema lo espera originalmente
         empleadosCache = aplicarCambiosVisuales(Array.isArray(empleados) ? empleados : []);
 
-        // 4. 🔥 EL TRUCO: Filtramos la variable 'empleadosCache' final
-        // De esta manera, aseguramos que los horarios, ediciones y eliminaciones queden intactos.
-        empleadosCache = empleadosCache.filter(emp => {
-            const idNomina = emp.id_usuario_original !== undefined 
-                ? emp.id_usuario_original 
-                : (emp.iEmployeeNum !== undefined ? emp.iEmployeeNum : emp.id);
-            
-            return idsAutorizados.includes(String(idNomina).trim());
-        });
+        const esAdmin = obtenerUsuarioAuth()?.rol?.toLowerCase() === 'administrador';
+        
+        // Si no es admin, filtramos su equipo
+        if (!esAdmin) {
+            empleadosCache = empleadosCache.filter(emp => {
+                const idNomina = emp.id_usuario_original !== undefined 
+                    ? emp.id_usuario_original 
+                    : (emp.iEmployeeNum !== undefined ? emp.iEmployeeNum : emp.id);
+                return idsAutorizados.includes(String(idNomina).trim());
+            });
+        }
 
         tabla.innerHTML = "";
-
         if (!empleadosCache.length) {
-            tabla.innerHTML = `
-                <tr>
-                    <td colspan="5" style="text-align: center;">No se encontraron empleados a tu cargo.</td>
-                </tr>
-            `;
+            tabla.innerHTML = `<tr><td colspan="5" style="text-align: center;">No se encontraron empleados a tu cargo.</td></tr>`;
             return;
         }
 
-        // 5. Renderizamos la tabla con los datos completos y protegidos
         renderEmpleadosTabla(tabla, empleadosCache);
 
     } catch (error) {
         console.error("Error al conectar con la API:", error);
-        tabla.innerHTML = `
-            <tr>
-                <td colspan="5" style="color: red; text-align: center; font-weight: bold;">Error de conexión: Asegúrate de que el backend esté encendido.</td>
-            </tr>
-        `;
+        tabla.innerHTML = `<tr><td colspan="5" style="color: red; text-align: center; font-weight: bold;">Error de conexión.</td></tr>`;
     }
 }
-
 
 function renderEmpleadosTabla(tabla, empleados) {
     tabla.innerHTML = '';
     if (!empleados.length) {
-        tabla.innerHTML = `
-            <tr>
-                <td colspan="5" style="text-align: center;">No se encontraron empleados.</td>
-            </tr>
-        `;
+        tabla.innerHTML = `<tr><td colspan="5" style="text-align: center;">No se encontraron empleados.</td></tr>`;
         return;
     }
 
@@ -382,10 +343,7 @@ function abrirModalEmpleado(mode, empleado = null) {
     const horasInput = document.getElementById('empleado-horas');
     const salidasInput = document.getElementById('empleado-salidas');
 
-    if (titulo) {
-        titulo.textContent = mode === 'edit' ? 'Editar empleado' : 'Agregar empleado';
-    }
-
+    if (titulo) titulo.textContent = mode === 'edit' ? 'Editar empleado' : 'Agregar empleado';
     const nota = document.getElementById('modal-empleado-nota');
     if (mode === 'edit' && empleado) {
         if (idInput) idInput.value = empleado.id;
@@ -428,17 +386,15 @@ async function actualizarEmpleadoEnBD(empleado) {
 
         if (!response.ok) {
             const error = await response.json().catch(() => null);
-            const mensaje = error?.detail || 'No se pudo actualizar el empleado en la base de datos.';
-            mostrarNotificacion('error', 'Error de servidor', mensaje);
+            mostrarNotificacion('error', 'Error de servidor', error?.detail || 'No se pudo actualizar.');
             return false;
         }
 
         const data = await response.json();
-        mostrarNotificacion('success', 'Empleado actualizado', data.mensaje || 'Empleado actualizado en la base de datos.');
+        mostrarNotificacion('success', 'Empleado actualizado', data.mensaje);
         return true;
     } catch (error) {
-        console.error('Error actualizando empleado:', error);
-        mostrarNotificacion('error', 'Error de red', 'No se pudo conectar con el servidor para actualizar el empleado.');
+        mostrarNotificacion('error', 'Error de red', 'No se pudo conectar con el servidor.');
         return false;
     }
 }
@@ -508,29 +464,17 @@ function confirmarEliminacion() {
 function eliminarEmpleadoVisual(empleadoId) {
     const empleado = empleadosCache.find(emp => String(emp.id) === String(empleadoId));
     if (!empleado) return;
-    
     abrirModalConfirmacion(empleadoId, empleado.nombre);
 }
 
-function recuperarEmpleadoVisual(empleadoId) {
-    empleadosVisual.deleted.delete(String(empleadoId));
-    guardarEmpleadosLocales();
-    cargarEmpleados(); // Recargar para mostrar el empleado recuperado
-    mostrarNotificacion('success', 'Empleado recuperado', 'El empleado ha sido restaurado en la tabla.');
-}
-
 function limpiarCambiosVisualesEmpleados() {
-    abrirModalConfirmacionLimpiar();
-}
-
-function abrirModalConfirmacionLimpiar() {
     const modal = document.getElementById('modal-confirmacion');
     const titulo = document.getElementById('confirmacion-titulo');
     const mensaje = document.getElementById('confirmacion-mensaje');
     const btnConfirmar = document.getElementById('btn-confirmacion-confirmar');
     
     if (titulo) titulo.textContent = 'Restaurar todos los cambios';
-    if (mensaje) mensaje.textContent = '¿Deseas limpiar todos los cambios visuales (adiciones, ediciones y eliminaciones)? Esta acción no modifica la base de datos.';
+    if (mensaje) mensaje.textContent = '¿Deseas limpiar todos los cambios visuales? Esta acción no modifica la base de datos.';
     
     empleadoAEliminar = 'restore_all';
     
@@ -543,14 +487,10 @@ function abrirModalConfirmacionLimpiar() {
 }
 
 function confirmarLimpiar() {
-    empleadosVisual = {
-        deleted: new Set(),
-        edited: {},
-        added: [],
-    };
+    empleadosVisual = { deleted: new Set(), edited: {}, added: [] };
     guardarEmpleadosLocales();
     cargarEmpleados();
-    mostrarNotificacion('success', 'Cambios restaurados', 'Todos los cambios visuales han sido eliminados. Se muestran los datos de la base de datos.');
+    mostrarNotificacion('success', 'Cambios restaurados', 'Todos los cambios visuales han sido eliminados.');
     cerrarModalConfirmacion();
 }
 
@@ -559,13 +499,12 @@ async function obtenerHorarioEmpleado(empleadoId) {
     if (!modalContent) return;
 
     modalContent.innerHTML = `<p style="color:#4b5563;">Cargando horario...</p>`;
-    abrirModalHorario();
+    const modal = document.getElementById('modal-horario');
+    if (modal) modal.style.display = 'flex';
 
     try {
         const response = await fetch(`${API_URL}/api/empleados/${empleadoId}/horario`);
-        if (!response.ok) {
-            throw new Error(`No se pudo cargar el horario (${response.status})`);
-        }
+        if (!response.ok) throw new Error('No se pudo cargar el horario');
 
         const horario = await response.json();
         if (!Array.isArray(horario) || horario.length === 0) {
@@ -576,11 +515,7 @@ async function obtenerHorarioEmpleado(empleadoId) {
         modalContent.innerHTML = `
             <table class="horario-table">
                 <thead>
-                    <tr>
-                        <th>Día</th>
-                        <th>Horario</th>
-                        <th>Horas extra (últimos 30 días)</th>
-                    </tr>
+                    <tr><th>Día</th><th>Horario</th><th>Horas extra (últimos 30 días)</th></tr>
                 </thead>
                 <tbody>
                     ${horario.map(item => `
@@ -594,209 +529,125 @@ async function obtenerHorarioEmpleado(empleadoId) {
             </table>
         `;
     } catch (error) {
-        console.error('Error al cargar el horario del empleado:', error);
         modalContent.innerHTML = `<p style="color:#b91c1c;">No se pudo cargar el horario. Intenta de nuevo.</p>`;
-    }
-}
-
-function abrirModalHorario() {
-    const modal = document.getElementById('modal-horario');
-    if (modal) {
-        modal.style.display = 'flex';
     }
 }
 
 function cerrarModalHorario() {
     const modal = document.getElementById('modal-horario');
-    if (modal) {
-        modal.style.display = 'none';
-    }
+    if (modal) modal.style.display = 'none';
 }
 
 // 1. Carga las métricas superiores (Tarjetas)
 async function cargarDashboard() {
     try {
+        // Modificamos esta línea para enviar el token de autenticación
         const response = await fetch(`${API_URL}/api/dashboard-resumen`, {
-            headers: construirHeadersAuth() // 👈 Requisito clave para evitar 401
+            headers: construirHeadersAuth()
         });
 
-        if (response.status === 401) {
-            limpiarSesionAuth();
-            window.location.href = 'login.html';
-            return;
-        }
-
         if (!response.ok) {
-            throw new Error(`Error HTTP ${response.status}`);
+            throw new Error(`Error al cargar resumen (${response.status})`);
         }
 
         const data = await response.json();
-
-        // Inyectamos los datos en las tarjetas del HTML (si existen los IDs)
-        // Ajusta los IDs si en tu dashboard.html se llaman diferente:
-        const elTotal = document.getElementById('dashboard-total-acumulado') || document.querySelector('[data-stat="total"]');
-        const elPendientes = document.getElementById('dashboard-empleados-pendientes') || document.querySelector('[data-stat="pendientes"]');
-        const elAprobados = document.getElementById('dashboard-empleados-aprobados') || document.querySelector('[data-stat="aprobados"]');
-        const elEficiencia = document.getElementById('dashboard-eficiencia') || document.querySelector('[data-stat="eficiencia"]');
-
-        if (elTotal) elTotal.textContent = `${data.total_acumulado || 0} hrs`;
-        if (elPendientes) elPendientes.textContent = data.empleados_pendientes || 0;
-        if (elAprobados) elAprobados.textContent = data.empleados_aprobados || 0;
-        if (elEficiencia) elEficiencia.textContent = `${data.eficiencia || 0}%`;
-
-    } catch (error) {
-        console.error("Error al cargar tarjetas del dashboard:", error);
+        document.getElementById('kpi-total').textContent = `${data.total_horas.toFixed(2)} hrs`;
+        document.getElementById('kpi-pendientes').textContent = `${data.empleados_pendientes}`;
+        document.getElementById('kpi-aprobadas').textContent = `${data.empleados_aprobadas}`;
+        document.getElementById('kpi-eficiencia').textContent = `${data.eficiencia.toFixed(2)}%`;
+    } catch (err) {
+        console.error('No se pudieron cargar los datos del servidor:', err);
+        document.getElementById('kpi-total').textContent = 'Error';
+        document.getElementById('kpi-pendientes').textContent = 'Error';
+        document.getElementById('kpi-aprobadas').textContent = 'Error';
+        document.getElementById('kpi-eficiencia').textContent = 'Error';
     }
 
-    // Cargamos también la tabla inferior
-    await cargarDashboardEmpleados();
+    cargarDashboardEmpleados();
 }
 
 // 2. Carga la tabla inferior de resultados
 async function cargarDashboardEmpleados() {
-    const tbody = document.getElementById('dashboard-empleados-body') || document.querySelector('table tbody');
+    const tabla = document.getElementById('dashboard-empleados-table');
+    if (!tabla) return;
+
+    const tbody = tabla.querySelector('tbody');
     if (!tbody) return;
 
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="5" style="text-align:center; padding:16px;">Cargando resultados de empleados...</td>
+        </tr>
+    `;
+
     try {
+        // Hacemos el fetch directo a nuestro nuevo endpoint seguro
         const response = await fetch(`${API_URL}/api/dashboard-empleados`, {
-            headers: construirHeadersAuth() // 👈 Requisito clave
+            headers: construirHeadersAuth()
         });
 
-        if (response.status === 401) {
-            limpiarSesionAuth();
-            window.location.href = 'login.html';
-            return;
-        }
-
         if (!response.ok) {
-            throw new Error(`Error HTTP ${response.status}`);
+            throw new Error(`Error al cargar empleados (${response.status})`);
         }
 
         const empleados = await response.json();
-
         if (!Array.isArray(empleados) || empleados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="4" style="text-align:center; padding:1rem; color:#64748b;">
-                        No hay datos de empleados disponibles.
-                    </td>
-                </tr>`;
+                    <td colspan="5" style="text-align:center; padding:16px;">No se encontraron empleados a tu cargo.</td>
+                </tr>
+            `;
             return;
         }
 
-        tbody.innerHTML = empleados.map(emp => `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding:12px;">#${emp.id || emp.id_empleado}</td>
-                <td style="padding:12px;">${emp.nombre || emp.nombre_empleado}</td>
-                <td style="padding:12px;">${emp.horas || 0} hrs</td>
-                <td style="padding:12px;">${emp.salidas_tempranas || 0}</td>
-            </tr>
-        `).join('');
-
+        tbody.innerHTML = '';
+        
+        // Renderizamos los empleados autorizados
+        empleados.slice(0, 8).forEach(emp => {
+            const colorHoras = emp.total_horas >= 0 ? '#124416' : '#c0392b';
+            tbody.innerHTML += `
+                <tr>
+                    <td>${emp.id}</td>
+                    <td>${emp.nombre}</td>
+                    <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
+                    <td>${emp.salidas_temprano || 0}</td>
+                </tr>
+            `;
+        });
     } catch (error) {
-        console.error("Error al cargar tabla del dashboard:", error);
+        console.error('Error al cargar empleados en el dashboard:', error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" style="text-align:center; padding:1rem; color:#b91c1c;">
-                    No se pudieron cargar los datos del servidor.
-                </td>
-            </tr>`;
+                <td colspan="5" style="color: red; text-align: center; font-weight: bold;">No se pudieron cargar los resultados de empleados.</td>
+            </tr>
+        `;
     }
 }
-
-// 💡 EXPOSICIÓN OBLIGATORIA A WINDOW
-window.cargarDashboard = cargarDashboard;
-window.cargarDashboardEmpleados = cargarDashboardEmpleados;
+// Ejecutar al cargar la vista
+// La función se llamará desde loadPage() cuando la vista dashboard se cargue.
 
 async function cargarEmpleadosParaRegistro() {
     try {
-        const respuesta = await fetch(`${API_URL}/api/empleados?all=true`, {
-            headers: construirHeadersAuth(),
-        });
-        if (!respuesta.ok) {
-            let mensajeError = `No se pudo cargar la lista de empleados para registrar horas (${respuesta.status})`;
-            try {
-                const errorJson = await respuesta.json();
-                if (errorJson?.detail) {
-                    mensajeError += `: ${errorJson.detail}`;
-                }
-            } catch (_e) {
-                // Ignore JSON parse errors for non-JSON responses
-            }
-            throw new Error(mensajeError);
-        }
-
-        const empleados = await respuesta.json();
-        // Aplicar cambios visuales locales igual que en la vista de empleados
-        cargarEmpleadosLocales();
-        empleadosCache = aplicarCambiosVisuales(Array.isArray(empleados) ? empleados : []);
-        actualizarSelectEmpleados();
-        configurarDropdownEmpleados();
-    } catch (error) {
-        console.error("Error al cargar empleados para registro:", error);
-        const menuEmpleado = document.getElementById("reg-empleado-menu");
-        if (menuEmpleado) {
-            menuEmpleado.innerHTML = `<div style="padding: 12px; text-align: center; color: #999;">No se pudo cargar la lista de empleados</div>`;
-        }
-    }
-}
-
-function validarEmail(email) {
-    const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return regex.test(email);
-}
-
-function validarTelefono(telefono) {
-    const regex = /^[\d\s\-\+\(\)]+$/;
-    return regex.test(telefono) && telefono.length >= 10;
-}
-
-function evaluarFuerzaContraseña(password) {
-    let fuerza = 0;
-    if (password.length >= 8) fuerza++;
-    if (/[A-Z]/.test(password)) fuerza++;
-    if (/[0-9]/.test(password)) fuerza++;
-    if (/[!@#$%^&*]/.test(password)) fuerza++;
-    return fuerza;
-}
-
-function mostrarFuerzaContraseña(password) {
-    const strengthDiv = document.getElementById('password-strength');
-    if (!strengthDiv) return;
-    
-    if (!password) {
-        strengthDiv.style.display = 'none';
-        return;
-    }
-    
-    const fuerza = evaluarFuerzaContraseña(password);
-    const textos = ['Muy débil', 'Débil', 'Normal', 'Fuerte', 'Muy fuerte'];
-    const colores = ['#e74c3c', '#e67e22', '#f39c12', '#27ae60', '#16a085'];
-    
-    strengthDiv.style.display = 'block';
-    strengthDiv.textContent = textos[fuerza];
-    strengthDiv.style.backgroundColor = colores[fuerza];
-    strengthDiv.style.color = 'white';
-}
-
-async function cargarPerfil() {
-    try {
-        const response = await fetch(`${API_URL}/api/perfil`, {
-            headers: construirHeadersAuth(),
-        });
-        if (!response.ok) {
-            throw new Error(`No se pudo cargar el perfil (${response.status})`);
-        }
+        const response = await fetch(`${API_URL}/api/perfil`, { headers: construirHeadersAuth() });
+        if (!response.ok) throw new Error('No se pudo cargar el perfil');
+        
         const perfil = await response.json();
-        document.getElementById('nombre').value = perfil.nombre || '';
-        document.getElementById('rol').value = perfil.rol || 'Empleado';
-        document.getElementById('email').value = perfil.email || '';
-        document.getElementById('telefono').value = perfil.telefono || '';
-        document.getElementById('departamento').value = perfil.departamento || '';
-        document.getElementById('sucursal').value = perfil.sucursal || '';
-        document.getElementById('direccion').value = perfil.direccion || '';
-        document.getElementById('perfil-nombre').textContent = perfil.nombre || 'Usuario';
-        document.getElementById('perfil-rol').textContent = perfil.rol || 'Empleado';
+        
+        // Formularios básicos
+        if(document.getElementById('nombre')) document.getElementById('nombre').value = perfil.nombre || '';
+        if(document.getElementById('rol')) document.getElementById('rol').value = perfil.rol || 'Empleado';
+        if(document.getElementById('email')) document.getElementById('email').value = perfil.correo || '';
+        if(document.getElementById('perfil-nombre')) document.getElementById('perfil-nombre').textContent = perfil.nombre || 'Usuario';
+        if(document.getElementById('perfil-rol')) document.getElementById('perfil-rol').textContent = perfil.rol || 'Empleado';
+
+        // Llenar las nuevas tarjetas KPI que diseñamos
+        const kpiValues = document.querySelectorAll('.kpi-value');
+        if (kpiValues.length >= 3) {
+            kpiValues[0].textContent = `${(perfil.horas_historicas || 0).toFixed(1)}h`;
+            kpiValues[1].textContent = `${(perfil.horas_consumidas || 0).toFixed(1)}h`;
+            kpiValues[2].textContent = `${(perfil.saldo_disponible || 0).toFixed(1)}h`;
+        }
+
     } catch (error) {
         console.warn('Perfil no disponible:', error);
     }
@@ -807,31 +658,14 @@ function inicializarPerfil() {
     const inputFoto = document.getElementById('input-foto');
     const avatar = document.getElementById('perfil-avatar');
     const formPerfil = document.getElementById('form-perfil');
-    const notice = document.getElementById('perfil-notice');
-
-    const modalPassword = document.getElementById('modal-password');
-    const btnEditarPassword = document.getElementById('btn-editar-password');
-    const closeModalPassword = document.getElementById('close-modal-password');
-    const cancelarModalPassword = document.getElementById('cancelar-modal-password');
-    const formPassword = document.getElementById('form-password');
-    const errorPassword = document.getElementById('error-password');
-    const perfilNombreTitle = document.getElementById('perfil-nombre');
-    const actualPassword = document.getElementById('actual-password');
-    const nuevaPassword = document.getElementById('nueva-password');
-    const confirmPassword = document.getElementById('confirm-password');
-
-    const showModal = (modal) => modal?.classList.add('show');
-    const hideModal = (modal) => modal?.classList.remove('show');
-    const showNotice = (message) => {
-        if (!notice) return;
-        notice.textContent = message;
-        notice.classList.add('show');
-        setTimeout(() => notice.classList.remove('show'), 3200);
-    };
-
-    if (btnCambiarFoto && inputFoto) {
-        btnCambiarFoto.addEventListener('click', () => inputFoto.click());
+    
+    // Conexión del botón Solicitar Salida del Perfil
+    const btnSolicitar = document.querySelector('.btn-solicitar');
+    if (btnSolicitar) {
+        btnSolicitar.onclick = abrirModalSolicitudEmpleado;
     }
+
+    if (btnCambiarFoto && inputFoto) btnCambiarFoto.addEventListener('click', () => inputFoto.click());
 
     if (inputFoto && avatar) {
         inputFoto.addEventListener('change', () => {
@@ -847,140 +681,26 @@ function inicializarPerfil() {
         });
     }
 
-    if (btnEditarPassword) {
-        btnEditarPassword.addEventListener('click', () => {
-            showModal(modalPassword);
-            if (errorPassword) errorPassword.textContent = '';
-            if (actualPassword) {
-                actualPassword.value = '';
-                actualPassword.focus();
-            }
-            if (nuevaPassword) {
-                nuevaPassword.value = '';
-                mostrarFuerzaContraseña('');
-            }
-            if (confirmPassword) confirmPassword.value = '';
-        });
-    }
-
-    if (nuevaPassword) {
-        nuevaPassword.addEventListener('input', () => mostrarFuerzaContraseña(nuevaPassword.value));
-    }
-
-    [closeModalPassword, cancelarModalPassword].forEach((button) => {
-        if (button) button.addEventListener('click', () => hideModal(modalPassword));
-    });
-
-    if (formPassword) {
-        formPassword.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            const actual = actualPassword?.value.trim() || '';
-            const nueva = nuevaPassword?.value.trim() || '';
-            const confirmar = confirmPassword?.value.trim() || '';
-
-            if (!actual || !nueva || !confirmar) {
-                if (errorPassword) errorPassword.textContent = 'Completa todos los campos.';
-                return;
-            }
-            if (nueva.length < 8) {
-                if (errorPassword) errorPassword.textContent = 'La contraseña debe tener mínimo 8 caracteres.';
-                return;
-            }
-            const fuerza = evaluarFuerzaContraseña(nueva);
-            if (fuerza < 2) {
-                if (errorPassword) errorPassword.textContent = 'La contraseña es muy débil. Incluye mayúsculas, números y símbolos.';
-                return;
-            }
-            if (nueva !== confirmar) {
-                if (errorPassword) errorPassword.textContent = 'Las contraseñas no coinciden.';
-                return;
-            }
-            
-            try {
-                const response = await fetch(`${API_URL}/api/perfil-password`, {
-                    method: 'POST',
-                    headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify({
-                        actual_password: actual,
-                        new_password: nueva,
-                    }),
-                });
-                
-                if (!response.ok) {
-                    const error = await response.json();
-                    if (errorPassword) errorPassword.textContent = error.detail || 'Error al cambiar contraseña.';
-                    return;
-                }
-                
-                hideModal(modalPassword);
-                showNotice('Contraseña actualizada correctamente');
-                formPassword.reset();
-                mostrarFuerzaContraseña('');
-            } catch (error) {
-                console.error('Error al cambiar contraseña:', error);
-                if (errorPassword) errorPassword.textContent = 'Error en la conexión. Intenta de nuevo.';
-            }
-        });
-    }
-
     if (formPerfil) {
         formPerfil.addEventListener('submit', async (event) => {
             event.preventDefault();
             const nombre = document.getElementById('nombre')?.value.trim() || '';
-            const rol = document.getElementById('rol')?.value.trim() || '';
             const email = document.getElementById('email')?.value.trim() || '';
-            const telefono = document.getElementById('telefono')?.value.trim() || '';
-            const departamento = document.getElementById('departamento')?.value.trim() || '';
-            const sucursal = document.getElementById('sucursal')?.value.trim() || '';
-            const direccion = document.getElementById('direccion')?.value.trim() || '';
 
-            const emailError = document.getElementById('email-error');
-            const telefonoError = document.getElementById('telefono-error');
-            if (emailError) emailError.style.display = 'none';
-            if (telefonoError) telefonoError.style.display = 'none';
-
-            let tieneError = false;
-            if (!nombre) {
-                showNotice('Ingresa tu nombre completo.');
-                return;
-            }
-            if (!validarEmail(email)) {
-                if (emailError) emailError.style.display = 'block';
-                tieneError = true;
-            }
-            if (!validarTelefono(telefono)) {
-                if (telefonoError) telefonoError.style.display = 'block';
-                tieneError = true;
-            }
-
-            if (tieneError) return;
+            if (!nombre || !email) return alert('Completa los campos');
 
             try {
-                const response = await fetch(`${API_URL}/api/perfil`, {
+                const response = await fetch(`${API_URL}/api/perfil/actualizar`, {
                     method: 'POST',
                     headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
-                    body: JSON.stringify({
-                        nombre,
-                        rol,
-                        email,
-                        telefono,
-                        departamento,
-                        sucursal,
-                        direccion,
-                    }),
+                    body: JSON.stringify({ nombre, correo: email }),
                 });
 
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'No se pudo guardar el perfil.');
-                }
-
-                const perfil = await response.json();
-                if (perfilNombreTitle) perfilNombreTitle.textContent = perfil.nombre || 'Usuario';
-                showNotice('Perfil actualizado correctamente');
+                if (!response.ok) throw new Error('Error al guardar');
+                alert('Perfil actualizado correctamente');
+                cargarPerfil(); // Recargamos para reflejar cambios
             } catch (error) {
-                console.error('Error al guardar perfil:', error);
-                showNotice(error.message);
+                alert('Error al guardar perfil.');
             }
         });
     }
@@ -1210,23 +930,25 @@ async function enviarRegistroHoras(event) {
     const inputMotivo = document.getElementById("reg-motivo");
     const inputJefeDirecto = document.getElementById("reg-jefe-directo");
     const inputJefeSuperior = document.getElementById("reg-jefe-superior");
-
-    if (!selectEmpleado || !inputHoras || !inputMotivo) return;
+    if (!selectEmpleado || !inputHoras || !inputMotivo || !inputJefeDirecto || !inputJefeSuperior) return;
 
     const numeroEmpleado = parseInt(selectEmpleado.value, 10);
     const cantidadHoras = parseFloat(inputHoras.value);
     const diasSeleccionados = Array.from(registroFechasSeleccionadas);
     const motivo = inputMotivo.value.trim();
-
-    // Obtenemos los valores de los jefes si es que los escribieron
-    const idJefeDirectoRaw = inputJefeDirecto ? inputJefeDirecto.value.trim() : '';
-    const idJefeSuperiorRaw = inputJefeSuperior ? inputJefeSuperior.value.trim() : '';
+    const idJefeDirectoRaw = (inputJefeDirecto.value || '').trim();
+    const idJefeSuperiorRaw = (inputJefeSuperior.value || '').trim();
+    const idJefeDirecto = idJefeDirectoRaw ? parseInt(idJefeDirectoRaw, 10) : null;
+    const idJefeSuperior = idJefeSuperiorRaw ? parseInt(idJefeSuperiorRaw, 10) : null;
+    
+    
 
     if (Number.isNaN(numeroEmpleado) || Number.isNaN(cantidadHoras) || cantidadHoras <= 0) {
         mostrarNotificacion('warning', 'Campos incompletos', 'Selecciona un empleado válido e ingresa una cantidad de horas mayor a cero.');
         return;
     }
 
+    // 🛡️ NUEVA VALIDACIÓN: Evita que se envíe si el motivo tiene menos de 5 caracteres (Error 422 anterior)
     if (motivo.length < 5) {
         mostrarNotificacion('warning', 'Motivo muy corto', 'Por favor, escribe un motivo más detallado (mínimo 5 caracteres).');
         return;
@@ -1240,25 +962,24 @@ async function enviarRegistroHoras(event) {
     try {
         let exitos = 0;
         let errores = 0;
-        let ultimoMensajeError = '';
 
         for (const fecha of diasSeleccionados) {
-            // 1. Armamos el payload base
+            // 🛠️ CORRECCIÓN CLAVE: Volvemos a cambiar "fecha_solicitud" por "fecha" para que coincida con tu backend
             const payload = {
                 id_empleado: Number(numeroEmpleado),
-                fecha: fecha,
+                fecha: fecha,                                      // 👈 ¡LISTO! Ahora coincide con el backend
                 horas_solicitadas: parseFloat(cantidadHoras),
-                motivo: motivo
+                motivo: motivo,
+                id_jefe_directo: idJefeDirecto,
+                id_jefe_superior: idJefeSuperior
             };
 
-            // 2. Solo agregamos jefes si se especificaron
-            if (idJefeDirectoRaw !== '' && !isNaN(parseInt(idJefeDirectoRaw, 10))) {
-                payload.id_jefe_directo = parseInt(idJefeDirectoRaw, 10);
-            }
-
-            if (idJefeSuperiorRaw !== '' && !isNaN(parseInt(idJefeSuperiorRaw, 10))) {
-                payload.id_jefe_superior = parseInt(idJefeSuperiorRaw, 10);
-            }
+            //if (idJefeDirecto !== null && !Number.isNaN(idJefeDirecto)) {
+                payload.id_jefe_directo = idJefeDirecto;
+            //}
+            //if (idJefeSuperior !== null && !Number.isNaN(idJefeSuperior)) {
+                payload.id_jefe_superior = idJefeSuperior;
+            //}
 
             const respuesta = await fetch(`${API_URL}/api/registros/solicitudes`, {
                 method: "POST",
@@ -1267,9 +988,10 @@ async function enviarRegistroHoras(event) {
             });
 
             if (!respuesta.ok) {
+                // Si quieres ver en la consola por qué falló una de las fechas:
                 const errorData = await respuesta.json().catch(() => ({}));
                 console.error(`Error en fecha ${fecha}:`, errorData);
-                ultimoMensajeError = errorData.detail || 'Error al procesar la solicitud.';
+                
                 errores += 1;
                 continue;
             }
@@ -1277,28 +999,24 @@ async function enviarRegistroHoras(event) {
             exitos += 1;
         }
 
-        // 3. Notificaciones según el resultado final
-        if (exitos > 0 && errores === 0) {
-            mostrarNotificacion('success', 'Éxito', `Se crearon ${exitos} solicitud(es) correctamente.`);
-        } else if (exitos > 0 && errores > 0) {
+        // Mostramos las notificaciones correspondientes según el resultado
+        if (exitos && !errores) {
+            mostrarNotificacion('success', 'Éxito', 'Asignación de horas guardada correctamente.');
+        } else if (exitos && errores) {
             mostrarNotificacion('warning', 'Registro parcial', `Se crearon ${exitos} solicitud(es) correctamente, pero fallaron ${errores}.`);
-        } else {
-            mostrarNotificacion('error', 'Errores en registro', ultimoMensajeError || 'No se pudieron crear las solicitudes.');
+        } else if (errores) {
+            mostrarNotificacion('error', 'Errores en registro', `No se pudieron crear las solicitudes.`);
         }
 
-        // 4. Limpieza de interfaz si al menos uno tuvo éxito
+        // Limpieza y actualización de la vista si hubo al menos un éxito
         if (exitos > 0) {
             event.target.reset();
-            if (typeof registroFechasSeleccionadas !== 'undefined') registroFechasSeleccionadas.clear();
-            if (typeof actualizarResumenFechasRegistro === 'function') actualizarResumenFechasRegistro();
-            if (typeof construirCalendarioRegistro === 'function' && typeof registroCalendarioMes !== 'undefined') {
-                construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
-            }
-            if (typeof mostrarHorasActuales === 'function') mostrarHorasActuales();
-            if (typeof cargarSolicitudesNotificaciones === 'function') cargarSolicitudesNotificaciones();
-            if (typeof cargarSolicitudesReposicion === 'function') await cargarSolicitudesReposicion();
+            registroFechasSeleccionadas.clear();
+            actualizarResumenFechasRegistro();
+            construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
+            mostrarHorasActuales();
+            await cargarSolicitudesReposicion();
         }
-
     } catch (error) {
         console.error("Error al registrar horas:", error);
         mostrarNotificacion('error', 'Error', `No se pudo guardar la solicitud: ${error.message}`);
@@ -1311,63 +1029,61 @@ function obtenerColorEstado(estado) {
 }
 
 function renderSolicitudesReposicion(solicitudes) {
-    // 💡 Intenta buscar el contenedor de la tabla de notificaciones o de solicitudes
-    const tbody = document.getElementById('registros-solicitudes-body') 
-               || document.getElementById('notificaciones-solicitudes-body')
-               || document.querySelector('.bandeja-solicitudes table tbody');
+    const tbody = document.getElementById('registros-solicitudes-body');
+    if (!tbody) return;
 
-    if (!tbody) {
-        console.error("❌ No se encontró el elemento <tbody> en el HTML.");
-        return;
-    }
-
-    // 1. Manejo de lista vacía (limpia el "Cargando...")
     if (!Array.isArray(solicitudes) || !solicitudes.length) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="8" style="text-align:center; padding:14px; color:#64748b;">
-                    No hay solicitudes pendientes.
-                </td>
+                <td colspan="8" style="text-align:center; padding:14px;">No hay solicitudes para mostrar.</td>
             </tr>
         `;
         return;
     }
 
-    // 2. Leemos la sesión
+    // 🕵️‍♂️ Obtenemos y decodificamos el usuario logueado desde el sessionStorage
     let usuarioLogueado = null;
     try {
         const authUserRaw = sessionStorage.getItem("auth_user");
-        if (authUserRaw) usuarioLogueado = JSON.parse(authUserRaw);
+        if (authUserRaw) {
+            usuarioLogueado = JSON.parse(authUserRaw);
+        }
     } catch (e) {
         console.error("Error al leer el usuario de la sesión:", e);
     }
 
+    // 🎯 Leemos las propiedades exactas que confirmamos en la consola: 'id' y 'rol'
     const rolActual = String(usuarioLogueado?.rol || "").toLowerCase();
     const idUsuarioActual = Number(usuarioLogueado?.id || 0);
-    const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
 
-    // 3. Renderizado directo
-    tbody.innerHTML = solicitudes.map((sol) => {
+    tbody.innerHTML = '';
+    solicitudes.forEach((sol) => {
         const estadoJD = String(sol.estado_jefe_directo || 'pendiente').toLowerCase();
         const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
         const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
+        
+        // ID del creador de la solicitud (Mariana = 35)
         const idCreador = Number(sol.id_empleado); 
 
-        const puedeAccionar = estadoFinal === 'pendiente' && esJefeOAdmin && (idUsuarioActual !== idCreador);
-        const nombreEmpleado = sol.nombre_empleado || `Empleado #${sol.id_empleado}`;
-        const fecha = sol.fecha || sol.fecha_solicitud || '';
+        // 🛡️ CONDICIÓN DE ACCIÓN PERFECTA:
+        // - Debe estar pendiente la solicitud.
+        // - El usuario actual debe tener rol de 'jefe' o 'admin', O en su defecto, no debe ser el creador de la solicitud.
+        const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
+        const esAutorizador = idUsuarioActual > 0 && idUsuarioActual !== idCreador;
 
-        return `
+        const puedeAccionar = estadoFinal === 'pendiente' && (esJefeOAdmin || esAutorizador);
+
+        tbody.innerHTML += `
             <tr>
-                <td><strong>#${sol.id_solicitud}</strong></td>
-                <td>${nombreEmpleado}</td>
-                <td>${fecha}</td>
-                <td>${Number(sol.horas_solicitadas || 0).toFixed(2)} hrs</td>
+                <td>${sol.id_solicitud}</td>
+                <td>${sol.id_empleado}</td>
+                <td>${sol.fecha_solicitud || sol.fecha || ''}</td>
+                <td>${Number(sol.horas_solicitadas || 0).toFixed(2)}</td>
                 <td style="font-weight:600; color:${obtenerColorEstado(estadoJD)};">${estadoJD}</td>
                 <td style="font-weight:600; color:${obtenerColorEstado(estadoJS)};">${estadoJS}</td>
                 <td style="font-weight:700; color:${obtenerColorEstado(estadoFinal)};">${estadoFinal}</td>
-                <td>
-                    ${puedeAccionar ? `
+                    <td>
+                        ${puedeAccionar ? `
                         <button type="button" 
                                 class="btn-autorizar-sol" 
                                 onclick="procesarAutorizacion(${sol.id_solicitud}, 'aprobar')" 
@@ -1380,544 +1096,80 @@ function renderSolicitudesReposicion(solicitudes) {
                                 style="border:none; border-radius:8px; padding:6px 10px; background:#b91c1c; color:#fff; cursor:pointer;">
                             Rechazar
                         </button>
-                    ` : `<span style="color:#64748b; font-size:13px;">Sin acciones</span>`}
-                </td>
+                        ` : `<span style="color:#64748b;">Sin acciones</span>`}
+                    </td>
             </tr>
         `;
-    }).join('');
+    });
 }
 
 // Función global para aprobar o rechazar solicitudes
 window.procesarAutorizacion = async function(idSolicitud, accion) {
-    // 1. Pedimos confirmación al usuario
     const confirmacion = confirm(`¿Estás seguro de que deseas ${accion} la solicitud #${idSolicitud}?`);
     if (!confirmacion) return;
 
     try {
-        console.log(`Procesando solicitud ${idSolicitud} con acción: ${accion}`);
-
-        // 2. Enviamos la petición a tu backend de Python (FastAPI)
-        // ⚠️ Nota: Revisa que esta URL coincida con la que tienes en Python
         const response = await fetch(`${API_URL}/api/registros/solicitudes/${idSolicitud}/estado`, {
-            method: 'PUT', // o POST, dependiendo de cómo lo tengas en Python
-            headers: construirHeadersAuth({
-                'Content-Type': 'application/json'
-            }),
-            body: JSON.stringify({ estado: accion }) // Mandamos 'aprobar' o 'rechazar'
+            method: 'PUT', 
+            headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
+            body: JSON.stringify({ estado: accion }) 
         });
 
-        // 3. Manejamos la respuesta
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.detail || `Error del servidor (${response.status})`);
+            throw new Error(errorData.detail || `Error del servidor`);
         }
 
-        // 4. Si todo salió bien, avisamos y recargamos la tabla
-        alert(`La solicitud ha sido marcada como: ${accion}`);
-        await cargarSolicitudesReposicion(); // Refresca la tabla para que cambie el estado y desaparezcan los botones
-
+        alert(`La solicitud ha sido procesada con éxito.`);
+        await cargarAutorizacionesJefe(); 
     } catch (error) {
-        console.error("Error al procesar la autorización:", error);
-        alert(`No se pudo ${accion} la solicitud. Error: ${error.message}`);
+        alert(`No se pudo procesar. Error: ${error.message}`);
     }
 };
 
-async function cargarSolicitudesReposicion() {
-    const tbody = document.getElementById('registros-solicitudes-body');
-    const filtroEstado = document.getElementById('registros-filtro-estado');
-    if (!tbody) return;
-
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="8" style="text-align:center; padding:14px;">Cargando solicitudes...</td>
-        </tr>
-    `;
-
-    // 1. Obtenemos el valor del filtro
-    let estado = filtroEstado?.value?.trim() || '';
-
-    // 🎯 TRADUCTOR DE ESTADOS (Mapeo de plural/femenino a singular/masculino)
-    const estadoLower = estado.toLowerCase();
-    if (estadoLower === 'aprobadas' || estadoLower === 'aprobada' || estadoLower === 'aprobado') {
-        estado = 'aprobada';
-    } else if (estadoLower === 'rechazadas' || estadoLower === 'rechazada' || estadoLower === 'rechazado') {
-        estado = 'rechazada';
-    } else if (estadoLower === 'pendientes' || estadoLower === 'pendiente') {
-        estado = 'pendiente';
-    } else if (estadoLower === 'todos' || estadoLower === 'todas') {
-        estado = '';
-    }
-
-    // 2. Construimos la query con el estado limpio
-    const query = estado ? `?estado=${encodeURIComponent(estado)}` : '';
-
-    try {
-        const response = await fetch(`${API_URL}/api/registros/solicitudes${query}`, {
-            headers: construirHeadersAuth(),
-        });
-
-        if (response.status === 401) {
-            limpiarSesionAuth();
-            window.location.href = 'login.html';
-            return;
-        }
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.detail || `No se pudieron consultar solicitudes (${response.status})`);
-        }
-
-        const data = await response.json();
-        renderSolicitudesReposicion(data);
-    } catch (error) {
-        console.error('Error al cargar solicitudes:', error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align:center; padding:14px; color:#b91c1c;">${error.message || 'No se pudieron cargar las solicitudes.'}</td>
-            </tr>
-        `;
-    }
-}
-
-async function autorizarSolicitudReposicion(idSolicitud, accion, comentario = '') {
-    try {
-        const response = await fetch(`${API_URL}/api/registros/solicitudes/${idSolicitud}/autorizacion`, {
-            method: 'PATCH',
-            headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
-            body: JSON.stringify({
-                accion,
-                comentario,
-            }),
-        });
-
-        if (response.status === 401) {
-            limpiarSesionAuth();
-            window.location.href = 'login.html';
-            return;
-        }
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.detail || `No se pudo ${accion} la solicitud.`);
-        }
-
-        mostrarNotificacion('success', 'Solicitud actualizada', `La solicitud ${idSolicitud} se ${accion === 'aprobar' ? 'aprobó' : 'rechazó'} correctamente.`);
-        await cargarSolicitudesReposicion();
-    } catch (error) {
-        console.error('Error al autorizar solicitud:', error);
-        mostrarNotificacion('error', 'Error', error.message || 'No fue posible actualizar la solicitud.');
-    }
-}
-
 function inicializarEmpleados() {
-    const filtroIds = document.getElementById("filtro-ids");
-    const btnBuscar = document.getElementById("btn-buscar-empleados");
-    const btnReset = document.getElementById("btn-reset-empleados");
-    const btnAgregarEmpleado = document.getElementById("btn-agregar-empleado");
     const btnRestaurarCambios = document.getElementById("btn-restaurar-cambios");
-    const btnCerrarEmpleado = document.getElementById("btn-cerrar-empleado");
-    const btnCancelarEmpleado = document.getElementById("btn-cancelar-empleado");
-    const formEmpleado = document.getElementById("form-empleado");
-    const formRegistro = document.getElementById("form-registrar-horas");
+    
+    if (btnRestaurarCambios) btnRestaurarCambios.addEventListener("click", limpiarCambiosVisualesEmpleados);
 
-    console.log("Inicializando empleados...");
-    console.log("filtroIds:", filtroIds, "btnBuscar:", btnBuscar, "btnReset:", btnReset, "btnAgregarEmpleado:", btnAgregarEmpleado, "btnCerrarEmpleado:", btnCerrarEmpleado, "formEmpleado:", formEmpleado);
-
-    if (btnBuscar && btnReset && filtroIds) {
-        btnBuscar.addEventListener("click", (event) => {
-            event.preventDefault();
-            const raw = filtroIds.value.trim();
-            if (!raw) {
-                mostrarNotificacion('warning', 'ID requerido', 'Ingresa un ID de empleado para buscar.');
-                return;
-            }
-
-            const idsArray = raw.split(/[\s,;]+/).map(s => s.trim()).filter(s => /^\d+$/.test(s));
-            if (!idsArray.length) {
-                mostrarNotificacion('warning', 'IDs inválidos', 'Introduce IDs numéricos válidos (ejemplo: 55 o 55,56). Si quieres todos, deja el campo vacío y presiona Mostrar todos.');
-                return;
-            }
-
-            // Sólo permitir IDs que estén actualmente visibles en la tabla (empleadosCache)
-            const visibleIdsSet = new Set(empleadosCache.map(e => String(e.id)));
-            const allowed = idsArray.filter(s => visibleIdsSet.has(s));
-            if (!allowed.length) {
-                mostrarNotificacion('info', 'Sin coincidencias', 'Ningún ID ingresado coincide con los empleados mostrados en pantalla.');
-                return;
-            }
-
-            const idsParam = allowed.join(",");
-            cargarEmpleados(idsParam);
-        });
-
-        filtroIds.addEventListener("keydown", (event) => {
-            if (event.key === "Enter") {
-                event.preventDefault();
-                btnBuscar.click();
-            }
-        });
-
-        btnReset.addEventListener("click", (event) => {
-            event.preventDefault();
-            filtroIds.value = "";
-            cargarEmpleados();
-        });
-    }
-
-    if (btnAgregarEmpleado) {
-        btnAgregarEmpleado.addEventListener("click", () => abrirModalEmpleado('add'));
-    }
-
-    if (btnRestaurarCambios) {
-        btnRestaurarCambios.addEventListener("click", limpiarCambiosVisualesEmpleados);
-    }
-
-    if (btnCerrarEmpleado) {
-        btnCerrarEmpleado.addEventListener("click", cerrarModalEmpleado);
-    }
-
-    if (btnCancelarEmpleado) {
-        btnCancelarEmpleado.addEventListener("click", cerrarModalEmpleado);
-    }
-
-    const tablaEmpleados = document.getElementById("tabla-empleados");
-    if (tablaEmpleados) {
-        tablaEmpleados.addEventListener("click", (event) => {
-            const horarioBtn = event.target.closest(".ver-horario-btn");
-            const editarBtn = event.target.closest(".editar-empleado-btn");
-            const eliminarBtn = event.target.closest(".eliminar-empleado-btn");
-
-            if (horarioBtn) {
-                const empleadoId = horarioBtn.getAttribute("data-emp-id");
-                if (empleadoId) {
-                    obtenerHorarioEmpleado(empleadoId);
-                }
-                return;
-            }
-
-            if (editarBtn) {
-                const empleadoId = editarBtn.getAttribute("data-emp-id");
-                const empleado = empleadosCache.find(emp => String(emp.id) === String(empleadoId));
-                if (empleado) {
-                    abrirModalEmpleado('edit', empleado);
-                }
-                return;
-            }
-
-            if (eliminarBtn) {
-                const empleadoId = eliminarBtn.getAttribute("data-emp-id");
-                if (empleadoId) {
-                    eliminarEmpleadoVisual(empleadoId);
-                }
-                return;
-            }
-        });
-    }
-
-    const btnCerrarHorario = document.getElementById("btn-cerrar-horario");
-    if (btnCerrarHorario) {
-        btnCerrarHorario.addEventListener("click", cerrarModalHorario);
-    }
-
-    if (formEmpleado) {
-        formEmpleado.addEventListener("submit", async (event) => {
-            event.preventDefault();
-            const idValue = document.getElementById('empleado-id')?.value;
-            const nombreValue = document.getElementById('empleado-nombre')?.value.trim();
-            const horasValue = parseFloat(document.getElementById('empleado-horas')?.value || '0');
-            const salidasValue = parseInt(document.getElementById('empleado-salidas')?.value || '0', 10);
-
-            if (!nombreValue) {
-                mostrarNotificacion('warning', 'Nombre requerido', 'Ingresa el nombre del empleado.');
-                return;
-            }
-
-            const empleado = {
-                id: idValue ? (Number(idValue) || idValue) : obtenerSiguienteIdTemporal(),
-                nombre: nombreValue,
-                total_horas: Number.isNaN(horasValue) ? 0 : horasValue,
-                salidas_temprano: Number.isNaN(salidasValue) ? 0 : salidasValue,
-            };
-
-            if (empleadoModalMode === 'edit' && empleadoModalEditingId !== null) {
-                const resultado = await actualizarEmpleadoEnBD(empleado);
-                if (!resultado) {
-                    return;
-                }
-            }
-
-            guardarEmpleadoVisual(empleado);
-            cerrarModalEmpleado();
-        });
-    }
-
-    if (formRegistro) {
-        formRegistro.addEventListener("submit", enviarRegistroHoras);
-    }
-
-    const btnConfirmacionCancelar = document.getElementById("btn-confirmacion-cancelar");
-    const btnConfirmacionConfirmar = document.getElementById("btn-confirmacion-confirmar");
-    const modalConfirmacion = document.getElementById("modal-confirmacion");
-
-    if (btnConfirmacionCancelar) {
-        btnConfirmacionCancelar.addEventListener("click", cerrarModalConfirmacion);
-    }
-
-    if (btnConfirmacionConfirmar) {
-        btnConfirmacionConfirmar.addEventListener("click", () => {
-            if (empleadoAEliminar === 'restore_all') {
-                confirmarLimpiar();
-            } else {
-                confirmarEliminacion();
-            }
-        });
-    }
-
-    if (modalConfirmacion) {
-        modalConfirmacion.addEventListener("click", (event) => {
-            if (event.target === modalConfirmacion) {
-                cerrarModalConfirmacion();
-            }
-        });
-    }
-
-    // Cargar empleados en la tabla
+    // Cargar la vista de tabla de equipo general que ya tenías
     cargarEmpleados();
+    
+    // Cargar la nueva bandeja de autorizaciones
+    cargarAutorizacionesJefe();
 }
 
 async function inicializarRegistros() {
     const registroForm = document.getElementById("registroForm");
-    const selectEmpleado = document.getElementById("reg-empleado");
     const filtroEstado = document.getElementById('registros-filtro-estado');
-    const btnRecargar = document.getElementById('btn-recargar-solicitudes');
 
-    console.log("Inicializando registros...");
-    console.log("registroForm:", registroForm);
-    console.log("selectEmpleado:", selectEmpleado);
+    if (registroForm) registroForm.addEventListener("submit", enviarRegistroHoras);
+    if (filtroEstado) filtroEstado.addEventListener('change', () => cargarSolicitudesReposicion());
 
-    if (registroForm) {
-        registroForm.addEventListener("submit", enviarRegistroHoras);
-    }
-
-    if (selectEmpleado) {
-        selectEmpleado.addEventListener("change", mostrarHorasActuales);
-    }
-
-    if (filtroEstado) {
-        filtroEstado.addEventListener('change', () => {
-            cargarSolicitudesReposicion();
-        });
-    }
-
-    if (btnRecargar) {
-        btnRecargar.addEventListener('click', () => {
-            cargarSolicitudesReposicion();
-        });
-    }
-
-    inicializarCalendarioRegistro();
-    await cargarEmpleadosParaRegistro();
     await cargarSolicitudesReposicion();
-}
-
-const CONFIG_KEY = "sistema_horas_configuracion";
-const DEFAULT_CONFIG = {
-    maxHorasMes: 160,
-    maxHorasDiarias: 12,
-    minHorasCompensacion: 1,
-    horasDescansoPorHoraExtra: 1,
-    diasMaximosDescanso: 15,
-    toleranciaTarde: 10,
-    permitirRecuperacionOtroDia: true,
-    alertasExceso: true,
-};
-
-function obtenerConfiguracionGuardada() {
-    const raw = window.localStorage.getItem(CONFIG_KEY);
-    if (!raw) {
-        return { ...DEFAULT_CONFIG };
-    }
-
-    try {
-        const parsed = JSON.parse(raw);
-        return { ...DEFAULT_CONFIG, ...parsed };
-    } catch {
-        return { ...DEFAULT_CONFIG };
-    }
-}
-
-function cargarConfiguracion() {
-    const config = obtenerConfiguracionGuardada();
-    actualizarFormularioConfiguracion(config);
-}
-
-function guardarConfiguracion(event) {
-    event.preventDefault();
-    const config = obtenerConfiguracionFormulario();
-    window.localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-    actualizarFormularioConfiguracion(config);
-    mostrarAvisoConfig('Preferencias guardadas correctamente.');
-}
-
-function resetConfiguracion() {
-    window.localStorage.removeItem(CONFIG_KEY);
-    cargarConfiguracion();
-    mostrarAvisoConfig('Configuración restaurada a valores predeterminados.');
-}
-
-function exportarConfiguracion() {
-    const config = obtenerConfiguracionGuardada();
-    const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'configuracion-sistema.json';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
-}
-
-function importarConfiguracion(event) {
-    const file = event.target?.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-        try {
-            const parsed = JSON.parse(reader.result);
-            if (typeof parsed !== 'object' || parsed === null) {
-                throw new Error('Formato inválido');
-            }
-
-            const config = { ...DEFAULT_CONFIG, ...parsed };
-            window.localStorage.setItem(CONFIG_KEY, JSON.stringify(config));
-            cargarConfiguracion();
-            mostrarAvisoConfig('Configuración importada correctamente.');
-        } catch (error) {
-            mostrarNotificacion('error', 'Error de importación', 'No se pudo importar el archivo de configuración. Asegúrate de que sea un JSON válido.');
-            console.error(error);
-        }
-    };
-    reader.readAsText(file);
-}
-
-function obtenerConfiguracionFormulario() {
-    return {
-        maxHorasMes: parseInt(document.getElementById('max-horas-mes').value, 10) || DEFAULT_CONFIG.maxHorasMes,
-        maxHorasDiarias: parseFloat(document.getElementById('max-horas-diarias').value) || DEFAULT_CONFIG.maxHorasDiarias,
-        minHorasCompensacion: parseFloat(document.getElementById('min-horas-compensacion').value) || DEFAULT_CONFIG.minHorasCompensacion,
-        horasDescansoPorHoraExtra: parseFloat(document.getElementById('horas-descanso-por-hora').value) || DEFAULT_CONFIG.horasDescansoPorHoraExtra,
-        diasMaximosDescanso: parseInt(document.getElementById('dias-maximos-descanso').value, 10) || DEFAULT_CONFIG.diasMaximosDescanso,
-        toleranciaTarde: parseInt(document.getElementById('tolerancia-tarde').value, 10) || DEFAULT_CONFIG.toleranciaTarde,
-        permitirRecuperacionOtroDia: document.getElementById('permitir-recuperacion-otro-dia').checked,
-        alertasExceso: document.getElementById('alertas-exceso').checked,
-    };
-}
-
-function aplicarTemaConfig(tema) {
-    if (!document.body) return;
-    document.body.classList.toggle("theme-dark", tema === "oscuro");
-}
-
-function actualizarFormularioConfiguracion(config) {
-    document.getElementById("max-horas-mes").value = config.maxHorasMes;
-    document.getElementById("max-horas-diarias").value = config.maxHorasDiarias;
-    document.getElementById("min-horas-compensacion").value = config.minHorasCompensacion;
-    document.getElementById("horas-descanso-por-hora").value = config.horasDescansoPorHoraExtra;
-    document.getElementById("dias-maximos-descanso").value = config.diasMaximosDescanso;
-    document.getElementById("tolerancia-tarde").value = config.toleranciaTarde;
-    document.getElementById("permitir-recuperacion-otro-dia").checked = config.permitirRecuperacionOtroDia;
-    document.getElementById("alertas-exceso").checked = config.alertasExceso;
-}
-
-function mostrarAvisoConfig(mensaje) {
-    const notice = document.getElementById("config-notice");
-    if (!notice) return;
-    notice.textContent = mensaje;
-    notice.classList.add("show");
-    setTimeout(() => notice.classList.remove("show"), 3200);
-}
-
-
-async function inicializarConfiguracion() {
-    const form = document.getElementById("config-form");
-    const btnReset = document.getElementById("btn-reset-config");
-    const btnExport = document.getElementById("btn-export-config");
-    const btnImport = document.getElementById("btn-import-config");
-    const inputImport = document.getElementById("import-config-file");
-
-    await cargarConfiguracion();
-
-    if (form) {
-        form.addEventListener("submit", guardarConfiguracion);
-    }
-
-    if (btnReset) {
-        btnReset.addEventListener("click", () => {
-            if (confirm("¿Deseas restaurar los valores predeterminados de configuración?")) {
-                resetConfiguracion();
-            }
-        });
-    }
-
-    if (btnExport) {
-        btnExport.addEventListener("click", exportarConfiguracion);
-    }
-
-    if (btnImport && inputImport) {
-        btnImport.addEventListener("click", () => inputImport.click());
-        inputImport.addEventListener("change", importarConfiguracion);
-    }
 }
 
 async function cargarReportes() {
     const inicio = document.getElementById('fechaInicio');
     const fin = document.getElementById('fechaFin');
     const tbody = document.getElementById('reportes-tbody');
-    const totalRegistros = document.getElementById('reporte-total-registros');
-    const empleadosRango = document.getElementById('reporte-empleados-rango');
-    const alertasHoras = document.getElementById('reporte-alertas-horas');
 
-    if (!inicio || !fin || !tbody || !totalRegistros || !empleadosRango || !alertasHoras) return;
+    if (!inicio || !fin || !tbody) return;
 
     const fechaInicio = inicio.value;
     const fechaFin = fin.value;
-    if (!fechaInicio || !fechaFin) {
-        mostrarNotificacion('warning', 'Fechas requeridas', 'Selecciona un rango de fechas antes de filtrar.');
-        return;
-    }
-
-    if (new Date(fechaInicio) > new Date(fechaFin)) {
-        mostrarNotificacion('error', 'Rango inválido', 'La fecha de inicio no puede ser mayor que la fecha de fin.');
-        return;
-    }
 
     try {
         const response = await fetch(`${API_URL}/api/reportes?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
-        if (!response.ok) {
-            throw new Error(`Error al cargar el reporte (${response.status})`);
-        }
+        if (!response.ok) throw new Error(`Error al cargar el reporte`);
 
         const empleados = await response.json();
         ultimoReporteData = Array.isArray(empleados) ? empleados : [];
 
         if (!ultimoReporteData.length) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="4" class="reportes-empty">No se encontraron registros en el rango seleccionado.</td>
-                </tr>
-            `;
-            totalRegistros.textContent = '0';
-            empleadosRango.textContent = '0';
-            alertasHoras.textContent = '0';
+            tbody.innerHTML = `<tr><td colspan="4" class="reportes-empty">No se encontraron registros.</td></tr>`;
             return;
         }
-
-        const alertasCount = ultimoReporteData.filter(emp => Number(emp.salidas_temprano) > 0).length;
-        totalRegistros.textContent = String(ultimoReporteData.length);
-        empleadosRango.textContent = String(ultimoReporteData.length);
-        alertasHoras.textContent = String(alertasCount);
 
         tbody.innerHTML = '';
         ultimoReporteData.forEach(emp => {
@@ -1927,139 +1179,21 @@ async function cargarReportes() {
                     <td>${emp.nombre}</td>
                     <td>${horasTomadas} hrs</td>
                     <td>${emp.salidas_temprano}</td>
-                    <td>
-                        <button type="button" class="reportes-btn reportes-btn-secondary btn-detalle" data-id="${emp.id}" data-nombre="${emp.nombre}" data-fecha-inicio="${fechaInicio}" data-fecha-fin="${fechaFin}">Ver detalles</button>
-                    </td>
+                    <td><button type="button" class="reportes-btn reportes-btn-secondary">Ver detalles</button></td>
                 </tr>
             `;
         });
-
-        tbody.querySelectorAll('.btn-detalle').forEach(btn => {
-            btn.addEventListener('click', () => {
-                const id = Number(btn.dataset.id);
-                const nombre = btn.dataset.nombre || '';
-                const inicioSeleccionado = btn.dataset.fechaInicio;
-                const finSeleccionado = btn.dataset.fechaFin;
-                abrirDetalleEmpleado(id, nombre, inicioSeleccionado, finSeleccionado);
-            });
-        });
     } catch (error) {
-        console.error('Error al cargar el reporte:', error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="4" class="reportes-empty">No se pudo cargar el reporte. Revisa la conexión con el backend.</td>
-            </tr>
-        `;
+        tbody.innerHTML = `<tr><td colspan="4" class="reportes-empty">Error al cargar.</td></tr>`;
     }
-}
-
-async function abrirDetalleEmpleado(id, nombre, fechaInicio, fechaFin) {
-    const modal = document.getElementById('reportes-detalle');
-    const body = document.getElementById('reportes-detalle-body');
-    if (!modal || !body) return;
-
-    body.innerHTML = `<p>Cargando detalles de ${nombre}...</p>`;
-    modal.classList.add('show');
-    modal.setAttribute('aria-hidden', 'false');
-
-    try {
-        const response = await fetch(`${API_URL}/api/empleados/${id}/salidas-temprano?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
-        if (!response.ok) {
-            throw new Error(`Error al cargar detalle (${response.status})`);
-        }
-
-        const detalles = await response.json();
-        if (!Array.isArray(detalles) || detalles.length === 0) {
-            body.innerHTML = `<p>No se encontraron registros para ${nombre} en este rango de fechas.</p>`;
-            return;
-        }
-
-        body.innerHTML = `
-            <p style="font-weight:700; margin-bottom:16px;">Detalle de ${nombre}</p>
-            <ul class="reportes-detalle-list">
-                ${detalles.map(det => `
-                    <li class="reportes-detalle-item">
-                        <strong>${det.fecha}</strong>
-                        <div>Horas tomadas: ${Math.abs(Number(det.horas || 0)).toFixed(2)} hrs</div>
-                        <div>${det.observaciones || 'Sin observaciones'}</div>
-                    </li>
-                `).join('')}
-            </ul>
-        `;
-    } catch (error) {
-        console.error('Error al cargar el detalle del empleado:', error);
-        body.innerHTML = `<p>No se pudo cargar el detalle. Intenta nuevamente.</p>`;
-    }
-}
-
-function cerrarDetalleEmpleado() {
-    const modal = document.getElementById('reportes-detalle');
-    if (!modal) return;
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden', 'true');
-}
-
-function descargarReporteCSV() {
-    if (!ultimoReporteData.length) {
-        mostrarNotificacion('warning', 'Sin datos', 'No hay datos de reporte disponibles para exportar.');
-        return;
-    }
-
-    const csvRows = [
-        ['Empleado', 'ID', 'Horas', 'Salidas tempranas', 'Estado'],
-        ...ultimoReporteData.map(emp => [
-            emp.nombre,
-            emp.id,
-            (Number(emp.total_horas) || 0).toFixed(2),
-            emp.salidas_temprano,
-            emp.salidas_temprano > 0 ? 'Revisar' : 'OK',
-        ]),
-    ];
-
-    const csvContent = csvRows.map(row => row.map(value => `"${String(value).replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'reporte-horas.csv';
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(url);
 }
 
 function inicializarReportes() {
     const btnFiltrar = document.getElementById('btn-aplicar-reporte');
-    const btnFiltrarTop = document.getElementById('btn-filtrar-reporte');
     const btnExportCsv = document.getElementById('btn-descargar-reporte-csv');
-    const btnCerrarDetalle = document.getElementById('reportes-detalle-close');
-    const modalDetalle = document.getElementById('reportes-detalle');
 
-    if (btnFiltrar) {
-        btnFiltrar.addEventListener('click', (event) => {
-            event.preventDefault();
-            cargarReportes();
-        });
-    }
-    if (btnFiltrarTop) {
-        btnFiltrarTop.addEventListener('click', (event) => {
-            event.preventDefault();
-            cargarReportes();
-        });
-    }
-    if (btnExportCsv) {
-        btnExportCsv.addEventListener('click', descargarReporteCSV);
-    }
-    if (btnCerrarDetalle) {
-        btnCerrarDetalle.addEventListener('click', cerrarDetalleEmpleado);
-    }
-    if (modalDetalle) {
-        modalDetalle.addEventListener('click', (event) => {
-            if (event.target === modalDetalle) {
-                cerrarDetalleEmpleado();
-            }
-        });
-    }
+    if (btnFiltrar) btnFiltrar.addEventListener('click', (e) => { e.preventDefault(); cargarReportes(); });
+    if (btnExportCsv) btnExportCsv.addEventListener('click', descargarReporteCSV);
 
     const inicio = document.getElementById('fechaInicio');
     const fin = document.getElementById('fechaFin');
@@ -2089,263 +1223,68 @@ async function loadPage(page, element = null) {
         if (!response.ok) throw new Error(`No se pudo cargar la vista: ${path}`);
 
         const html = await response.text();
-        const container = document.getElementById('content-area');
         
-        if (container) {
-            container.innerHTML = html;
-        } else {
-            console.error("❌ No se encontró el contenedor #content-area");
-            return;
-        }
+        setTimeout(async () => {
+            dynamicCard.innerHTML = html;
+            container.classList.remove('fade-out');
+            console.log("loadPage loaded", pageName);
+            
+            document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+            if(element) element.classList.add('active');
 
-        // 💡 3. DISPARAR LA CARGA DE DATOS SEGÚN LA PANTALLA ACTIVA
-        const pageClean = pageFile.toLowerCase();
-
-        setTimeout(() => {
-            if (pageClean.includes('dashboard')) {
-                // Ejecuta las funciones de carga del Dashboard si existen
-                if (typeof window.cargarDashboard === 'function') window.cargarDashboard();
-                else if (typeof window.cargarResumenDashboard === 'function') window.cargarResumenDashboard();
-                else if (typeof window.cargarEmpleadoResultados === 'function') window.cargarEmpleadoResultados();
-            } 
-            else if (pageClean.includes('notificaciones')) {
-                if (typeof window.cargarSolicitudesNotificaciones === 'function') {
-                    window.cargarSolicitudesNotificaciones();
-                }
-            } 
-            else if (pageClean.includes('empleados')) {
-                if (typeof window.cargarEmpleados === 'function') window.cargarEmpleados();
-                else if (typeof window.obtenerEmpleados === 'function') window.obtenerEmpleados();
-            } 
-            else if (pageClean.includes('registros')) {
-                if (typeof window.cargarRegistros === 'function') window.cargarRegistros();
-                else if (typeof window.cargarSolicitudesReposicion === 'function') window.cargarSolicitudesReposicion();
-            } 
-            else if (pageClean.includes('reportes')) {
-                if (typeof window.cargarReportes === 'function') window.cargarReportes();
+            if (pageName === 'empleados') {
+                inicializarEmpleados();
             }
-        }, 60);
-        // Y dentro de tu función loadPage, agrega esta línea para guardar la sección actual:
-        localStorage.setItem('ultima_pagina_vista', page);
 
+            if (pageName === 'registros') {
+                await inicializarRegistros();
+            }
 
-    } catch (error) {
-        console.error("Error en loadPage:", error);
+            if (pageName === 'notificaciones') {
+                inicializarNotificaciones();
+            }
+
+            if (pageName === 'dashboard') {
+                cargarDashboard();
+            }
+
+            if (pageName === 'reportes') {
+                inicializarReportes();
+            }
+
+            if (pageName === 'perfil') {
+                inicializarPerfil();
+            }
+
+            if (pageName === 'reportes') {
+                inicializarReportes();
+            }
+
+            if (pageName === 'configuracion') {
+                await inicializarConfiguracion();
+            }
+
+        }, 300);
+    } catch (e) {
+        dynamicCard.innerHTML = "<h1>Error</h1><p>No se pudo cargar la vista.</p>";
     }
 }
 
-// Aseguramos que loadPage sea global
-window.loadPage = loadPage;
-
-// 1. Función que consulta la API y obtiene las solicitudes
-async function cargarSolicitudesNotificaciones() {
-    const tbody = document.getElementById('notificaciones-solicitudes-body');
-    const filtroEstado = document.getElementById('notificaciones-filtro-estado');
-    if (!tbody) return;
-
-    // Estado visual inicial
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="8" style="text-align:center; padding:14px; color:#64748b;">Cargando solicitudes...</td>
-        </tr>
-    `;
-
-    // Leemos el valor del select de filtro en la pantalla
-    let estado = filtroEstado?.value?.trim() || '';
-    const estadoLower = estado.toLowerCase();
-    
-    if (['aprobadas', 'aprobada', 'aprobado'].includes(estadoLower)) {
-        estado = 'aprobada';
-    } else if (['rechazadas', 'rechazada', 'rechazado'].includes(estadoLower)) {
-        estado = 'rechazada';
-    } else if (['pendientes', 'pendiente'].includes(estadoLower)) {
-        estado = 'pendiente';
-    } else {
-        estado = '';
-    }
-
-    const query = estado ? `?estado=${encodeURIComponent(estado)}` : '';
-
-    try {
-        const response = await fetch(`${API_URL}/api/registros/solicitudes${query}`, {
-            headers: construirHeadersAuth(),
-        });
-
-        if (response.status === 401) {
-            limpiarSesionAuth();
-            window.location.href = 'login.html';
-            return;
-        }
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.detail || `Error HTTP ${response.status}`);
-        }
-
-        const solicitudes = await response.json();
-
-        // Actualizamos el contador del badge lateral si existe la variable
-        if (typeof contadorNotificaciones !== 'undefined') {
-            const totalPendientes = solicitudes.filter(s => 
-                String(s.estado_final || '').toLowerCase() === 'pendiente'
-            ).length;
-            contadorNotificaciones = totalPendientes;
-            if (typeof actualizarBadgeNotificaciones === 'function') {
-                actualizarBadgeNotificaciones();
-            }
-        }
-
-        // Renderizamos los datos en la tabla
-        renderSolicitudesNotificaciones(solicitudes);
-
-    } catch (error) {
-        console.error('Error al cargar notificaciones:', error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align:center; padding:14px; color:#b91c1c;">
-                    ${error.message || 'No se pudieron cargar las solicitudes.'}
-                </td>
-            </tr>
-        `;
-    }
-}
-
-// 2. Función que dibuja las filas dentro de la tabla
-function renderSolicitudesNotificaciones(solicitudes) {
-    const tbody = document.getElementById('notificaciones-solicitudes-body');
-    if (!tbody) return;
-
-    if (!Array.isArray(solicitudes) || !solicitudes.length) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="8" style="text-align:center; padding:14px; color:#64748b;">
-                    No hay solicitudes para mostrar.
-                </td>
-            </tr>
-        `;
+// Carga inicial
+document.addEventListener("DOMContentLoaded", () => {
+    if (!esSesionValida()) {
+        window.location.href = 'login.html';
         return;
     }
 
-    let usuarioLogueado = null;
-    try {
-        const authUserRaw = sessionStorage.getItem("auth_user");
-        if (authUserRaw) usuarioLogueado = JSON.parse(authUserRaw);
-    } catch (e) {
-        console.error("Error al leer sesión:", e);
-    }
-
-    const rolActual = String(usuarioLogueado?.rol || "").toLowerCase();
-    const idUsuarioActual = Number(usuarioLogueado?.id || 0);
-    const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
-
-    tbody.innerHTML = solicitudes.map((sol) => {
-        const estadoJD = String(sol.estado_jefe_directo || 'pendiente').toLowerCase();
-        const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
-        const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
-        
-        const idCreador = Number(sol.id_empleado); 
-        const puedeAccionar = estadoFinal === 'pendiente' && esJefeOAdmin && (idUsuarioActual !== idCreador);
-
-        const nombreEmpleado = sol.nombre_empleado || `Empleado #${sol.id_empleado}`;
-        const fecha = sol.fecha || sol.fecha_solicitud || '';
-
-        return `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 12px;"><strong>#${sol.id_solicitud}</strong></td>
-                <td style="padding: 12px;">${nombreEmpleado}</td>
-                <td style="padding: 12px;">${fecha}</td>
-                <td style="padding: 12px;">${Number(sol.horas_solicitadas || 0).toFixed(2)} hrs</td>
-                <td style="padding: 12px; font-weight:600; color:${typeof obtenerColorEstado === 'function' ? obtenerColorEstado(estadoJD) : '#333'};">${estadoJD}</td>
-                <td style="padding: 12px; font-weight:600; color:${typeof obtenerColorEstado === 'function' ? obtenerColorEstado(estadoJS) : '#333'};">${estadoJS}</td>
-                <td style="padding: 12px; font-weight:700; color:${typeof obtenerColorEstado === 'function' ? obtenerColorEstado(estadoFinal) : '#333'};">${estadoFinal}</td>
-                <td style="padding: 12px;">
-                    ${puedeAccionar ? `
-                        <button type="button" 
-                                onclick="procesarAutorizacion(${sol.id_solicitud}, 'aprobar')" 
-                                style="margin-right:6px; border:none; border-radius:6px; padding:6px 12px; background:#166534; color:#fff; cursor:pointer; font-weight:500;">
-                            Aprobar
-                        </button>
-                        <button type="button" 
-                                onclick="procesarAutorizacion(${sol.id_solicitud}, 'rechazar')" 
-                                style="border:none; border-radius:6px; padding:6px 12px; background:#b91c1c; color:#fff; cursor:pointer; font-weight:500;">
-                            Rechazar
-                        </button>
-                    ` : `<span style="color:#94a3b8; font-size:0.85rem;">Sin acciones</span>`}
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// 💡 3. Exponemos la función a la ventana global obligatoriamente
-window.cargarSolicitudesNotificaciones = cargarSolicitudesNotificaciones;
-window.renderSolicitudesNotificaciones = renderSolicitudesNotificaciones;
-// Busca la función donde cargas el HTML (alrededor de la línea 2074):
-async function cargarVistaNotificaciones() {
-    try {
-        const respuesta = await fetch('notificaciones.html');
-        const html = await respuesta.text();
-        
-        // Inyectar HTML
-        const contenedor = document.getElementById('contenido-principal'); // o tu contenedor main
-        if (contenedor) contenedor.innerHTML = html;
-
-        // 🎯 DISPARAR LA CARGA DE DATOS REALES
-        await cargarSolicitudesNotificaciones();
-
-    } catch (error) {
-        console.error("Error al cargar notificaciones.html:", error);
-    }
-}
-async function procesarAutorizacion(idSolicitud, accion) {
-    const confirmacion = confirm(`¿Estás seguro de que deseas ${accion} la solicitud #${idSolicitud}?`);
-    if (!confirmacion) return;
-
-    try {
-        const response = await fetch(`${API_URL}/api/registros/solicitudes/${idSolicitud}/${accion}`, {
-            method: 'POST',
-            headers: construirHeadersAuth(),
+    const logoutLink = document.getElementById('logout-link');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            limpiarSesionAuth();
+            window.location.href = 'login.html';
         });
-
-        if (!response.ok) {
-            const err = await response.json().catch(() => ({}));
-            throw new Error(err.detail || `No se pudo ${accion} la solicitud.`);
-        }
-
-        // Recargamos la tabla y el badge automáticamente
-        await cargarSolicitudesNotificaciones();
-
-    } catch (error) {
-        console.error(`Error al ${accion} la solicitud:`, error);
-        alert(error.message || `Ocurrió un error al procesar la solicitud.`);
     }
-}
 
-// La exponemos a window
-window.procesarAutorizacion = procesarAutorizacion;
-
-// Cargar la pantalla por defecto (Panel Principal) cuando la página se actualice
-document.addEventListener('DOMContentLoaded', () => {
-    // Buscamos el enlace del Panel Principal en el sidebar para marcarlo como activo
-    const enlaceDashboard = document.querySelector('.sidebar a[onclick*="dashboard"]');
-    
-    // Cargar la pantalla por defecto
-    if (typeof loadPage === 'function') {
-        loadPage('dashboard', enlaceDashboard);
-    }
+    loadPage('dashboard', document.querySelector('.sidebar a'));
 });
-
-// Reemplaza el bloque DOMContentLoaded anterior por este si quieres guardar la última vista:
-document.addEventListener('DOMContentLoaded', () => {
-    // Lee la última página visitada o usa 'dashboard' por defecto
-    const ultimaPagina = localStorage.getItem('ultima_pagina_vista') || 'dashboard';
-    
-    const enlaceActivo = document.querySelector(`.sidebar a[onclick*="${ultimaPagina}"]`);
-    
-    if (typeof loadPage === 'function') {
-        loadPage(ultimaPagina, enlaceActivo);
-    }
-});
-
-// Y dentro de tu función loadPage, agrega esta línea para guardar la sección actual:
-// localStorage.setItem('ultima_pagina_vista', page);
