@@ -32,6 +32,57 @@
             line-height: 1.7;
         }
 
+        /* --- NUEVOS ESTILOS PARA LAS TARJETAS DE HORAS (KPIs) --- */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
+        }
+        
+        .kpi-card {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            box-shadow: 0 4px 15px rgba(15, 23, 42, 0.04);
+            border: 1px solid #e2e8f0;
+        }
+
+        .kpi-card.forest { border-left: 5px solid var(--forest, #124416); }
+        .kpi-card.purple { border-left: 5px solid var(--purple, #340C51); }
+        .kpi-card.gold { 
+            border-left: 5px solid var(--gold, #AA7F31);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .kpi-title { color: #64748b; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
+        .kpi-value { font-size: 2.2rem; font-weight: 700; margin-top: 8px; line-height: 1; }
+        
+        .kpi-value.forest { color: var(--forest, #124416); }
+        .kpi-value.purple { color: var(--purple, #340C51); }
+        .kpi-value.gold { color: var(--gold, #AA7F31); }
+
+        .btn-solicitar {
+            background: var(--gold, #AA7F31);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-top: 16px;
+            transition: all 0.2s ease;
+            width: 100%;
+        }
+
+        .btn-solicitar:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 15px rgba(170, 127, 49, 0.25);
+        }
+        /* -------------------------------------------------------- */
+
         .perfil-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -338,15 +389,34 @@
                 grid-template-columns: 1fr;
             }
         }
-        
     </style>
 
     <div class="perfil-header">
         <div>
             <h1>Mi perfil</h1>
-            <p class="perfil-description">Actualiza tu información personal, datos de contacto y seguridad. Todo en un mismo lugar para administrar tu cuenta fácilmente.</p>
+            <p class="perfil-description">Actualiza tu información personal, datos de contacto y seguridad. Administra tu cuenta y revisa tu saldo de horas disponibles.</p>
         </div>
     </div>
+
+    <!-- --- NUEVO BLOQUE DE INDICADORES (KPIs) --- -->
+    <div class="kpi-grid">
+        <div class="kpi-card forest">
+            <div class="kpi-title">Horas Históricas Totales</div>
+            <div class="kpi-value forest">48h</div>
+        </div>
+        <div class="kpi-card purple">
+            <div class="kpi-title">Horas Consumidas</div>
+            <div class="kpi-value purple">36h</div>
+        </div>
+        <div class="kpi-card gold">
+            <div>
+                <div class="kpi-title">Saldo Disponible</div>
+                <div class="kpi-value gold">12h</div>
+            </div>
+            <button class="btn-solicitar" onclick="alert('Aquí abriremos el modal de solicitud de horas.')">Solicitar Salida</button>
+        </div>
+    </div>
+    <!-- ------------------------------------------ -->
 
     <div class="perfil-grid">
         <aside class="perfil-aside">
@@ -400,13 +470,10 @@
                 <div class="perfil-modal-footer">
                     <button type="button" class="perfil-btn perfil-btn-secondary" id="cancelar-modal-nombre">Cancelar</button>
                     <button type="submit" class="perfil-btn perfil-btn-primary">Guardar nombre</button>
-                
                 </div>
             </form>
         </div>
     </div>
-
-    
 
     <div class="modal-overlay" id="modal-password">
         <div class="perfil-modal">
@@ -495,6 +562,7 @@
         btnCerrarNombre.addEventListener('click', () => {
             modalNombre.classList.remove('show');
         });
+        
         // --- LÓGICA PARA EL FORMULARIO PRINCIPAL (Botón Guardar) ---
         const formPerfilPrincipal = document.getElementById('form-perfil');
 
@@ -505,9 +573,6 @@
                 // 1. Capturamos los datos de los inputs de tu pantalla principal
                 const nombrePrincipal = document.getElementById('nombre').value;
                 const emailPrincipal = document.getElementById('email').value;
-                
-                // Si agregaste el campo de puesto, descomenta la siguiente línea:
-                // const puestoPrincipal = document.getElementById('puesto').value;
 
                 try {
                     // 2. Enviamos los datos a tu backend en FastAPI
@@ -518,7 +583,6 @@
                         body: JSON.stringify({ 
                             nombre: nombrePrincipal, 
                             correo: emailPrincipal
-                            // puesto: puestoPrincipal 
                         })
                     });
 
@@ -537,5 +601,4 @@
             });
         }
     </script>
-    
 </div>
