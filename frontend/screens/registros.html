@@ -1,105 +1,110 @@
 <div class="card">
-    <h1 style="margin-top: 0; margin-bottom: 0.5rem; color: #1f2d19; font-size: 1.8rem; font-weight: 600;">Solicitudes de reposición</h1>
-    <p style="margin-top: 0; margin-bottom: 2rem; color: #64748b;">Registra solicitudes y autoriza por niveles (jefe directo y jefe superior).</p>
-    <form id="registroForm">
-        <!-- Empleado -->
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Empleado</label>
-            <div id="reg-empleado-dropdown" style="position: relative;">
-                <button type="button" id="reg-empleado-btn" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; transition: all 0.3s ease; font-family: 'Inter', sans-serif; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                    <span id="reg-empleado-label">Selecciona un empleado...</span>
-                    <svg style="width: 18px; height: 18px; fill: #2f582f;" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-                </button>
-                <div id="reg-empleado-menu" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px; max-height: 300px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
-                </div>
-                <input type="hidden" id="reg-empleado" name="reg-empleado" required>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
+        <h1 style="color: var(--forest); margin: 0;">Registros y Solicitudes</h1>
+    </div>
+
+    <!-- Sección superior: Filtros y visualización -->
+    <div style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 32px;">
+        <div style="display: flex; gap: 16px; align-items: flex-end; flex-wrap: wrap;">
+            <div style="flex: 1; min-width: 200px;">
+                <label for="registros-filtro-estado" style="font-weight: 600; color: #475569;">Filtrar por Estado</label>
+                <select id="registros-filtro-estado" style="width: 100%; padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1;">
+                    <option value="">Todas las solicitudes</option>
+                    <option value="pendientes">Pendientes</option>
+                    <option value="aprobadas">Aprobadas</option>
+                    <option value="rechazadas">Rechazadas</option>
+                </select>
             </div>
-        </div>
-
-        <!-- Horas disponibles -->
-        <div id="horas-actuales" style="margin-bottom: 2rem; padding: 1rem; background: linear-gradient(135deg, rgba(47, 88, 47, 0.08) 0%, rgba(170, 127, 31, 0.08) 100%); border-left: 4px solid #2f582f; border-radius: 8px; font-size: 0.95rem; color: #2f582f; font-weight: 500;">Horas extra disponibles: <strong style="color: #AA7F31;">0.00 hrs</strong></div>
-
-        <!-- Horas por día -->
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Horas por día</label>
-            <input type="number" id="reg-horas" step="0.5" min="0.5" required style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; transition: all 0.3s ease; font-family: 'Inter', sans-serif; box-sizing: border-box;" onfocus="this.style.borderColor='#AA7F31'; this.style.boxShadow='0 4px 12px rgba(170, 127, 31, 0.15)';" onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';">
-        </div>
-
-        <!-- Motivo -->
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Motivo</label>
-            <textarea id="reg-motivo" required rows="3" maxlength="500" placeholder="Describe brevemente el motivo de la reposición" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; transition: all 0.3s ease; font-family: 'Inter', sans-serif; box-sizing: border-box;"></textarea>
-        </div>
-
-        <!-- Autorizadores -->
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-            <div>
-                <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">ID jefe directo (opcional)</label>
-                <input type="number" id="reg-jefe-directo" min="1" placeholder="Si se omite, se toma de la jerarquía" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; box-sizing: border-box;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">ID jefe superior (opcional)</label>
-                <input type="number" id="reg-jefe-superior" min="1" placeholder="Si se omite, se toma de la jerarquía" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; box-sizing: border-box;">
-            </div>
-        </div>
-
-        <!-- Calendario -->
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; margin-bottom: 1rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Selecciona los días en el calendario</label>
-            <div id="reg-calendar-container" style="margin: 0 auto; width:100%; max-width:560px; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e8e8e8; box-shadow: 0 2px 8px rgba(0,0,0,0.04);"></div>
-            <div id="reg-fechas-seleccionadas" style="margin-top: 1.5rem; padding: 0.75rem 1rem; background: #f0f4f0; border-left: 4px solid #AA7F31; border-radius: 6px; font-size: 0.95rem; color: #2f582f;">No hay fechas seleccionadas.</div>
-        </div>
-
-        <!-- Botón -->
-        <button type="submit" class="btn" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 220px; box-shadow: 0 4px 12px rgba(170, 127, 31, 0.3);" onmouseover="this.style.boxShadow='0 6px 16px rgba(170, 127, 31, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='0 4px 12px rgba(170, 127, 31, 0.3)'; this.style.transform='translateY(0)';">Guardar asignación</button>
-        <div style="margin-top: 2rem; background: #fff; border: 1px solid #e5e7eb; border-radius: 16px; padding: 1.5rem; box-shadow: 0 4px 18px rgba(0,0,0,0.05);">
-            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom: 1rem;">
-                <div>
-                    <h2 style="margin:0; color:#340C51; font-size:1.25rem; font-weight:700;">Notificaciones de salida</h2>
-                    <p style="margin:0.4rem 0 0; color:#475569; font-size:0.95rem;">Aquí se muestran las solicitudes de salida pendientes para autorizar o rechazar.</p>
-                </div>
-            </div>
-            <div id="salida-notifications-panel" style="display:flex; flex-direction:column; gap:0.75rem; min-height:120px;">
-                <div data-empty-notifications style="color:#475569; font-size:0.95rem; padding:1rem; border:1px dashed #c7d2fe; border-radius:12px; background:#f8f5ff;">No hay notificaciones activas.</div>
-            </div>
-        </div>
-        <button type="submit" class="btn" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 260px; box-shadow: 0 4px 12px rgba(170, 127, 31, 0.3);" onmouseover="this.style.boxShadow='0 6px 16px rgba(170, 127, 31, 0.4)'; this.style.transform='translateY(-2px)';" onmouseout="this.style.boxShadow='0 4px 12px rgba(170, 127, 31, 0.3)'; this.style.transform='translateY(0)';">Crear solicitud(es)</button>
-    </form>
-
-    <hr style="margin: 2rem 0; border: none; border-top: 1px solid #e5e7eb;">
-
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 1rem; flex-wrap: wrap;">
-        <h2 style="margin:0; color:#1f2d19; font-size:1.2rem;">Bandeja de solicitudes</h2>
-        <div style="display:flex; gap:8px; align-items:center;">
-            <select id="registros-filtro-estado" style="width:auto; min-width: 150px;">
-                <option value="">Todos los estados</option>
-                <option value="pendiente">Pendientes</option>
-                <option value="aprobado">Aprobadas</option>
-                <option value="rechazado">Rechazadas</option>
-            </select>
-            <button type="button" id="btn-recargar-solicitudes" class="btn" style="background:#2f582f; color:#fff;">Recargar</button>
+            <button id="btn-recargar-solicitudes" class="btn" style="background: var(--gold); color: white; padding: 12px 24px; height: 45px;">
+                ↻ Actualizar Tabla
+            </button>
         </div>
     </div>
 
-    <div style="overflow-x:auto;">
-        <table>
-            <thead>
+    <!-- Tabla principal de solicitudes -->
+    <h2 style="color: var(--forest); margin-bottom: 15px; font-size: 1.3rem;">Historial de Solicitudes</h2>
+    <div style="overflow-x: auto; background: white; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 40px;">
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead style="background: #f1f5f9; text-align: left;">
                 <tr>
-                    <th>ID</th>
-                    <th>Empleado</th>
-                    <th>Fecha</th>
-                    <th>Horas</th>
-                    <th>Estado JD</th>
-                    <th>Estado JS</th>
-                    <th>Final</th>
-                    <th>Acciones</th>
+                    <th style="padding: 16px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Folio</th>
+                    <th style="padding: 16px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">ID Empleado</th>
+                    <th style="padding: 16px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Fecha Salida</th>
+                    <th style="padding: 16px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Horas</th>
+                    <th style="padding: 16px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Jefe Directo</th>
+                    <th style="padding: 16px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Jefe Superior</th>
+                    <th style="padding: 16px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Estado Final</th>
+                    <th style="padding: 16px; border-bottom: 2px solid #cbd5e1; color: #1e293b;">Acciones</th>
                 </tr>
             </thead>
             <tbody id="registros-solicitudes-body">
                 <tr>
-                    <td colspan="8" style="text-align:center; padding: 14px;">Cargando solicitudes...</td>
+                    <td colspan="8" style="text-align:center; padding:20px; color:#64748b;">Cargando historial...</td>
                 </tr>
             </tbody>
         </table>
     </div>
+
+    <!-- Sección exclusiva para Administradores/Jefes (Registro Manual) -->
+    <!-- El CSS y JS se encargarán de ocultar esto si el usuario es solo Empleado -->
+    <div id="seccion-registro-manual" style="border-top: 2px dashed #e2e8f0; padding-top: 32px;">
+        <h2 style="color: var(--forest); margin-bottom: 15px; font-size: 1.3rem;">Registro Manual de Afectaciones (Admin/Jefes)</h2>
+        <form id="registroForm" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px;">
+            
+            <!-- Columna Izquierda: Datos -->
+            <div style="display: flex; flex-direction: column; gap: 16px;">
+                <div>
+                    <label for="reg-empleado" style="font-weight: 600;">Empleado</label>
+                    <select id="reg-empleado" required style="padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1;">
+                        <option value="" disabled selected>Selecciona un empleado...</option>
+                        <!-- Se llena con JS -->
+                    </select>
+                    <div id="horas-actuales" style="margin-top: 8px; font-size: 0.9rem; color: var(--forest); font-weight: bold;">
+                        Horas extra disponibles: 0.00 hrs
+                    </div>
+                </div>
+
+                <div>
+                    <label for="reg-horas" style="font-weight: 600;">Horas a descontar</label>
+                    <input type="number" id="reg-horas" step="0.5" min="0.5" placeholder="Ej. 2.5" required style="padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1;">
+                </div>
+
+                <div>
+                    <label for="reg-motivo" style="font-weight: 600;">Motivo / Observaciones</label>
+                    <textarea id="reg-motivo" rows="3" placeholder="Describe el motivo de la salida o el descuento de horas..." required style="padding: 12px; border-radius: 10px; border: 1px solid #cbd5e1;"></textarea>
+                </div>
+            </div>
+
+            <!-- Columna Derecha: Calendario -->
+            <div style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0;">
+                <label style="font-weight: 600; margin-bottom: 12px; display: block;">Selecciona los días afectados</label>
+                <div id="reg-calendar-container">
+                    <!-- El calendario dinámico de app.js se inyecta aquí -->
+                </div>
+                <div id="reg-fechas-seleccionadas" style="margin-top: 16px; font-size: 0.9rem; color: var(--purple); font-weight: 600;">
+                    No hay fechas seleccionadas.
+                </div>
+            </div>
+
+            <div style="grid-column: 1 / -1; display: flex; justify-content: flex-end; margin-top: 16px;">
+                <button type="submit" class="btn" style="background: var(--purple); color: white; padding: 14px 32px; font-size: 1.1rem;">
+                    Guardar Registro Manual
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
+
+<script>
+    // Pequeño script local para asegurar que la sección de registro manual 
+    // se oculte si el usuario es un empleado normal.
+    setTimeout(() => {
+        const usuarioActual = JSON.parse(sessionStorage.getItem('auth_user') || localStorage.getItem('auth_user') || '{}');
+        const rol = String(usuarioActual.rol || '').toLowerCase();
+        
+        if (rol === 'empleado') {
+            const seccionManual = document.getElementById('seccion-registro-manual');
+            if (seccionManual) seccionManual.style.display = 'none';
+        }
+    }, 100);
+</script>
