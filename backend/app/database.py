@@ -22,7 +22,7 @@ def _get_env(name: str, default: str | None = None) -> str | None:
     return value or None
 
 
-DB_DRIVER = _get_env("DB_DRIVER", "ODBC Driver 17 for SQL Server")
+DB_DRIVER = _get_env("DB_DRIVER", "ODBC Driver 18 for SQL Server")
 DB_SERVER = _get_env("DB_SERVER")
 DB_DATABASE = _get_env("DB_DATABASE")
 DB_USER = _get_env("DB_USER")
