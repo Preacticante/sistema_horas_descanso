@@ -88,3 +88,154 @@
     body.theme-dark .btn.tertiary { background: transparent; color: #9db8c9; border-color: #3b566d; }
     body.theme-dark .notice { background: #203244; color: #d8e5ef; }
 </style>
+
+<script>
+    (async function() {
+        const valoresPorDefecto = {
+            max_horas_mes: 40,
+            max_horas_diarias: 4,
+            min_horas_compensacion: 1,
+            horas_descanso_por_hora: 1,
+            dias_maximos_descanso: 30,
+            permitir_recuperacion_otro_dia: true,
+            alertas_exceso: true
+        };
+
+        function mostrarAvisoConfig(mensaje, esError = false) {
+            const notice = document.getElementById('config-notice');
+            if (!notice) return;
+            notice.textContent = mensaje;
+            notice.style.background = esError ? '#fde8e8' : '#e7f5eb';
+            notice.style.color = esError ? '#9b1c1c' : '#164c2f';
+            notice.classList.add('show');
+            setTimeout(() => notice.classList.remove('show'), 4000);
+        }
+
+        function rellenarFormularioConfig(data) {
+            document.getElementById('max-horas-mes').value = data.max_horas_mes ?? valoresPorDefecto.max_horas_mes;
+            document.getElementById('max-horas-diarias').value = data.max_horas_diarias ?? valoresPorDefecto.max_horas_diarias;
+            document.getElementById('min-horas-compensacion').value = data.min_horas_compensacion ?? valoresPorDefecto.min_horas_compensacion;
+            document.getElementById('horas-descanso-por-hora').value = data.horas_descanso_por_hora ?? valoresPorDefecto.horas_descanso_por_hora;
+            document.getElementById('dias-maximos-descanso').value = data.dias_maximos_descanso ?? valoresPorDefecto.dias_maximos_descanso;
+            document.getElementById('permitir-recuperacion-otro-dia').checked = Boolean(data.permitir_recuperacion_otro_dia ?? valoresPorDefecto.permitir_recuperacion_otro_dia);
+            document.getElementById('alertas-exceso').checked = Boolean(data.alertas_exceso ?? valoresPorDefecto.alertas_exceso);
+        }
+
+        async function cargarConfiguracionSistema() {
+            try {
+                const response = await fetch(`${API_URL}/api/configuracion`, {
+                    headers: construirHeadersAuth()
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    rellenarFormularioConfig(data);
+                    return;
+                }
+            } catch (err) {
+                console.warn('Conexión con servidor no disponible, cargando respaldo local:', err);
+            }
+
+            const local = localStorage.getItem('sistema_configuracion');
+            if (local) {
+                try {
+                    rellenarFormularioConfig(JSON.parse(local));
+                    return;
+                } catch (e) { /* ignorar */ }
+            }
+            rellenarFormularioConfig(valoresPorDefecto);
+        }
+
+        await cargarConfiguracionSistema();
+
+        const formConfig = document.getElementById('config-form');
+        if (formConfig) {
+            formConfig.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const payload = {
+                    max_horas_mes: parseFloat(document.getElementById('max-horas-mes').value) || 0,
+                    max_horas_diarias: parseFloat(document.getElementById('max-horas-diarias').value) || 0,
+                    min_horas_compensacion: parseFloat(document.getElementById('min-horas-compensacion').value) || 0,
+                    horas_descanso_por_hora: parseFloat(document.getElementById('horas-descanso-por-hora').value) || 0,
+                    dias_maximos_descanso: parseInt(document.getElementById('dias-maximos-descanso').value, 10) || 0,
+                    permitir_recuperacion_otro_dia: document.getElementById('permitir-recuperacion-otro-dia').checked,
+                    alertas_exceso: document.getElementById('alertas-exceso').checked
+                };
+
+                try {
+                    const response = await fetch(`${API_URL}/api/configuracion`, {
+                        method: 'POST',
+                        headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (response.ok) {
+                        localStorage.setItem('sistema_configuracion', JSON.stringify(payload));
+                        mostrarAvisoConfig('¡Configuración guardada correctamente!');
+                    } else {
+                        const errData = await response.json().catch(() => ({}));
+                        mostrarAvisoConfig(errData.detail || 'Error al guardar la configuración.', true);
+                    }
+                } catch (error) {
+                    localStorage.setItem('sistema_configuracion', JSON.stringify(payload));
+                    mostrarAvisoConfig('Configuración guardada localmente (sin conexión al servidor).');
+                }
+            });
+        }
+
+        const btnReset = document.getElementById('btn-reset-config');
+        if (btnReset) {
+            btnReset.addEventListener('click', () => {
+                if (confirm('¿Deseas restaurar todos los valores predeterminados?')) {
+                    rellenarFormularioConfig(valoresPorDefecto);
+                    localStorage.removeItem('sistema_configuracion');
+                    mostrarAvisoConfig('Valores predeterminados restaurados.');
+                }
+            });
+        }
+
+        const btnExport = document.getElementById('btn-export-config');
+        if (btnExport) {
+            btnExport.addEventListener('click', () => {
+                const configActual = {
+                    max_horas_mes: parseFloat(document.getElementById('max-horas-mes').value) || 0,
+                    max_horas_diarias: parseFloat(document.getElementById('max-horas-diarias').value) || 0,
+                    min_horas_compensacion: parseFloat(document.getElementById('min-horas-compensacion').value) || 0,
+                    horas_descanso_por_hora: parseFloat(document.getElementById('horas-descanso-por-hora').value) || 0,
+                    dias_maximos_descanso: parseInt(document.getElementById('dias-maximos-descanso').value, 10) || 0,
+                    permitir_recuperacion_otro_dia: document.getElementById('permitir-recuperacion-otro-dia').checked,
+                    alertas_exceso: document.getElementById('alertas-exceso').checked
+                };
+                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(configActual, null, 2));
+                const downloadAnchor = document.createElement('a');
+                downloadAnchor.setAttribute("href", dataStr);
+                downloadAnchor.setAttribute("download", `configuracion_${new Date().toISOString().slice(0,10)}.json`);
+                document.body.appendChild(downloadAnchor);
+                downloadAnchor.click();
+                downloadAnchor.remove();
+                mostrarAvisoConfig('Configuración exportada a JSON.');
+            });
+        }
+
+        const btnImport = document.getElementById('btn-import-config');
+        const inputFile = document.getElementById('import-config-file');
+        if (btnImport && inputFile) {
+            btnImport.addEventListener('click', () => inputFile.click());
+            inputFile.addEventListener('change', (e) => {
+                const archivo = e.target.files[0];
+                if (!archivo) return;
+                const lector = new FileReader();
+                lector.onload = function(event) {
+                    try {
+                        const parsed = JSON.parse(event.target.result);
+                        rellenarFormularioConfig(parsed);
+                        mostrarAvisoConfig('Configuración importada. Haz clic en "Guardar preferencias" para aplicarla.');
+                    } catch (err) {
+                        mostrarAvisoConfig('El archivo JSON no es válido.', true);
+                    }
+                };
+                lector.readAsText(archivo);
+                inputFile.value = '';
+            });
+        }
+    })();
+</script>

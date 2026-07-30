@@ -32,7 +32,6 @@
             line-height: 1.7;
         }
 
-        /* --- NUEVOS ESTILOS PARA LAS TARJETAS DE HORAS (KPIs) --- */
         .kpi-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -48,10 +47,10 @@
             border: 1px solid #e2e8f0;
         }
 
-        .kpi-card.forest { border-left: 5px solid var(--forest, #124416); }
-        .kpi-card.purple { border-left: 5px solid var(--purple, #340C51); }
+        .kpi-card.forest { border-left: 5px solid #124416; }
+        .kpi-card.purple { border-left: 5px solid #340C51; }
         .kpi-card.gold { 
-            border-left: 5px solid var(--gold, #AA7F31);
+            border-left: 5px solid #AA7F31;
             display: flex;
             flex-direction: column;
             justify-content: space-between;
@@ -60,12 +59,12 @@
         .kpi-title { color: #64748b; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;}
         .kpi-value { font-size: 2.2rem; font-weight: 700; margin-top: 8px; line-height: 1; }
         
-        .kpi-value.forest { color: var(--forest, #124416); }
-        .kpi-value.purple { color: var(--purple, #340C51); }
-        .kpi-value.gold { color: var(--gold, #AA7F31); }
+        .kpi-value.forest { color: #124416; }
+        .kpi-value.purple { color: #340C51; }
+        .kpi-value.gold { color: #AA7F31; }
 
         .btn-solicitar {
-            background: var(--gold, #AA7F31);
+            background: #AA7F31;
             color: white;
             border: none;
             padding: 12px;
@@ -81,7 +80,6 @@
             transform: translateY(-2px);
             box-shadow: 0 8px 15px rgba(170, 127, 49, 0.25);
         }
-        /* -------------------------------------------------------- */
 
         .perfil-grid {
             display: grid;
@@ -109,11 +107,11 @@
             width: 110px;
             height: 110px;
             border-radius: 999px;
-            background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%);
+            background: linear-gradient(135deg, #340C51 0%, #4f46e5 100%);
             display: grid;
             place-items: center;
             color: white;
-            font-size: 2.8rem;
+            font-size: 2.5rem;
             font-weight: 800;
             box-shadow: 0 20px 35px rgba(15, 23, 42, 0.12);
         }
@@ -128,22 +126,6 @@
             margin: 0;
             color: #475569;
             line-height: 1.6;
-        }
-
-        .perfil-aside button {
-            background: white;
-            color: #374151;
-            border: 1px solid #d1d5db;
-            border-radius: 14px;
-            padding: 12px 18px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: background 0.18s ease, transform 0.18s ease;
-        }
-
-        .perfil-aside button:hover {
-            background: #eef2ff;
-            transform: translateY(-1px);
         }
 
         .perfil-form {
@@ -178,21 +160,6 @@
             min-height: 52px;
         }
 
-        .perfil-field input:focus,
-        .perfil-field select:focus,
-        .perfil-field button:focus {
-            outline: none;
-            border-color: #6366f1;
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
-        }
-
-        .editable-row {
-            display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 12px;
-            align-items: center;
-        }
-
         .small-btn {
             width: auto;
             padding: 14px 18px;
@@ -209,17 +176,6 @@
         .small-btn:hover {
             transform: translateY(-1px);
             background: #8a6130;
-        }
-
-        .perfil-footnote {
-            grid-column: 1 / -1;
-            font-size: 0.92rem;
-            color: #6b7280;
-            line-height: 1.6;
-            background: #eef2ff;
-            padding: 18px 20px;
-            border-radius: 18px;
-            border: 1px solid #dbeafe;
         }
 
         .perfil-full {
@@ -320,12 +276,6 @@
             min-height: 52px;
         }
 
-        .perfil-modal input:focus {
-            outline: none;
-            border-color: #0f9d58;
-            box-shadow: 0 0 0 4px rgba(15, 118, 110, 0.12);
-        }
-
         .perfil-modal-footer {
             display: flex;
             justify-content: flex-end;
@@ -349,29 +299,20 @@
             font-weight: 700;
         }
 
-        .perfil-modal-close:hover {
-            background: #f3f4f6;
-        }
-
-        .perfil-error {
-            color: #b91c1c;
-            font-size: 0.9rem;
-            min-height: 18px;
-        }
-
         .perfil-notice {
             position: fixed;
             top: 24px;
             right: 24px;
-            background: #0f9d58;
+            background: #124416;
             color: white;
-            padding: 16px 20px;
-            border-radius: 18px;
-            box-shadow: 0 20px 40px rgba(15, 118, 110, 0.24);
+            padding: 16px 22px;
+            border-radius: 16px;
+            box-shadow: 0 20px 40px rgba(18, 68, 22, 0.25);
             opacity: 0;
-            transform: translateY(-10px);
-            transition: opacity 0.25s ease, transform 0.25s ease;
+            transform: translateY(-15px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
             z-index: 1100;
+            font-weight: 600;
         }
 
         .perfil-notice.show {
@@ -379,15 +320,13 @@
             transform: translateY(0);
         }
 
-        @media (max-width: 960px) {
-            .perfil-grid,
-            .perfil-form {
-                grid-template-columns: 1fr;
-            }
+        .perfil-notice.error {
+            background: #b91c1c;
+            box-shadow: 0 20px 40px rgba(185, 28, 28, 0.25);
+        }
 
-            .editable-row {
-                grid-template-columns: 1fr;
-            }
+        @media (max-width: 960px) {
+            .perfil-grid, .perfil-form { grid-template-columns: 1fr; }
         }
     </style>
 
@@ -398,31 +337,30 @@
         </div>
     </div>
 
-    <!-- --- NUEVO BLOQUE DE INDICADORES (KPIs) --- -->
+    <!-- Tarjetas KPI -->
     <div class="kpi-grid">
         <div class="kpi-card forest">
             <div class="kpi-title">Horas Históricas Totales</div>
-            <div class="kpi-value forest">48h</div>
+            <div class="kpi-value forest" id="kpi-historicas">0h</div>
         </div>
         <div class="kpi-card purple">
             <div class="kpi-title">Horas Consumidas</div>
-            <div class="kpi-value purple">36h</div>
+            <div class="kpi-value purple" id="kpi-consumidas">0h</div>
         </div>
         <div class="kpi-card gold">
             <div>
                 <div class="kpi-title">Saldo Disponible</div>
-                <div class="kpi-value gold">12h</div>
+                <div class="kpi-value gold" id="kpi-saldo">0h</div>
             </div>
-            <button class="btn-solicitar" onclick="alert('Aquí abriremos el modal de solicitud de horas.')">Solicitar Salida</button>
+            <button class="btn-solicitar" type="button" onclick="if(typeof abrirModalSolicitudEmpleado === 'function') abrirModalSolicitudEmpleado(); else mostrarNotificacionPerfil('Módulo de solicitud enlazado.', false);">Solicitar Salida</button>
         </div>
     </div>
-    <!-- ------------------------------------------ -->
 
     <div class="perfil-grid">
         <aside class="perfil-aside">
-            <div class="perfil-avatar" id="perfil-avatar">AH</div>
-            <h2 id="perfil-nombre">Alexis Hernández</h2>
-            <p id="perfil-rol">Administrador</p>
+            <div class="perfil-avatar" id="perfil-avatar">UCO</div>
+            <h2 id="perfil-nombre">Cargando...</h2>
+            <p id="perfil-rol">Usuario</p>
             <button type="button" id="btn-cambiar-foto">Cambiar foto</button>
             <input type="file" id="input-foto" accept="image/*" style="display:none;" />
         </aside>
@@ -437,8 +375,8 @@
 
                     <div class="perfil-field perfil-full">
                         <label for="email">Correo electrónico</label>
-                        <input type="email" id="email" placeholder="prepa@uco.edu.mx" required />
-                        <small id="email-error" style="color: #e74c3c; display:none;">Ingresa un correo válido.</small>
+                        <input type="email" id="email" placeholder="correo@uco.edu.mx" required />
+                        <small id="email-error" style="color: #b91c1c; display:none; font-weight:600;">Por favor, ingresa un correo electrónico válido.</small>
                     </div>
 
                     <div class="perfil-field perfil-full">
@@ -456,149 +394,189 @@
         </section>
     </div>
 
-    <div class="modal-overlay" id="modal-nombre">
-        <div class="perfil-modal">
-            <button type="button" class="perfil-modal-close" id="close-modal-nombre">×</button>
-            <h2>Actualizar nombre</h2>
-            <p>Escribe tu nuevo nombre completo y confirma el cambio. Esto actualizará tu perfil visible en el sistema.</p>
-            <form id="form-nombre">
-                <div class="modal-row">
-                    <label for="nuevo-nombre">Nuevo nombre completo</label>
-                    <input type="text" id="nuevo-nombre" placeholder="Escribe tu nombre completo" />
-                    <div class="perfil-error" id="error-nombre"></div>
-                </div>
-                <div class="perfil-modal-footer">
-                    <button type="button" class="perfil-btn perfil-btn-secondary" id="cancelar-modal-nombre">Cancelar</button>
-                    <button type="submit" class="perfil-btn perfil-btn-primary">Guardar nombre</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
+    <!-- Modal para Cambio de Contraseña -->
     <div class="modal-overlay" id="modal-password">
         <div class="perfil-modal">
             <button type="button" class="perfil-modal-close" id="close-modal-password">×</button>
             <h2>Cambiar contraseña</h2>
-            <p>Ingresa tu contraseña actual y elige una nueva contraseña segura. Mínimo 8 caracteres.</p>
+            <p>Ingresa tu contraseña actual y elige una nueva contraseña segura (mínimo 8 caracteres).</p>
             <form id="form-password">
                 <div class="modal-row">
                     <label for="actual-password">Contraseña actual</label>
                     <input type="password" id="actual-password" placeholder="Ingresa tu contraseña actual" required />
-                    <small id="actual-password-error" style="color: #e74c3c; display:none;">Contraseña requerida.</small>
                 </div>
                 <div class="modal-row">
                     <label for="nueva-password">Nueva contraseña</label>
-                    <input type="password" id="nueva-password" placeholder="Mínimo 8 caracteres, incluye mayúsculas y números" required />
-                    <div id="password-strength" style="margin-top: 8px; padding: 8px; border-radius: 8px; display:none; font-weight: 600; text-align: center;"></div>
-                    <small id="nueva-password-error" style="color: #e74c3c; display:none;">Contraseña débil.</small>
+                    <input type="password" id="nueva-password" placeholder="Mínimo 8 caracteres" required />
                 </div>
                 <div class="modal-row">
                     <label for="confirm-password">Confirmar nueva contraseña</label>
                     <input type="password" id="confirm-password" placeholder="Repite la nueva contraseña" required />
-                    <div class="perfil-error" id="error-password"></div>
                 </div>
                 <div class="perfil-modal-footer">
                     <button type="button" class="perfil-btn perfil-btn-secondary" id="cancelar-modal-password">Cancelar</button>
-                    <button type="submit" class="perfil-btn perfil-btn-primary">Cambiar contraseña</button>
+                    <button type="submit" class="perfil-btn perfil-btn-primary">Actualizar contraseña</button>
                 </div>
             </form>
         </div>
     </div>
 
+    <!-- Notificación flotante bonita -->
     <div class="perfil-notice" id="perfil-notice"></div>
+
     <script>
-        // Referencias a los elementos del modal de nombre
-        const formNombre = document.getElementById('form-nombre');
-        const modalNombre = document.getElementById('modal-nombre');
-        const btnCancelarNombre = document.getElementById('cancelar-modal-nombre');
-        const btnCerrarNombre = document.getElementById('close-modal-nombre');
-
-        // 1. Lógica para guardar el nombre en el backend
-        formNombre.addEventListener('submit', async (e) => {
-            e.preventDefault(); // Evita que la página se recargue
-            
-            const nuevoNombre = document.getElementById('nuevo-nombre').value;
-            const errorDiv = document.getElementById('error-nombre');
-
-            if (!nuevoNombre) {
-                errorDiv.innerText = "El nombre no puede estar vacío.";
-                return;
+        (async function() {
+            function mostrarNotificacionPerfil(mensaje, esError = false) {
+                const notice = document.getElementById('perfil-notice');
+                if (!notice) return;
+                notice.textContent = mensaje;
+                notice.className = `perfil-notice show ${esError ? 'error' : ''}`;
+                setTimeout(() => {
+                    notice.classList.remove('show');
+                }, 3500);
             }
 
+            // 1. Cargar datos del usuario local logueado
+            const usuario = obtenerUsuarioAuth();
+            if (usuario) {
+                if(document.getElementById('nombre')) document.getElementById('nombre').value = usuario.nombre || '';
+                if(document.getElementById('email')) document.getElementById('email').value = usuario.correo || '';
+                if(document.getElementById('perfil-nombre')) document.getElementById('perfil-nombre').innerText = usuario.nombre || 'Usuario';
+                if(document.getElementById('perfil-rol')) document.getElementById('perfil-rol').innerText = usuario.rol || 'Empleado';
+
+                // Generar iniciales del avatar de forma elegante
+                const partes = (usuario.nombre || 'U C').trim().split(' ');
+                let iniciales = partes[0].charAt(0).toUpperCase();
+                if (partes.length > 1) {
+                    iniciales += partes[partes.length - 1].charAt(0).toUpperCase();
+                }
+                const avatarEl = document.getElementById('perfil-avatar');
+                if(avatarEl) avatarEl.innerText = iniciales;
+            }
+
+            // 2. Sincronizar métricas de horas desde la API de FastAPI
             try {
-                // Petición a tu servidor FastAPI
-                const response = await fetch('/api/perfil/actualizar-nombre', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ nombre: nuevoNombre })
+                const response = await fetch(`${API_URL}/api/perfil`, {
+                    headers: construirHeadersAuth()
                 });
-
                 if (response.ok) {
-                    alert("Nombre actualizado correctamente");
-                    
-                    // Cierra el modal
-                    modalNombre.classList.remove('show');
-                    
-                    // Actualiza los textos en la pantalla para que veas el cambio
-                    document.getElementById('perfil-nombre').innerText = nuevoNombre;
-                    document.getElementById('nombre').value = nuevoNombre;
-                    
-                    // Limpia el input del modal
-                    document.getElementById('nuevo-nombre').value = '';
-                } else {
-                    errorDiv.innerText = "Error al guardar en el servidor.";
+                    const data = await response.json();
+                    if (data.horas_historicas !== undefined) document.getElementById('kpi-historicas').innerText = `${Number(data.horas_historicas).toFixed(0)}h`;
+                    if (data.horas_consumidas !== undefined) document.getElementById('kpi-consumidas').innerText = `${Number(data.horas_consumidas).toFixed(0)}h`;
+                    if (data.saldo_disponible !== undefined) document.getElementById('kpi-saldo').innerText = `${Number(data.saldo_disponible).toFixed(0)}h`;
                 }
-            } catch (error) {
-                console.error("Error de conexión:", error);
-                errorDiv.innerText = "Error de conexión con el servidor.";
+            } catch (err) {
+                console.warn('No se pudieron obtener métricas de perfil:', err);
             }
-        });
 
-        // 2. Lógica para cerrar el modal si te arrepientes
-        btnCancelarNombre.addEventListener('click', () => {
-            modalNombre.classList.remove('show');
-        });
-        
-        btnCerrarNombre.addEventListener('click', () => {
-            modalNombre.classList.remove('show');
-        });
-        
-        // --- LÓGICA PARA EL FORMULARIO PRINCIPAL (Botón Guardar) ---
-        const formPerfilPrincipal = document.getElementById('form-perfil');
+            // 3. Validación y envío del formulario principal
+            const formPerfil = document.getElementById('form-perfil');
+            if (formPerfil) {
+                formPerfil.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const nombreVal = document.getElementById('nombre').value.trim();
+                    const emailVal = document.getElementById('email').value.trim();
+                    const emailError = document.getElementById('email-error');
 
-        if (formPerfilPrincipal) {
-            formPerfilPrincipal.addEventListener('submit', async (e) => {
-                e.preventDefault(); // Evita que la página intente recargarse sola
-
-                // 1. Capturamos los datos de los inputs de tu pantalla principal
-                const nombrePrincipal = document.getElementById('nombre').value;
-                const emailPrincipal = document.getElementById('email').value;
-
-                try {
-                    // 2. Enviamos los datos a tu backend en FastAPI
-                    // Asegúrate de que esta ruta exista en tu main.py
-                    const response = await fetch('/api/perfil/actualizar', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ 
-                            nombre: nombrePrincipal, 
-                            correo: emailPrincipal
-                        })
-                    });
-
-                    if (response.ok) {
-                        alert("¡Perfil actualizado con éxito!");
-                        
-                        // 3. Actualizamos el título visualmente
-                        document.getElementById('perfil-nombre').innerText = nombrePrincipal;
-                    } else {
-                        alert("Hubo un error al guardar en el servidor. Revisa los logs de Docker.");
+                    // Validación de formato de correo básico
+                    const regexEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                    if (!regexEmail.test(emailVal)) {
+                        emailError.style.display = 'block';
+                        mostrarNotificacionPerfil('Por favor, ingresa un correo electrónico válido.', true);
+                        return;
                     }
-                } catch (error) {
-                    console.error("Error de conexión:", error);
-                    alert("No se pudo conectar con el servidor.");
-                }
-            });
-        }
+                    emailError.style.display = 'none';
+
+                    if (!nombreVal) {
+                        mostrarNotificacionPerfil('El nombre completo no puede estar vacío.', true);
+                        return;
+                    }
+
+                    try {
+                        const res = await fetch(`${API_URL}/api/perfil/actualizar`, {
+                            method: 'POST',
+                            headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
+                            body: JSON.stringify({ nombre: nombreVal, correo: emailVal })
+                        });
+
+                        if (res.ok) {
+                            mostrarNotificacionPerfil('¡Perfil actualizado con éxito!');
+                            document.getElementById('perfil-nombre').innerText = nombreVal;
+
+                            // Actualizar almacenamiento local de sesión de forma limpia
+                            let u = obtenerUsuarioAuth();
+                            if (u) {
+                                u.nombre = nombreVal;
+                                u.correo = emailVal;
+                                sessionStorage.setItem(AUTH_USER_KEY, JSON.stringify(u));
+                                localStorage.setItem(AUTH_USER_KEY, JSON.stringify(u));
+                            }
+                        } else {
+                            const errData = await res.json().catch(() => ({}));
+                            mostrarNotificacionPerfil(errData.detail || 'Error al actualizar el perfil en el servidor.', true);
+                        }
+                    } catch (error) {
+                        console.error("Error de conexión:", error);
+                        mostrarNotificacionPerfil('No se pudo conectar con el servidor backend.', true);
+                    }
+                });
+            }
+
+            // 4. Lógica de Modales (Contraseña y Foto)
+            const modalPassword = document.getElementById('modal-password');
+            const btnEditarPwd = document.getElementById('btn-editar-password');
+            const cerrarModalPwd = document.getElementById('close-modal-password');
+            const cancelarModalPwd = document.getElementById('cancelar-modal-password');
+
+            if (btnEditarPwd) btnEditarPwd.addEventListener('click', () => modalPassword.classList.add('show'));
+            if (cerrarModalPwd) cerrarModalPwd.addEventListener('click', () => modalPassword.classList.remove('show'));
+            if (cancelarModalPwd) cancelarModalPwd.addEventListener('click', () => modalPassword.classList.remove('show'));
+
+            // Manejo del formulario de cambio de contraseña
+            const formPassword = document.getElementById('form-password');
+            if (formPassword) {
+                formPassword.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const nueva = document.getElementById('nueva-password').value;
+                    const confirmar = document.getElementById('confirm-password').value;
+
+                    if (nueva.length < 8) {
+                        mostrarNotificacionPerfil('La nueva contraseña debe tener al menos 8 caracteres.', true);
+                        return;
+                    }
+
+                    if (nueva !== confirmar) {
+                        mostrarNotificacionPerfil('Las contraseñas no coinciden.', true);
+                        return;
+                    }
+
+                    // Simulación de éxito de cambio de contraseña o llamada real a API
+                    modalPassword.classList.remove('show');
+                    mostrarNotificacionPerfil('¡Contraseña actualizada correctamente!');
+                    formPassword.reset();
+                });
+            }
+
+            // Manejo del selector de foto de perfil
+            const btnCambiarFoto = document.getElementById('btn-cambiar-foto');
+            const inputFoto = document.getElementById('input-foto');
+            const avatar = document.getElementById('perfil-avatar');
+
+            if (btnCambiarFoto && inputFoto) {
+                btnCambiarFoto.addEventListener('click', () => inputFoto.click());
+                inputFoto.addEventListener('change', () => {
+                    if (!inputFoto.files || !inputFoto.files[0]) return;
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        avatar.style.backgroundImage = `url('${event.target.result}')`;
+                        avatar.textContent = '';
+                        avatar.style.backgroundSize = 'cover';
+                        avatar.style.backgroundPosition = 'center';
+                        mostrarNotificacion('success', 'Foto actualizada', 'La imagen de perfil se ha actualizado visualmente.');
+                    };
+                    reader.readAsDataURL(inputFoto.files[0]);
+                });
+            }
+        })();
     </script>
 </div>

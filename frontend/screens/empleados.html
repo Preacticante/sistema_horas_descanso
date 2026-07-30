@@ -154,7 +154,6 @@
     <div class="empleados-header">
         <h1>Empleados</h1>
         <div style="display: flex; gap: 12px;">
-            
             <button class="empleados-btn empleados-btn-secondary" id="btn-restaurar-cambios" style="background: #ea580c;">Restaurar todo</button>
         </div>
     </div>
@@ -241,7 +240,6 @@
             <div style="display:flex; gap:12px; justify-content:flex-end;">
                 <button type="button" class="empleados-btn empleados-btn-secondary" id="btn-cancelar-empleado">Cancelar</button>
                 <button type="submit" class="empleados-btn empleados-btn-primary">Guardar</button>
-        
             </div>
         </form>
     </div>
@@ -387,3 +385,120 @@
         background: #d1d5db;
     }
 </style>
+
+<script>
+    (function() {
+        // Enlazar botones de búsqueda superior
+        const btnBuscar = document.getElementById('btn-buscar-empleados');
+        const btnResetFiltro = document.getElementById('btn-reset-empleados');
+        const inputFiltroIds = document.getElementById('filtro-ids');
+
+        if (btnBuscar) {
+            btnBuscar.addEventListener('click', () => {
+                const ids = inputFiltroIds.value.trim();
+                cargarEmpleados(ids || null);
+            });
+        }
+
+        if (btnResetFiltro) {
+            btnResetFiltro.addEventListener('click', () => {
+                inputFiltroIds.value = '';
+                cargarEmpleados();
+            });
+        }
+
+        // Delegación de eventos para la tabla (Horario, Editar, Eliminar)
+        const tablaEmpleados = document.getElementById('tabla-empleados');
+        if (tablaEmpleados) {
+            tablaEmpleados.addEventListener('click', (e) => {
+                const btnHorario = e.target.closest('.ver-horario-btn');
+                const btnEditar = e.target.closest('.editar-empleado-btn');
+                const btnEliminar = e.target.closest('.eliminar-empleado-btn');
+
+                if (btnHorario) {
+                    const empId = btnHorario.dataset.empId;
+                    obtenerHorarioEmpleado(empId);
+                }
+
+                if (btnEditar) {
+                    const empId = btnEditar.dataset.empId;
+                    const emp = empleadosCache.find(item => String(item.id) === String(empId));
+                    if (emp) abrirModalEmpleado('edit', emp);
+                }
+
+                if (btnEliminar) {
+                    const empId = btnEliminar.dataset.empId;
+                    eliminarEmpleadoVisual(empId);
+                }
+            });
+        }
+
+        // Botones de cierre de modales y confirmaciones
+        const btnCerrarHorario = document.getElementById('btn-cerrar-horario');
+        if (btnCerrarHorario) btnCerrarHorario.addEventListener('click', cerrarModalHorario);
+
+        const btnCerrarEmpleado = document.getElementById('btn-cerrar-empleado');
+        const btnCancelarEmpleado = document.getElementById('btn-cancelar-empleado');
+        if (btnCerrarEmpleado) btnCerrarEmpleado.addEventListener('click', cerrarModalEmpleado);
+        if (btnCancelarEmpleado) btnCancelarEmpleado.addEventListener('click', cerrarModalEmpleado);
+
+        const formEmpleado = document.getElementById('form-empleado');
+        if (formEmpleado) {
+            formEmpleado.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const idVal = document.getElementById('empleado-id').value;
+                const nombreVal = document.getElementById('empleado-nombre').value;
+                const horasVal = parseFloat(document.getElementById('empleado-horas').value) || 0;
+                const salidasVal = parseInt(document.getElementById('empleado-salidas').value, 10) || 0;
+
+                const empleadoObj = {
+                    id: isNaN(idVal) ? idVal : Number(idVal),
+                    nombre: nombreVal,
+                    total_horas: horasVal,
+                    salidas_temprano: salidasVal
+                };
+
+                // Si estamos editando un empleado real, intentamos actualizar en BD
+                if (empleadoModalMode === 'edit' && empleadoModalEditingId !== null && Number(empleadoModalEditingId) > 0) {
+                    const exito = await actualizarEmpleadoEnBD(empleadoObj);
+                    if (exito) {
+                        guardarEmpleadoVisual(empleadoObj);
+                        cerrarModalEmpleado();
+                    }
+                } else {
+                    guardarEmpleadoVisual(empleadoObj);
+                    cerrarModalEmpleado();
+                }
+            });
+        }
+
+        // Modales de confirmación generales
+        const btnConfirmar = document.getElementById('btn-confirmacion-confirmar');
+        const btnCancelarConfirmacion = document.getElementById('btn-confirmacion-cancelar');
+
+        if (btnConfirmar) {
+            btnConfirmar.addEventListener('click', () => {
+                if (empleadoAEliminar === 'restore_all') {
+                    confirmarLimpiar();
+                } else {
+                    confirmarEliminacion();
+                }
+            });
+        }
+
+        if (btnCancelarConfirmacion) {
+            btnCancelarConfirmacion.addEventListener('click', () => {
+                cerrarModalConfirmacion();
+                // Restaurar texto por defecto del botón de confirmación si se usó para restaurar
+                const btnC = document.getElementById('btn-confirmacion-confirmar');
+                if (btnC) {
+                    btnC.textContent = 'Eliminar';
+                    btnC.className = 'btn-confirm-danger';
+                }
+            });
+        }
+
+        // Carga inicial al montar la vista
+        inicializarEmpleados();
+    })();
+</script>
