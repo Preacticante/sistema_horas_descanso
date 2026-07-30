@@ -1313,7 +1313,6 @@ function inicializarReportes() {
     }
 }
 
-// 🛡️ CORREGIDO: Uso de 'page' de forma consistente y sin errores de variables no definidas
 async function loadPage(page, element = null) {
     try {
         if (element) {
@@ -1419,10 +1418,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 document.addEventListener("DOMContentLoaded", () => {
     if (!esSesionValida()) {
-        window.location.href = '/';
+        window.location.href = 'login.html';
         return;
     }
 
+<<<<<<< HEAD
    const logoutLink = document.getElementById('logout-link');
 if (logoutLink) {
     logoutLink.addEventListener('click', (event) => {
@@ -1434,6 +1434,16 @@ if (logoutLink) {
         // Nota: Si tu pantalla de login se llama index.html, usa '/frontend/index.html'
     });
 }
+=======
+    const logoutLink = document.getElementById('logout-link');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', (event) => {
+            event.preventDefault();
+            limpiarSesionAuth();
+            window.location.href = 'login.html';
+        });
+    }
+>>>>>>> b1499a9b10f3ee00a97ebe587e134d792acfb9ce
 
     loadPage('dashboard', document.querySelector('.sidebar a'));
 });
