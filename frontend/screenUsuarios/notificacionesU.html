@@ -1,0 +1,220 @@
+<div style="display: flex; flex-direction: column; height: 100vh; width: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f4; position: absolute; top: 0; left: 0; z-index: 1000; overflow: hidden;">
+
+    <!-- 1. BARRA SUPERIOR VERDE (TOPBAR) -->
+    <header style="background-color: #2f582f; color: white; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.15); flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; color: #ffffff;">Control de Horas</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="text-align: right;">
+                <span id="topbar-user-name" style="display: block; font-size: 0.9rem; font-weight: 600;">Cargando...</span>
+                <span style="display: block; font-size: 0.75rem; color: #c2dec2;">Empleado</span>
+            </div>
+            <a href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/frontend/login.html'; } return false;" title="Cerrar Sesión" style="color: white; text-decoration: none; font-size: 1.1rem; background: rgba(255,255,255,0.15); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                🚪
+            </a>
+        </div>
+    </header>
+
+    <!-- CUERPO DE LA APLICACIÓN (SIDEBAR + PANEL PRINCIPAL) -->
+    <div style="display: flex; flex: 1; overflow: hidden;">
+
+       <!-- SIDEBAR ESTILO UCO PREPA CONTEMPORÁNEA -->
+<aside style="width: 260px; background-color: #0f3d1e; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem 1.25rem 1.5rem 1.25rem; box-sizing: border-box; flex-shrink: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    
+    <!-- SECCIÓN SUPERIOR: LOGO Y MENÚ -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        
+        <!-- LOGO -->
+        <div style="text-align: center; padding: 0.5rem 0;">
+    <img src="../logo_uco.png" 
+         alt="UCO Prepa Contemporánea" 
+         style="max-width: 180px; height: auto; display: block; margin: 0 auto;">
+</div>
+
+        <!-- MENÚ DE NAVEGACIÓN -->
+        <nav style="display: flex; flex-direction: column; gap: 0.5rem;">
+            
+            <!-- Panel Principal / Inicio -->
+            <a href="#" 
+               id="link-inicio"
+               onclick="loadPageUsuario('inicio', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">📊</span> Panel Principal
+            </a>
+
+            <!-- Registros / Solicitudes -->
+            <a href="#" 
+               id="link-registros"
+               onclick="loadPageUsuario('registros', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">📄</span> Registros
+            </a>
+
+            <!-- Notificaciones -->
+            <a href="#" 
+               id="link-notificaciones"
+               onclick="loadPageUsuario('notificaciones', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">🔔</span> Notificaciones
+            </a>
+
+            <!-- SEPARADOR -->
+            <div style="height: 1px; background-color: rgba(212, 175, 55, 0.2); margin: 0.75rem 0;"></div>
+
+            <!-- Configuración (Opcional) -->
+            <a href="#" 
+               onclick="loadPageUsuario('configuracion', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">⚙️</span> Configuración
+            </a>
+
+            <!-- Perfil (Opcional) -->
+            <a href="#" 
+               onclick="loadPageUsuario('perfil', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">👤</span> Perfil
+            </a>
+
+        </nav>
+    </div>
+
+    <!-- SECCIÓN INFERIOR: BOTÓN CERRAR SESIÓN -->
+    <div>
+        <a href="#" 
+           onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;"
+           style="display: block; text-align: center; padding: 12px 16px; border-radius: 12px; border: 1px solid #c49a45; color: #c49a45; text-decoration: none; font-weight: 600; font-size: 0.95rem; background-color: rgba(15, 61, 30, 0.5); transition: all 0.2s ease;"
+           onmouseover="this.style.backgroundColor='#c49a45'; this.style.color='#0f3d1e';"
+           onmouseout="this.style.backgroundColor='rgba(15, 61, 30, 0.5)'; this.style.color='#c49a45';">
+            Cerrar Sesión
+        </a>
+    </div>
+
+</aside>
+        <!-- 3. ÁREA DE CONTENIDO PRINCIPAL -->
+        <main style="flex: 1; padding: 2rem; overflow-y: auto; background-color: #f4f6f4;">
+            
+            <div class="card" style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-left: 5px solid #2f582f;">
+                
+                <!-- Encabezado con acciones -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1 style="margin: 0; color: #1f2d19; font-size: 1.8rem; font-weight: 700;">Centro de Notificaciones</h1>
+                        <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.95rem;">Avisos sobre el estado de tus solicitudes de reposición e incidencias.</p>
+                    </div>
+                    <button onclick="marcarTodasLeidas()" style="background: transparent; border: 1px solid #2f582f; color: #2f582f; padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;" onmouseover="this.style.background='#e3efe3'" onmouseout="this.style.background='transparent'">
+                        ✓ Marcar todas como leídas
+                    </button>
+                </div>
+
+                <!-- Filtros rápidos -->
+                <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">
+                    <button onclick="filtrarNoti('todas', this)" class="btn-filtro-noti" style="background: #2f582f; color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Todas (3)</button>
+                    <button onclick="filtrarNoti('aprobada', this)" class="btn-filtro-noti" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Aprobadas</button>
+                    <button onclick="filtrarNoti('pendiente', this)" class="btn-filtro-noti" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Pendientes</button>
+                </div>
+
+                <!-- Lista de Notificaciones -->
+                <div id="lista-notificaciones" style="display: flex; flex-direction: column; gap: 1rem;">
+                    
+                    <!-- NOTIFICACIÓN 1: APROBADA (NUEVA) -->
+                    <div class="item-noti aprobada" style="background: #f4f8f4; border: 1px solid #d2e3d2; border-left: 4px solid #15803d; padding: 1.25rem; border-radius: 8px; position: relative;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.2rem;">✅</span>
+                                <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Solicitud Aprobada</h4>
+                                <span style="background: #2f582f; color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 700; text-transform: uppercase;">Nueva</span>
+                            </div>
+                            <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">Hace 2 horas</span>
+                        </div>
+                        <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
+                            Tu solicitud para el día <strong>15/10/2026</strong> por <strong>4.0 horas</strong> ha sido aprobada exitosamente por tu supervisor.
+                        </p>
+                    </div>
+
+                    <!-- NOTIFICACIÓN 2: PENDIENTE -->
+                    <div class="item-noti pendiente" style="background: #fefcf8; border: 1px solid #fef3c7; border-left: 4px solid #a16207; padding: 1.25rem; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.2rem;">⏳</span>
+                                <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Solicitud Recibida</h4>
+                            </div>
+                            <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">Ayer</span>
+                        </div>
+                        <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
+                            Tu solicitud de reposición para el día <strong>28/10/2026</strong> por <strong>4.0 horas</strong> está en proceso de revisión.
+                        </p>
+                    </div>
+
+                    <!-- NOTIFICACIÓN 3: AVISO GENERAL -->
+                    <div class="item-noti aprobada" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #AA7F31; padding: 1.25rem; border-radius: 8px;">
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                            <div style="display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.2rem;">💡</span>
+                                <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Acreditación de Horas Extra</h4>
+                            </div>
+                            <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">20/07/2026</span>
+                        </div>
+                        <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
+                            Se han acreditado <strong>8.0 horas extra</strong> a tu saldo disponible por el turno especial del fin de semana.
+                        </p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+</div>
+
+<script>
+// Lógica para filtrar las tarjetas
+function filtrarNoti(tipo, btn) {
+    // Cambiar estilos de los botones
+    document.querySelectorAll('.btn-filtro-noti').forEach(b => {
+        b.style.background = '#f1f5f9';
+        b.style.color = '#475569';
+    });
+    btn.style.background = '#2f582f';
+    btn.style.color = 'white';
+
+    // Ocultar / Mostrar elementos según el filtro
+    const items = document.querySelectorAll('.item-noti');
+    items.forEach(item => {
+        if (tipo === 'todas') {
+            item.style.display = 'block';
+        } else if (item.classList.contains(tipo)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
+}
+
+function marcarTodasLeidas() {
+    const badges = document.querySelectorAll('#lista-notificaciones span');
+    badges.forEach(b => {
+        if (b.textContent === 'Nueva') b.remove();
+    });
+    alert('Todas las notificaciones han sido marcadas como leídas.');
+}
+
+// Cargar el nombre del usuario activo
+(function() {
+    const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
+    let userObj = {};
+    try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(e) {}
+
+    const nombreReal = userObj.nombre_completo || userObj.nombre || localStorage.getItem('nombre_completo') || localStorage.getItem('username') || "Empleado";
+    const elemTopbar = document.getElementById("topbar-user-name");
+    if (elemTopbar) elemTopbar.textContent = nombreReal;
+})();
+</script>

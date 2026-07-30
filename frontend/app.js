@@ -257,6 +257,7 @@ function inicializarNotificaciones() {
     renderNotificacionesSalida();
 }
 
+
 async function cargarEmpleados(ids = null) {
     const tabla = document.getElementById("tabla-empleados");
     if (!tabla) return;
@@ -266,7 +267,7 @@ async function cargarEmpleados(ids = null) {
     
     try {
         const [respuesta, resSubordinados] = await Promise.all([
-            fetch(`${API_URL}/api/empleados${query}`),
+            fetch(`${API_URL}/api/empleados${query}`, { headers: construirHeadersAuth() }),
             fetch(`${API_URL}/api/dashboard-empleados`, { headers: construirHeadersAuth() })
         ]);
 
@@ -308,6 +309,118 @@ async function cargarEmpleados(ids = null) {
     }
 }
 
+async function cargarDropdownEmpleados() {
+    const select = document.getElementById("reg-empleado");
+    if (!select) return;
+
+    try {
+        const baseUrl = window.API_URL || "http://localhost:8000";
+
+        let headers = {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        };
+
+        if (typeof construirHeadersAuth === 'function') {
+            try {
+                headers = Object.assign(headers, construirHeadersAuth());
+            } catch(e) {}
+        }
+
+        const response = await fetch(`${baseUrl}/api/dashboard-empleados`, {
+            method: 'GET',
+            headers: headers,
+            credentials: 'include'
+        });
+
+        let empleados = [];
+
+        if (response.ok) {
+            empleados = await response.json();
+        }
+
+        if (empleados && empleados.data && Array.isArray(empleados.data)) {
+            empleados = empleados.data;
+        }
+
+        // ==========================================
+        // 1. SI NO HAY EMPLEADOS A CARGO (Buscar usuario logueado)
+        // ==========================================
+        if (!Array.isArray(empleados) || empleados.length === 0) {
+            let nombreMostrar = localStorage.getItem('nombre_completo') || localStorage.getItem('nombre');
+            let idLogueado = 1;
+
+            // Si no hay nombre completo en localStorage, intentar leer el objeto 'usuario'
+            const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
+            if (rawUser) {
+                try {
+                    const u = JSON.parse(rawUser);
+                    idLogueado = u.id || u.id_usuario || 1;
+                    nombreMostrar = u.nombre_completo || u.nombre || nombreMostrar;
+                } catch(e) {}
+            }
+
+            // Si sigue sin haber nombre real y solo tenemos 'ds' (username), consultamos la API de perfil
+            if (!nombreMostrar || nombreMostrar === localStorage.getItem('username')) {
+                try {
+                    const resPerfil = await fetch(`${baseUrl}/api/perfil`, { headers, credentials: 'include' });
+                    if (resPerfil.ok) {
+                        const perfil = await resPerfil.json();
+                        nombreMostrar = perfil.nombre_completo || perfil.nombre || perfil.nombres;
+                        idLogueado = perfil.id || perfil.id_usuario || idLogueado;
+                    }
+                } catch(e) {
+                    console.log("No se pudo obtener el perfil de la API");
+                }
+            }
+
+            // Si después de todo solo queda 'ds', usamos 'ds' o un texto por defecto
+            empleados = [{
+                id: idLogueado,
+                nombre: nombreMostrar || localStorage.getItem('username') || "Usuario Actual"
+            }];
+        }
+
+        // ==========================================
+        // 2. RENDERIZAR EN EL SELECT
+        // ==========================================
+        if (empleados.length > 1) {
+            select.innerHTML = '<option value="" disabled selected hidden>Selecciona un empleado...</option>';
+            
+            empleados.forEach(emp => {
+                const id = emp.id !== undefined ? emp.id : emp.id_usuario_sistema;
+                const nombre = emp.nombre || emp.nombre_completo || emp.username || "Sin nombre";
+
+                const opt = document.createElement("option");
+                opt.value = id;
+                opt.textContent = nombre;
+                select.appendChild(opt);
+            });
+
+            select.value = "";
+        } else if (empleados.length === 1) {
+            const unico = empleados[0];
+            const idUnico = unico.id !== undefined ? unico.id : unico.id_usuario_sistema;
+            const nombreUnico = unico.nombre || unico.nombre_completo || unico.username;
+
+            select.innerHTML = `<option value="${idUnico}" selected>${nombreUnico}</option>`;
+            select.value = idUnico;
+
+            if (typeof cargarHorasDisponibles === 'function') {
+                cargarHorasDisponibles(idUnico);
+            }
+        }
+
+        select.onchange = function() {
+            if (typeof cargarHorasDisponibles === 'function') {
+                cargarHorasDisponibles(this.value);
+            }
+        };
+
+    } catch (err) {
+        console.error("Error al obtener la lista de empleados:", err);
+    }
+}
 function renderEmpleadosTabla(tabla, empleados) {
     tabla.innerHTML = '';
     if (!empleados.length) {
@@ -1117,8 +1230,13 @@ function inicializarEmpleados() {
 
     cargarEmpleados();
     if (typeof cargarAutorizacionesJefe === 'function') {
-        cargarAutorizacionesJefe();
-    }
+    cargarAutorizacionesJefe();
+}
+
+// 👉 Agrega esta comprobación para el desplegable de solicitudes:
+if (typeof cargarDropdownEmpleados === 'function') {
+    cargarDropdownEmpleados();
+}
 }
 
 async function inicializarRegistros() {
@@ -1212,50 +1330,92 @@ async function loadPage(page, element = null) {
         const html = await response.text();
         
         setTimeout(async () => {
-            const dynamicCard = document.getElementById('dynamic-card'); // Asegúrate de que este sea tu contenedor principal
-            const container = document.body; // Ajusta según tu estructura contenedora principal si difiere
+            const dynamicCard = document.getElementById('dynamic-card');
+            const container = document.body;
 
-            if (dynamicCard) dynamicCard.innerHTML = html;
+            if (dynamicCard) {
+                dynamicCard.innerHTML = html;
+                dynamicCard.querySelectorAll('script').forEach(script => {
+                    try {
+                        eval(script.innerText);
+                    } catch (err) {
+                        console.error("Error al ejecutar script de la vista:", err);
+                    }
+                });
+            }
             if (container) container.classList.remove('fade-out');
             console.log("loadPage loaded", page);
-            
-            document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
-            if(element) element.classList.add('active');
 
-            if (page === 'empleados') {
+            // Normalizamos 'page' quitándole 'screens/' y '.html' para comparar seguro
+            const pageClean = page.replace('screens/', '').replace('.html', '');
+
+            // 💾 GUARDA LA PÁGINA ACTUAL EN LOCALSTORAGE
+            localStorage.setItem('active_screen', pageClean);
+
+            // Resaltar el botón activo en el sidebar (incluso si element era null al recargar)
+            document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+            if (element) {
+                element.classList.add('active');
+            } else {
+                // Intenta buscar el enlace correspondiente en el sidebar si no se pasó el 'element'
+                const currentLink = document.querySelector(`.sidebar a[onclick*="${pageClean}"]`);
+                if (currentLink) currentLink.classList.add('active');
+            }
+
+            if (pageClean === 'empleados') {
                 inicializarEmpleados();
             }
 
-            if (page === 'registros') {
-                await inicializarRegistros();
+            if (pageClean === 'registros') {
+                // 1. Ejecutar inicializarRegistros si existe
+                if (typeof inicializarRegistros === 'function') {
+                    await inicializarRegistros();
+                }
+                
+                // 2. 👉 LLAMADA CLAVE: Llenar el select de empleados automáticamente
+                if (typeof cargarDropdownEmpleados === 'function') {
+                    await cargarDropdownEmpleados();
+                }
             }
 
-            if (page === 'notificaciones') {
+            if (pageClean === 'notificaciones') {
                 inicializarNotificaciones();
             }
 
-            if (page === 'dashboard') {
+            if (pageClean === 'dashboard') {
                 cargarDashboard();
             }
 
-            if (page === 'reportes') {
+            if (pageClean === 'reportes') {
                 inicializarReportes();
             }
 
-            if (page === 'perfil') {
+            if (pageClean === 'perfil') {
                 inicializarPerfil();
             }
 
-            if (page === 'configuracion' && typeof inicializarConfiguracion === 'function') {
+            if (pageClean === 'configuracion' && typeof inicializarConfiguracion === 'function') {
                 await inicializarConfiguracion();
+            }
+            
+            if (pageClean === 'inicio') {
+                // Inicializaciones para inicio si fueran necesarias
             }
 
         }, 300);
     } catch (e) {
+        console.error(e);
         const dynamicCard = document.getElementById('dynamic-card');
         if (dynamicCard) dynamicCard.innerHTML = "<h1>Error</h1><p>No se pudo cargar la vista.</p>";
     }
 }
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Obtiene la última pantalla visitada; si no existe, usa 'dashboard' o 'inicio'
+    const savedPage = localStorage.getItem('active_screen') || 'dashboard';
+
+    // 2. Carga la página guardada automáticamente
+    loadPage(savedPage);
+});
 
 document.addEventListener("DOMContentLoaded", () => {
     if (!esSesionValida()) {
@@ -1263,14 +1423,71 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-    const logoutLink = document.getElementById('logout-link');
-    if (logoutLink) {
-        logoutLink.addEventListener('click', (event) => {
-            event.preventDefault();
-            limpiarSesionAuth();
-            window.location.href = '/';
-        });
-    }
+   const logoutLink = document.getElementById('logout-link');
+if (logoutLink) {
+    logoutLink.addEventListener('click', (event) => {
+        event.preventDefault();
+        limpiarSesionAuth();
+        
+        // Redirigir a la vista de login dentro de la carpeta frontend
+        window.location.href = '/frontend/login.html'; 
+        // Nota: Si tu pantalla de login se llama index.html, usa '/frontend/index.html'
+    });
+}
 
     loadPage('dashboard', document.querySelector('.sidebar a'));
 });
+
+async function loadPageUsuario(pageName, element = null) {
+    try {
+        // 1. Resaltar la opción seleccionada en el menú lateral de usuarios
+        if (element) {
+            document.querySelectorAll('aside nav a').forEach(a => {
+                a.classList.remove('active');
+                a.style.backgroundColor = 'transparent';
+                a.style.color = '#475569';
+                a.style.borderLeft = 'none';
+            });
+
+            element.classList.add('active');
+            element.style.backgroundColor = '#e3efe3';
+            element.style.color = '#2f582f';
+            element.style.borderLeft = '4px solid #2f582f';
+        }
+
+        // 2. Construir la ruta apuntando a screenUsuarios/
+        const fileName = pageName.endsWith('.html') ? pageName : `${pageName}.html`;
+        const path = `screenUsuarios/${fileName}`;
+
+        // 3. Obtener el archivo HTML
+        const response = await fetch(path);
+        if (!response.ok) throw new Error(`No se pudo cargar la vista de usuario: ${path}`);
+
+        const html = await response.text();
+
+        // 4. Inyectar en el contenedor dinámico
+        const dynamicCard = document.getElementById('dynamic-card');
+        if (dynamicCard) {
+            dynamicCard.innerHTML = html;
+
+            // Ejecutar los scripts que vengan dentro del HTML cargado (ej. el calendario)
+            const scripts = dynamicCard.getElementsByTagName('script');
+            for (let script of scripts) {
+                try {
+                    eval(script.innerText);
+                } catch (err) {
+                    console.error("Error al ejecutar script de la vista:", err);
+                }
+            }
+        }
+
+        console.log("Cargada vista de usuario:", pageName);
+
+    } catch (e) {
+        console.error("Error en loadPageUsuario:", e);
+        const dynamicCard = document.getElementById('dynamic-card');
+        if (dynamicCard) {
+            dynamicCard.innerHTML = "<h2>Error</h2><p>No se pudo cargar la vista solicitada.</p>";
+        }
+    }
+}

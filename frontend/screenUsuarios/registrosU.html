@@ -1,0 +1,295 @@
+<div style="display: flex; flex-direction: column; height: 100vh; width: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f4; position: absolute; top: 0; left: 0; z-index: 1000; overflow: hidden;">
+
+    <!-- 1. BARRA SUPERIOR VERDE (TOPBAR) -->
+    <header style="background-color: #2f582f; color: white; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.15); flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; color: #ffffff;">Control de Horas</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="text-align: right;">
+                <span id="topbar-user-name" style="display: block; font-size: 0.9rem; font-weight: 600;">Cargando...</span>
+                <span style="display: block; font-size: 0.75rem; color: #c2dec2;">Empleado</span>
+            </div>
+            <a href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/frontend/login.html'; } return false;" title="Cerrar Sesión" style="color: white; text-decoration: none; font-size: 1.1rem; background: rgba(255,255,255,0.15); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                🚪
+            </a>
+        </div>
+    </header>
+
+    <!-- CUERPO DE LA APLICACIÓN (SIDEBAR + PANEL PRINCIPAL) -->
+    <div style="display: flex; flex: 1; overflow: hidden;">
+
+       <!-- SIDEBAR ESTILO UCO PREPA CONTEMPORÁNEA -->
+<aside style="width: 260px; background-color: #0f3d1e; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem 1.25rem 1.5rem 1.25rem; box-sizing: border-box; flex-shrink: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    
+    <!-- SECCIÓN SUPERIOR: LOGO Y MENÚ -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        
+        <!-- LOGO -->
+        <div style="text-align: center; padding: 0.5rem 0;">
+    <img src="../logo_uco.png" 
+         alt="UCO Prepa Contemporánea" 
+         style="max-width: 180px; height: auto; display: block; margin: 0 auto;">
+</div>
+
+        <!-- MENÚ DE NAVEGACIÓN -->
+        <nav style="display: flex; flex-direction: column; gap: 0.5rem;">
+            
+            <!-- Panel Principal / Inicio -->
+            <a href="#" 
+               id="link-inicio"
+               onclick="loadPageUsuario('inicio', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">📊</span> Panel Principal
+            </a>
+
+            <!-- Registros / Solicitudes -->
+            <a href="#" 
+               id="link-registros"
+               onclick="loadPageUsuario('registros', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">📄</span> Registros
+            </a>
+
+            <!-- Notificaciones -->
+            <a href="#" 
+               id="link-notificaciones"
+               onclick="loadPageUsuario('notificaciones', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">🔔</span> Notificaciones
+            </a>
+
+            <!-- SEPARADOR -->
+            <div style="height: 1px; background-color: rgba(212, 175, 55, 0.2); margin: 0.75rem 0;"></div>
+
+            <!-- Configuración (Opcional) -->
+            <a href="#" 
+               onclick="loadPageUsuario('configuracion', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">⚙️</span> Configuración
+            </a>
+
+            <!-- Perfil (Opcional) -->
+            <a href="#" 
+               onclick="loadPageUsuario('perfil', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">👤</span> Perfil
+            </a>
+
+        </nav>
+    </div>
+
+    <!-- SECCIÓN INFERIOR: BOTÓN CERRAR SESIÓN -->
+    <div>
+        <a href="#" 
+           onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;"
+           style="display: block; text-align: center; padding: 12px 16px; border-radius: 12px; border: 1px solid #c49a45; color: #c49a45; text-decoration: none; font-weight: 600; font-size: 0.95rem; background-color: rgba(15, 61, 30, 0.5); transition: all 0.2s ease;"
+           onmouseover="this.style.backgroundColor='#c49a45'; this.style.color='#0f3d1e';"
+           onmouseout="this.style.backgroundColor='rgba(15, 61, 30, 0.5)'; this.style.color='#c49a45';">
+            Cerrar Sesión
+        </a>
+    </div>
+
+</aside>
+
+        <!-- 3. ÁREA DE CONTENIDO PRINCIPAL -->
+        <main style="flex: 1; padding: 2rem; overflow-y: auto; background-color: #f4f6f4;">
+            
+            <div class="card" style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-left: 5px solid #2f582f;">
+                
+                <!-- Encabezado de la Tarjeta -->
+                <div style="margin-bottom: 1.5rem;">
+                    <h1 style="margin: 0; color: #1f2d19; font-size: 1.8rem; font-weight: 700;">Nueva Solicitud de Reposición</h1>
+                    <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.95rem;">Selecciona el día en el calendario e indica la cantidad de horas a utilizar.</p>
+                </div>
+
+                <!-- Banner de Saldo Disponible -->
+                <div style="background: #f4f8f4; border: 1px solid #d2e3d2; padding: 1rem 1.25rem; border-radius: 8px; margin-bottom: 2rem; display: flex; align-items: center; justify-content: space-between;">
+                    <span style="color: #2f582f; font-weight: 600; font-size: 0.95rem;">Tu saldo disponible actual:</span>
+                    <span style="font-size: 1.2rem; font-weight: 800; color: #1f2d19;"><span id="reg-saldo-disp">16.0</span> hrs</span>
+                </div>
+
+                <!-- FORMULARIO GRID: CALENDARIO A LA IZQUIERDA, DETALLES A LA DERECHA -->
+                <form id="form-solicitud" onsubmit="procesarSolicitud(event)" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 2rem;">
+                    
+                    <!-- COLUMNA IZQUIERDA: CALENDARIO INTEGRADO -->
+                    <div>
+                        <label style="display: block; font-weight: 700; color: #1f2d19; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                            1. Selecciona la fecha en el calendario:
+                        </label>
+                        
+                        <!-- Widget de Calendario Custom -->
+                        <div style="border: 1px solid #cbd5e1; border-radius: 10px; padding: 1rem; background: #fafafa;">
+                            <!-- Header Mes / Año -->
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                                <button type="button" onclick="cambiarMes(-1)" style="background: none; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; padding: 4px 10px; font-weight: bold; color: #475569;">&lt;</button>
+                                <span id="cal-mes-ano" style="font-weight: 700; color: #2f582f; font-size: 1rem;">Cargando...</span>
+                                <button type="button" onclick="cambiarMes(1)" style="background: none; border: 1px solid #cbd5e1; border-radius: 6px; cursor: pointer; padding: 4px 10px; font-weight: bold; color: #475569;">&gt;</button>
+                            </div>
+
+                            <!-- Días de la semana -->
+                            <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-weight: 700; font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem;">
+                                <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
+                            </div>
+
+                            <!-- Días del Mes -->
+                            <div id="cal-dias-grid" style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;">
+                                <!-- Se genera con JavaScript -->
+                            </div>
+                        </div>
+
+                        <!-- Campo Oculto / Lectura para Fecha Elegida -->
+                        <div style="margin-top: 1rem;">
+                            <span style="font-size: 0.85rem; color: #64748b;">Fecha seleccionada:</span>
+                            <input type="text" id="fecha-seleccionada" required readonly placeholder="Haz clic en un día del calendario" style="width: 100%; margin-top: 0.25rem; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; background: #ffffff; font-weight: 600; color: #1f2d19; box-sizing: border-box;">
+                        </div>
+                    </div>
+
+                    <!-- COLUMNA DERECHA: SELECCIÓN DE HORAS Y MOTIVO -->
+                    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+                        
+                        <!-- Horas por día -->
+                        <div>
+                            <label style="display: block; font-weight: 700; color: #1f2d19; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                                2. Horas a tomar para este día:
+                            </label>
+                            
+                            <!-- Botones Rápidos de Selección -->
+                            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 0.75rem;">
+                                <button type="button" onclick="setHoras(2)" class="btn-hora-preset" style="padding: 8px; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; color: #334155;">2 hrs</button>
+                                <button type="button" onclick="setHoras(4)" class="btn-hora-preset" style="padding: 8px; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; color: #334155;">4 hrs (Medio día)</button>
+                                <button type="button" onclick="setHoras(8)" class="btn-hora-preset" style="padding: 8px; border: 1px solid #cbd5e1; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; color: #334155;">8 hrs (Día completo)</button>
+                            </div>
+
+                            <input type="number" id="input-horas" min="0.5" max="8" step="0.5" required placeholder="O ingresa un número de horas (Ej. 3.5)" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; box-sizing: border-box;">
+                        </div>
+
+                        <!-- Motivo / Observación -->
+                        <div>
+                            <label style="display: block; font-weight: 700; color: #1f2d19; margin-bottom: 0.5rem; font-size: 0.9rem;">
+                                3. Motivo de la solicitud:
+                            </label>
+                            <textarea id="input-motivo" rows="4" required placeholder="Describe brevemente el motivo de tu solicitud de reposición..." style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.9rem; font-family: inherit; resize: vertical; box-sizing: border-box;"></textarea>
+                        </div>
+
+                        <!-- Botones de Acción -->
+                        <div style="display: flex; gap: 1rem; margin-top: auto; padding-top: 1rem;">
+                            <button type="button" onclick="if(typeof loadPage==='function') loadPage('screenUsuarios/inicio');" style="flex: 1; padding: 12px; border: 1px solid #cbd5e1; background: #f8fafc; color: #475569; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                Cancelar
+                            </button>
+                            <button type="submit" style="flex: 2; padding: 12px; border: none; background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; border-radius: 8px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(170, 127, 31, 0.25);">
+                                Guardar Solicitud
+                            </button>
+                        </div>
+
+                    </div>
+
+                </form>
+
+            </div>
+
+        </main>
+    </div>
+
+</div>
+
+<script>
+// ==========================================
+// LÓGICA DEL CALENDARIO Y FORMULARIO
+// ==========================================
+let fechaActual = new Date();
+let diaSeleccionado = null;
+
+const meses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+function renderizarCalendario() {
+    const ano = fechaActual.getFullYear();
+    const mes = fechaActual.getMonth();
+
+    const elemMesAno = document.getElementById("cal-mes-ano");
+    if (elemMesAno) elemMesAno.textContent = `${meses[mes]} ${ano}`;
+
+    const primerDiaIndex = new Date(ano, mes, 1).getDay();
+    const ultimoDia = new Date(ano, mes + 1, 0).getDate();
+
+    const grid = document.getElementById("cal-dias-grid");
+    if (!grid) return;
+    grid.innerHTML = "";
+
+    // Espacios vacíos de días antes del día 1
+    for (let i = 0; i < primerDiaIndex; i++) {
+        const divVacio = document.createElement("div");
+        grid.appendChild(divVacio);
+    }
+
+    // Días del mes
+    for (let dia = 1; dia <= ultimoDia; dia++) {
+        const btnDia = document.createElement("button");
+        btnDia.type = "button";
+        btnDia.textContent = dia;
+        btnDia.style.cssText = "padding: 8px 0; border: 1px solid #e2e8f0; background: white; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: #334155; transition: all 0.2s;";
+
+        const fechaFormateada = `${ano}-${String(mes + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+
+        if (diaSeleccionado === fechaFormateada) {
+            btnDia.style.background = "#2f582f";
+            btnDia.style.color = "white";
+            btnDia.style.borderColor = "#2f582f";
+        }
+
+        btnDia.onclick = function() {
+            diaSeleccionado = fechaFormateada;
+            document.getElementById("fecha-seleccionada").value = fechaFormateada;
+            renderizarCalendario(); // Re-renderizar para marcar el seleccionado
+        };
+
+        grid.appendChild(btnDia);
+    }
+}
+
+function cambiarMes(delta) {
+    fechaActual.setMonth(fechaActual.getMonth() + delta);
+    renderizarCalendario();
+}
+
+function setHoras(num) {
+    document.getElementById("input-horas").value = num;
+}
+
+function procesarSolicitud(e) {
+    e.preventDefault();
+    const fecha = document.getElementById("fecha-seleccionada").value;
+    const horas = document.getElementById("input-horas").value;
+    const motivo = document.getElementById("input-motivo").value;
+
+    if (!fecha) {
+        alert("Por favor, haz clic en un día del calendario.");
+        return;
+    }
+
+    alert(`¡Solicitud registrada con éxito!\n\nFecha: ${fecha}\nHoras: ${horas} hrs\nMotivo: ${motivo}`);
+    
+    if (typeof loadPage === 'function') {
+        loadPage('screenUsuarios/inicio');
+    }
+}
+
+// Inicializar datos del usuario y el calendario al cargar la vista
+(function() {
+    const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
+    let userObj = {};
+    try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(e) {}
+
+    const nombreReal = userObj.nombre_completo || userObj.nombre || localStorage.getItem('nombre_completo') || localStorage.getItem('username') || "Empleado";
+    const elemTopbar = document.getElementById("topbar-user-name");
+    if (elemTopbar) elemTopbar.textContent = nombreReal;
+
+    renderizarCalendario();
+})();
+</script>

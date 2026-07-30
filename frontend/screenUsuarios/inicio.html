@@ -1,0 +1,207 @@
+<div style="display: flex; flex-direction: column; height: 100vh; width: 100%; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f4; position: absolute; top: 0; left: 0; z-index: 1000; overflow: hidden;">
+
+    <!-- 1. BARRA SUPERIOR VERDE (TOPBAR) -->
+    <header style="background-color: #2f582f; color: white; height: 60px; display: flex; align-items: center; justify-content: space-between; padding: 0 1.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.15); flex-shrink: 0;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 1.25rem; font-weight: 700; letter-spacing: 0.5px; color: #ffffff;">Control de Horas</span>
+        </div>
+        
+        <div style="display: flex; align-items: center; gap: 1rem;">
+            <div style="text-align: right;">
+                <span id="topbar-user-name" style="display: block; font-size: 0.9rem; font-weight: 600;">Cargando...</span>
+                <span style="display: block; font-size: 0.75rem; color: #c2dec2;">Empleado</span>
+            </div>
+            <a href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/frontend/login.html'; } return false;" title="Cerrar Sesión" style="color: white; text-decoration: none; font-size: 1.1rem; background: rgba(255,255,255,0.15); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                🚪
+            </a>
+        </div>
+    </header>
+
+   <!-- SIDEBAR ESTILO UCO PREPA CONTEMPORÁNEA -->
+<aside style="width: 260px; background-color: #0f3d1e; height: 100vh; display: flex; flex-direction: column; justify-content: space-between; padding: 2rem 1.25rem 1.5rem 1.25rem; box-sizing: border-box; flex-shrink: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;">
+    
+    <!-- SECCIÓN SUPERIOR: LOGO Y MENÚ -->
+    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        
+        <!-- LOGO -->
+       <div style="text-align: center; padding: 0.5rem 0;">
+    <img src="../logo_uco.png" 
+         alt="UCO Prepa Contemporánea" 
+         style="max-width: 180px; height: auto; display: block; margin: 0 auto;">
+</div>
+
+        <!-- MENÚ DE NAVEGACIÓN -->
+        <nav style="display: flex; flex-direction: column; gap: 0.5rem;">
+            
+            <!-- Panel Principal / Inicio -->
+            <a href="#" 
+               id="link-inicio"
+               onclick="loadPageUsuario('inicio', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">📊</span> Panel Principal
+            </a>
+
+            <!-- Registros / Solicitudes -->
+            <a href="#" 
+               id="link-registros"
+               onclick="loadPageUsuario('registros', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">📄</span> Registros
+            </a>
+
+            <!-- Notificaciones -->
+            <a href="#" 
+               id="link-notificaciones"
+               onclick="loadPageUsuario('notificaciones', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">🔔</span> Notificaciones
+            </a>
+
+            <!-- SEPARADOR -->
+            <div style="height: 1px; background-color: rgba(212, 175, 55, 0.2); margin: 0.75rem 0;"></div>
+
+            <!-- Configuración (Opcional) -->
+            <a href="#" 
+               onclick="loadPageUsuario('configuracion', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">⚙️</span> Configuración
+            </a>
+
+            <!-- Perfil (Opcional) -->
+            <a href="#" 
+               onclick="loadPageUsuario('perfil', this); return false;" 
+               class="sidebar-btn"
+               style="display: flex; align-items: center; gap: 14px; padding: 12px 16px; border-radius: 10px; color: #d4af37; text-decoration: none; font-weight: 500; font-size: 0.95rem; transition: all 0.2s ease;">
+                <span style="font-size: 1.1rem;">👤</span> Perfil
+            </a>
+
+        </nav>
+    </div>
+
+    <!-- SECCIÓN INFERIOR: BOTÓN CERRAR SESIÓN -->
+    <div>
+        <a href="#" 
+           onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;"
+           style="display: block; text-align: center; padding: 12px 16px; border-radius: 12px; border: 1px solid #c49a45; color: #c49a45; text-decoration: none; font-weight: 600; font-size: 0.95rem; background-color: rgba(15, 61, 30, 0.5); transition: all 0.2s ease;"
+           onmouseover="this.style.backgroundColor='#c49a45'; this.style.color='#0f3d1e';"
+           onmouseout="this.style.backgroundColor='rgba(15, 61, 30, 0.5)'; this.style.color='#c49a45';">
+            Cerrar Sesión
+        </a>
+    </div>
+
+</aside>
+        <!-- 3. ÁREA DE CONTENIDO PRINCIPAL -->
+        <main style="flex: 1; padding: 2rem; overflow-y: auto; background-color: #f4f6f4;">
+            
+            <div class="card" style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-left: 5px solid #2f582f;">
+                
+                <!-- Encabezado de la Tarjeta -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;">
+                    <div>
+                        <h1 id="dash-emp-nombre" style="margin: 0; color: #1f2d19; font-size: 1.8rem; font-weight: 700;">¡Hola! 👋</h1>
+                        <p style="margin: 0.25rem 0 0 0; color: #64748b; font-size: 0.95rem;">Resumen de tu saldo de horas, días tomados y reposición.</p>
+                    </div>
+                    <button onclick="if(typeof loadPage==='function') loadPage('registros');" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; border: none; padding: 12px 22px; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 0.9rem; box-shadow: 0 4px 10px rgba(170, 127, 31, 0.25); transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        + Solicitar Reposición
+                    </button>
+                </div>
+
+                <!-- Bloque de 4 Métricas Clave -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1.25rem; margin-bottom: 2.5rem;">
+                    
+                    <!-- Horas Disponibles -->
+                    <div style="background: #f4f8f4; border: 1px solid #d2e3d2; border-left: 4px solid #2f582f; padding: 1.25rem; border-radius: 10px;">
+                        <div style="font-size: 0.8rem; color: #2f582f; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Horas Disponibles</div>
+                        <div id="dash-emp-disponibles" style="font-size: 2.2rem; font-weight: 800; color: #1f2d19; margin-top: 0.5rem;">16.0 <span style="font-size: 1rem; font-weight: 500;">hrs</span></div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">Saldo listo para compensar</div>
+                    </div>
+
+                    <!-- Horas Repuestas -->
+                    <div style="background: #fdfbf7; border: 1px solid #f3e8d3; border-left: 4px solid #AA7F31; padding: 1.25rem; border-radius: 10px;">
+                        <div style="font-size: 0.8rem; color: #8b6a2a; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Horas Repuestas</div>
+                        <div id="dash-emp-tomadas" style="font-size: 2.2rem; font-weight: 800; color: #AA7F31; margin-top: 0.5rem;">8.0 <span style="font-size: 1rem; font-weight: 500;">hrs</span></div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">Total de horas utilizadas</div>
+                    </div>
+
+                    <!-- Días Solicitados -->
+                    <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid #475569; padding: 1.25rem; border-radius: 10px;">
+                        <div style="font-size: 0.8rem; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Días Solicitados</div>
+                        <div id="dash-emp-dias" style="font-size: 2.2rem; font-weight: 800; color: #334155; margin-top: 0.5rem;">2 <span style="font-size: 1rem; font-weight: 500;">días</span></div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">Días tomados o en revisión</div>
+                    </div>
+
+                    <!-- Total Acumulado -->
+                    <div style="background: #fdf2f2; border: 1px solid #f8d7da; border-left: 4px solid #991b1b; padding: 1.25rem; border-radius: 10px;">
+                        <div style="font-size: 0.8rem; color: #991b1b; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Total Acumulado</div>
+                        <div id="dash-emp-total" style="font-size: 2.2rem; font-weight: 800; color: #7f1d1d; margin-top: 0.5rem;">24.0 <span style="font-size: 1rem; font-weight: 500;">hrs</span></div>
+                        <div style="font-size: 0.8rem; color: #64748b; margin-top: 0.25rem;">Histórico total acreditado</div>
+                    </div>
+
+                </div>
+
+                <!-- Tabla de Registro e Historial -->
+                <div>
+                    <h3 style="color: #1f2d19; margin-bottom: 1rem; font-size: 1.1rem; font-weight: 600;">Mis Días y Horas Tomadas</h3>
+                    <div style="overflow-x: auto;">
+                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
+                            <thead>
+                                <tr style="border-bottom: 2px solid #edf2f7; color: #2f582f; background: #fafdfa;">
+                                    <th style="padding: 12px; font-weight: 600;">Fecha Tomada</th>
+                                    <th style="padding: 12px; font-weight: 600;">Horas Utilizadas</th>
+                                    <th style="padding: 12px; font-weight: 600;">Motivo de la Salida</th>
+                                    <th style="padding: 12px; font-weight: 600;">Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr style="border-bottom: 1px solid #edf2f7;">
+                                    <td style="padding: 12px; color: #334155;">10/07/2026</td>
+                                    <td style="padding: 12px; font-weight: 600; color: #1f2d19;">4.0 hrs (Medio día)</td>
+                                    <td style="padding: 12px; color: #64748b;">Trámite personal médico</td>
+                                    <td style="padding: 12px;">
+                                        <span style="background: #dcfce7; color: #15803d; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">Aprobada</span>
+                                    </td>
+                                </tr>
+                                <tr style="border-bottom: 1px solid #edf2f7;">
+                                    <td style="padding: 12px; color: #334155;">24/07/2026</td>
+                                    <td style="padding: 12px; font-weight: 600; color: #1f2d19;">4.0 hrs (Salida temprano)</td>
+                                    <td style="padding: 12px; color: #64748b;">Compensación por tiempo extra en proyecto</td>
+                                    <td style="padding: 12px;">
+                                        <span style="background: #fef9c3; color: #a16207; padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700;">Pendiente</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </main>
+    </div>
+
+</div>
+
+<script>
+(function() {
+    // Leer el nombre real del usuario desde localStorage
+    const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
+    let userObj = {};
+    try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(e) {}
+
+    const nombreReal = userObj.nombre_completo || 
+                       userObj.nombre || 
+                       localStorage.getItem('nombre_completo') || 
+                       localStorage.getItem('username') || 
+                       "Empleado";
+
+    const elemNombre = document.getElementById("dash-emp-nombre");
+    const elemTopbar = document.getElementById("topbar-user-name");
+    
+    if (elemNombre) elemNombre.textContent = `¡Hola, ${nombreReal}! 👋`;
+    if (elemTopbar) elemTopbar.textContent = nombreReal;
+})();
+</script>

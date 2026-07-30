@@ -1,4 +1,4 @@
-<div class="card">
+<div class="card" style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
     <h1 style="margin-top: 0; margin-bottom: 0.5rem; color: #1f2d19; font-size: 1.8rem; font-weight: 600;">Solicitudes de reposición</h1>
     <p style="margin-top: 0; margin-bottom: 2rem; color: #64748b;">Registra solicitudes de reposición de horas.</p>
 
@@ -6,15 +6,9 @@
         <!-- Empleado -->
         <div style="margin-bottom: 2rem;">
             <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Empleado</label>
-            <div id="reg-empleado-dropdown" style="position: relative;">
-                <button type="button" id="reg-empleado-btn" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; transition: all 0.3s ease; font-family: 'Inter', sans-serif; text-align: left; cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                    <span id="reg-empleado-label">Selecciona un empleado...</span>
-                    <svg style="width: 18px; height: 18px; fill: #2f582f;" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>
-                </button>
-                <div id="reg-empleado-menu" style="position: absolute; top: 100%; left: 0; right: 0; background: white; border: 2px solid #e0e0e0; border-top: none; border-radius: 0 0 10px 10px; max-height: 300px; overflow-y: auto; display: none; z-index: 1000; box-shadow: 0 8px 16px rgba(0,0,0,0.1);">
-                </div>
-                <input type="hidden" id="reg-empleado" name="reg-empleado" required>
-            </div>
+            <select id="reg-empleado" name="reg-empleado" required style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; font-family: 'Inter', sans-serif; cursor: pointer; box-sizing: border-box; appearance: auto;">
+                <option value="" disabled selected>Cargando empleados...</option>
+            </select>
         </div>
 
         <!-- Horas disponibles -->
@@ -25,13 +19,13 @@
         <!-- Horas por día -->
         <div style="margin-bottom: 2rem;">
             <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Horas por día</label>
-            <input type="number" id="reg-horas" step="0.5" min="0.5" required style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; transition: all 0.3s ease; font-family: 'Inter', sans-serif; box-sizing: border-box;" onfocus="this.style.borderColor='#AA7F31'; this.style.boxShadow='0 4px 12px rgba(170, 127, 31, 0.15)';" onblur="this.style.borderColor='#e0e0e0'; this.style.boxShadow='none';">
+            <input type="number" id="reg-horas" step="0.5" min="0.5" required style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; font-family: 'Inter', sans-serif; box-sizing: border-box;">
         </div>
 
         <!-- Motivo -->
         <div style="margin-bottom: 2rem;">
             <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Motivo</label>
-            <textarea id="reg-motivo" required rows="3" maxlength="500" placeholder="Describe brevemente el motivo de la reposición" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; transition: all 0.3s ease; font-family: 'Inter', sans-serif; box-sizing: border-box;"></textarea>
+            <textarea id="reg-motivo" required rows="3" maxlength="500" placeholder="Describe brevemente el motivo de la reposición" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; font-family: 'Inter', sans-serif; box-sizing: border-box;"></textarea>
         </div>
 
         <!-- Autorizadores -->
@@ -53,7 +47,151 @@
             <div id="reg-fechas-seleccionadas" style="margin-top: 1.5rem; padding: 0.75rem 1rem; background: #f0f4f0; border-left: 4px solid #AA7F31; border-radius: 6px; font-size: 0.95rem; color: #2f582f;">No hay fechas seleccionadas.</div>
         </div>
 
-        <!-- Un solo botón para crear -->
+        <!-- Botón para crear -->
         <button type="submit" class="btn" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 260px; box-shadow: 0 4px 12px rgba(170, 127, 31, 0.3);">Crear solicitud(es)</button>
     </form>
 </div>
+
+<script>
+(function() {
+    // Forzamos la ejecución justo después de que el DOM reciba el HTML
+    setTimeout(async function() {
+        
+        // -------------------------------------------------------------
+        // 1. RENDERIZADOR DEL CALENDARIO
+        // -------------------------------------------------------------
+        const calendarContainer = document.getElementById("reg-calendar-container");
+        const fechasText = document.getElementById("reg-fechas-seleccionadas");
+
+        if (!calendarContainer) {
+            console.error("No se encontró el contenedor #reg-calendar-container");
+            return;
+        }
+
+        let currentDate = new Date();
+        let selectedDates = [];
+
+        window.renderCalendarApp = function() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+
+            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+            const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+            const firstDayIndex = new Date(year, month, 1).getDay();
+            const totalDays = new Date(year, month + 1, 0).getDate();
+
+            let html = `
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <button type="button" id="prev-month-btn" style="background: #f0f4f0; border: 1px solid #c49a45; color: #2f582f; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">&lt;</button>
+                    <span style="font-weight: 700; color: #2f582f; font-size: 1.1rem;">${monthNames[month]} ${year}</span>
+                    <button type="button" id="next-month-btn" style="background: #f0f4f0; border: 1px solid #c49a45; color: #2f582f; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">&gt;</button>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px; font-weight: 600; color: #64748b; margin-bottom: 8px; font-size: 0.85rem;">
+                    ${dayNames.map(d => `<div>${d}</div>`).join('')}
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center;">
+            `;
+
+            for (let i = 0; i < firstDayIndex; i++) {
+                html += `<div></div>`;
+            }
+
+            for (let day = 1; day <= totalDays; day++) {
+                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const isSelected = selectedDates.includes(dateStr);
+
+                const style = isSelected
+                    ? "background: #2f582f; color: white; border-radius: 8px; font-weight: bold; cursor: pointer; padding: 10px 0; border: 1px solid #2f582f;"
+                    : "background: #f8faf8; color: #1f2d19; border-radius: 8px; cursor: pointer; padding: 10px 0; border: 1px solid #e0e0e0;";
+
+                html += `<div class="cal-day-item" data-date="${dateStr}" style="${style}">${day}</div>`;
+            }
+
+            html += `</div>`;
+            calendarContainer.innerHTML = html;
+
+            // Eventos botones mes
+            document.getElementById("prev-month-btn").onclick = (e) => {
+                e.preventDefault();
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                window.renderCalendarApp();
+            };
+            document.getElementById("next-month-btn").onclick = (e) => {
+                e.preventDefault();
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                window.renderCalendarApp();
+            };
+
+            // Eventos clics en días
+            document.querySelectorAll(".cal-day-item").forEach(el => {
+                el.onclick = function() {
+                    const date = this.getAttribute("data-date");
+                    if (selectedDates.includes(date)) {
+                        selectedDates = selectedDates.filter(d => d !== date);
+                    } else {
+                        selectedDates.push(date);
+                    }
+                    selectedDates.sort();
+                    
+                    if (fechasText) {
+                        fechasText.innerHTML = selectedDates.length === 0 
+                            ? "No hay fechas seleccionadas." 
+                            : `<strong>Fechas seleccionadas (${selectedDates.length}):</strong> ${selectedDates.join(', ')}`;
+                    }
+                    window.renderCalendarApp();
+                };
+            });
+        };
+
+        // Render inicial del calendario
+        window.renderCalendarApp();
+
+        // -------------------------------------------------------------
+        // 2. LÓGICA DE EMPLEADOS Y DATOS
+        // -------------------------------------------------------------
+        const select = document.getElementById("reg-empleado");
+        if (select) {
+            try {
+                const token = localStorage.getItem('token') || localStorage.getItem('access_token') || '';
+                const baseUrl = window.API_URL || "http://localhost:8000";
+
+                const response = await fetch(`${baseUrl}/api/dashboard-empleados`, {
+                    headers: {
+                        "Authorization": `Bearer ${token}`,
+                        "Content-Type": "application/json"
+                    }
+                });
+
+                let empleados = response.ok ? await response.json() : [];
+
+                if (!Array.isArray(empleados) || empleados.length === 0) {
+                    const userRaw = localStorage.getItem('usuario') || localStorage.getItem('user');
+                    const user = userRaw ? JSON.parse(userRaw) : null;
+                    empleados = [{
+                        id: user?.id || user?.id_usuario || 1,
+                        nombre: user?.nombre || user?.nombre_completo || "Luis Francisco Valencia Villasana"
+                    }];
+                }
+
+                select.innerHTML = '<option value="" disabled>Selecciona un empleado...</option>';
+                empleados.forEach(emp => {
+                    const id = emp.id !== undefined ? emp.id : emp.id_usuario_sistema;
+                    const nombre = emp.nombre || emp.nombre_completo || "Empleado";
+                    const opt = document.createElement("option");
+                    opt.value = id;
+                    opt.textContent = nombre;
+                    select.appendChild(opt);
+                });
+
+                if (empleados.length >= 1) {
+                    select.value = select.options[0].value;
+                }
+            } catch (err) {
+                console.error("Error al cargar empleados:", err);
+            }
+        }
+
+    }, 100); // 100ms de tiempo de espera para asegurar la inyección DOM
+})();
+</script>
