@@ -1259,7 +1259,7 @@ async function loadPage(page, element = null) {
 
 document.addEventListener("DOMContentLoaded", () => {
     if (!esSesionValida()) {
-        window.location.href = 'login.html';
+        window.location.href = '/';
         return;
     }
 
@@ -1268,7 +1268,7 @@ document.addEventListener("DOMContentLoaded", () => {
         logoutLink.addEventListener('click', (event) => {
             event.preventDefault();
             limpiarSesionAuth();
-            window.location.href = 'login.html';
+            window.location.href = '/';
         });
     }
 

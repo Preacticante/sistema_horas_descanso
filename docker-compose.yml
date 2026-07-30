@@ -1,10 +1,19 @@
 version: '3.8'
+
 services:
-  web:
+  api:
     build: .
+    container_name: mi-api
     ports:
       - "8000:8000"
-    volumes:
-      - .:/app
     environment:
-      - PYTHONUNBUFFERED=1
+      - DB_DRIVER=ODBC Driver 17 for SQL Server
+      - DB_SERVER=host.docker.internal\SQLEXPRESS
+      - DB_DATABASE=AxTrax1
+      - DB_USER=sa
+      - DB_PASSWORD=password
+      - DB_TRUSTED_CONNECTION=no
+      - DB_ENCRYPT=no
+      - DB_TRUST_SERVER_CERTIFICATE=yes
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

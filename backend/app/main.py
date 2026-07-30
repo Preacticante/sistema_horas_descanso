@@ -1,11 +1,14 @@
-import re
-from typing import Optional, Annotated, Any
-from datetime import datetime, date, timedelta
-import hashlib
 import os
+import re
+import hashlib
+from datetime import datetime, date, timedelta
+from typing import Optional, Annotated, Any
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, RedirectResponse  # 👈 Ambos imports juntos aquí
+
 from pydantic import BaseModel, Field
 from app.database import obtener_conexion
 from app.rbac_rules import create_access_token, get_current_user, require_roles, normalizar_rol
@@ -19,6 +22,51 @@ from app.models import (
 )
 
 app = FastAPI(title="Sistema de Horas Extra API")
+
+# 🔹 Middleware CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# 🔹 Ruta hacia la carpeta 'frontend' subiendo dos niveles desde 'backend/app'
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+FRONTEND_DIR = os.path.abspath(os.path.join(BASE_DIR, "..", "..", "frontend"))
+
+# 🔹 Servir todos los archivos estáticos de frontend (JS, CSS, HTMLs secundarios, imágenes)
+if os.path.exists(FRONTEND_DIR):
+    app.mount("/frontend", StaticFiles(directory=FRONTEND_DIR), name="frontend")
+
+# 🔹 1. La ruta principal redirige directo al LOGIN al hacer clic en Docker (8000:8000)
+@app.get("/")
+def read_root():
+    return RedirectResponse(url="/login.html")
+
+# 🔹 2. Ruta directa a /login.html
+@app.get("/login.html")
+def serve_login_html():
+    login_path = os.path.join(FRONTEND_DIR, "login.html")
+    if os.path.exists(login_path):
+        return FileResponse(login_path)
+    return {"message": "No se encontró login.html"}
+
+# 🔹 3. Guardamos la vista del Panel/Dashboard para cuando ya inicien sesión
+@app.get("/dashboard")
+def serve_dashboard():
+    index_path = os.path.join(FRONTEND_DIR, "index.html")
+    if os.path.exists(index_path):
+        return FileResponse(index_path)
+    return RedirectResponse(url="/login.html")
+
+@app.get("/{filename}")
+def serve_static_root_files(filename: str):
+    file_path = os.path.join(FRONTEND_DIR, filename)
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    raise HTTPException(status_code=404, detail="Archivo no encontrado")
 
 app.add_middleware(
     CORSMiddleware,
