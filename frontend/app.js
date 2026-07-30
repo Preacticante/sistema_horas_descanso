@@ -1422,28 +1422,14 @@ document.addEventListener("DOMContentLoaded", () => {
         return;
     }
 
-<<<<<<< HEAD
-   const logoutLink = document.getElementById('logout-link');
-if (logoutLink) {
-    logoutLink.addEventListener('click', (event) => {
-        event.preventDefault();
-        limpiarSesionAuth();
-        
-        // Redirigir a la vista de login dentro de la carpeta frontend
-        window.location.href = '/frontend/login.html'; 
-        // Nota: Si tu pantalla de login se llama index.html, usa '/frontend/index.html'
-    });
-}
-=======
     const logoutLink = document.getElementById('logout-link');
     if (logoutLink) {
         logoutLink.addEventListener('click', (event) => {
             event.preventDefault();
             limpiarSesionAuth();
-            window.location.href = 'login.html';
+            window.location.href = '/';
         });
     }
->>>>>>> b1499a9b10f3ee00a97ebe587e134d792acfb9ce
 
     loadPage('dashboard', document.querySelector('.sidebar a'));
 });
