@@ -1195,7 +1195,6 @@ function inicializarReportes() {
     }
 }
 
-// 🛡️ CORREGIDO: Uso de 'page' de forma consistente y sin errores de variables no definidas
 async function loadPage(page, element = null) {
     try {
         if (element) {
@@ -1212,8 +1211,8 @@ async function loadPage(page, element = null) {
         const html = await response.text();
         
         setTimeout(async () => {
-            const dynamicCard = document.getElementById('dynamic-card'); // Asegúrate de que este sea tu contenedor principal
-            const container = document.body; // Ajusta según tu estructura contenedora principal si difiere
+            const dynamicCard = document.getElementById('dynamic-card');
+            const container = document.body;
 
             if (dynamicCard) dynamicCard.innerHTML = html;
             if (container) container.classList.remove('fade-out');
@@ -1259,7 +1258,7 @@ async function loadPage(page, element = null) {
 
 document.addEventListener("DOMContentLoaded", () => {
     if (!esSesionValida()) {
-        window.location.href = '/';
+        window.location.href = 'login.html';
         return;
     }
 
@@ -1268,7 +1267,7 @@ document.addEventListener("DOMContentLoaded", () => {
         logoutLink.addEventListener('click', (event) => {
             event.preventDefault();
             limpiarSesionAuth();
-            window.location.href = '/';
+            window.location.href = 'login.html';
         });
     }
 
