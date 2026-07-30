@@ -285,7 +285,6 @@ async function cargarEmpleados(ids = null) {
 
         const esAdmin = obtenerUsuarioAuth()?.rol?.toLowerCase() === 'administrador';
         
-        // Si no es admin, filtramos su equipo
         if (!esAdmin) {
             empleadosCache = empleadosCache.filter(emp => {
                 const idNomina = emp.id_usuario_original !== undefined 
@@ -538,10 +537,9 @@ function cerrarModalHorario() {
     if (modal) modal.style.display = 'none';
 }
 
-// 1. Carga las métricas superiores (Tarjetas)
+// 🛡️ CORREGIDO: Blindaje con comprobación de nulos para evitar errores al cambiar de vista
 async function cargarDashboard() {
     try {
-        // Modificamos esta línea para enviar el token de autenticación
         const response = await fetch(`${API_URL}/api/dashboard-resumen`, {
             headers: construirHeadersAuth()
         });
@@ -551,22 +549,34 @@ async function cargarDashboard() {
         }
 
         const data = await response.json();
-        document.getElementById('kpi-total').textContent = `${data.total_horas.toFixed(2)} hrs`;
-        document.getElementById('kpi-pendientes').textContent = `${data.empleados_pendientes}`;
-        document.getElementById('kpi-aprobadas').textContent = `${data.empleados_aprobadas}`;
-        document.getElementById('kpi-eficiencia').textContent = `${data.eficiencia.toFixed(2)}%`;
+        
+        const kpiTotal = document.getElementById('kpi-total');
+        if (kpiTotal) kpiTotal.textContent = `${data.total_horas.toFixed(2)} hrs`;
+
+        const kpiPendientes = document.getElementById('kpi-pendientes');
+        if (kpiPendientes) kpiPendientes.textContent = `${data.empleados_pendientes}`;
+
+        const kpiAprobadas = document.getElementById('kpi-aprobadas');
+        if (kpiAprobadas) kpiAprobadas.textContent = `${data.empleados_aprobadas}`;
+
+        const kpiEficiencia = document.getElementById('kpi-eficiencia');
+        if (kpiEficiencia) kpiEficiencia.textContent = `${data.eficiencia.toFixed(2)}%`;
+
     } catch (err) {
         console.error('No se pudieron cargar los datos del servidor:', err);
-        document.getElementById('kpi-total').textContent = 'Error';
-        document.getElementById('kpi-pendientes').textContent = 'Error';
-        document.getElementById('kpi-aprobadas').textContent = 'Error';
-        document.getElementById('kpi-eficiencia').textContent = 'Error';
+        const kpiTotal = document.getElementById('kpi-total');
+        if (kpiTotal) kpiTotal.textContent = 'Error';
+        const kpiPendientes = document.getElementById('kpi-pendientes');
+        if (kpiPendientes) kpiPendientes.textContent = 'Error';
+        const kpiAprobadas = document.getElementById('kpi-aprobadas');
+        if (kpiAprobadas) kpiAprobadas.textContent = 'Error';
+        const kpiEficiencia = document.getElementById('kpi-eficiencia');
+        if (kpiEficiencia) kpiEficiencia.textContent = 'Error';
     }
 
     cargarDashboardEmpleados();
 }
 
-// 2. Carga la tabla inferior de resultados
 async function cargarDashboardEmpleados() {
     const tabla = document.getElementById('dashboard-empleados-table');
     if (!tabla) return;
@@ -581,7 +591,6 @@ async function cargarDashboardEmpleados() {
     `;
 
     try {
-        // Hacemos el fetch directo a nuestro nuevo endpoint seguro
         const response = await fetch(`${API_URL}/api/dashboard-empleados`, {
             headers: construirHeadersAuth()
         });
@@ -602,7 +611,6 @@ async function cargarDashboardEmpleados() {
 
         tbody.innerHTML = '';
         
-        // Renderizamos los empleados autorizados
         empleados.slice(0, 8).forEach(emp => {
             const colorHoras = emp.total_horas >= 0 ? '#124416' : '#c0392b';
             tbody.innerHTML += `
@@ -623,8 +631,6 @@ async function cargarDashboardEmpleados() {
         `;
     }
 }
-// Ejecutar al cargar la vista
-// La función se llamará desde loadPage() cuando la vista dashboard se cargue.
 
 async function cargarEmpleadosParaRegistro() {
     try {
@@ -633,14 +639,12 @@ async function cargarEmpleadosParaRegistro() {
         
         const perfil = await response.json();
         
-        // Formularios básicos
         if(document.getElementById('nombre')) document.getElementById('nombre').value = perfil.nombre || '';
         if(document.getElementById('rol')) document.getElementById('rol').value = perfil.rol || 'Empleado';
         if(document.getElementById('email')) document.getElementById('email').value = perfil.correo || '';
         if(document.getElementById('perfil-nombre')) document.getElementById('perfil-nombre').textContent = perfil.nombre || 'Usuario';
         if(document.getElementById('perfil-rol')) document.getElementById('perfil-rol').textContent = perfil.rol || 'Empleado';
 
-        // Llenar las nuevas tarjetas KPI que diseñamos
         const kpiValues = document.querySelectorAll('.kpi-value');
         if (kpiValues.length >= 3) {
             kpiValues[0].textContent = `${(perfil.horas_historicas || 0).toFixed(1)}h`;
@@ -659,7 +663,6 @@ function inicializarPerfil() {
     const avatar = document.getElementById('perfil-avatar');
     const formPerfil = document.getElementById('form-perfil');
     
-    // Conexión del botón Solicitar Salida del Perfil
     const btnSolicitar = document.querySelector('.btn-solicitar');
     if (btnSolicitar) {
         btnSolicitar.onclick = abrirModalSolicitudEmpleado;
@@ -698,7 +701,7 @@ function inicializarPerfil() {
 
                 if (!response.ok) throw new Error('Error al guardar');
                 alert('Perfil actualizado correctamente');
-                cargarPerfil(); // Recargamos para reflejar cambios
+                cargarPerfil();
             } catch (error) {
                 alert('Error al guardar perfil.');
             }
@@ -721,7 +724,7 @@ function actualizarSelectEmpleados() {
     }
 
     menuEmpleado.innerHTML = '';
-    empleadosCache.forEach((emp, index) => {
+    empleadosCache.forEach((emp) => {
         const totalHoras = Number(emp.total_horas || 0).toFixed(2);
         const label = `${emp.id} - ${emp.nombre}`;
         const item = document.createElement('div');
@@ -940,15 +943,12 @@ async function enviarRegistroHoras(event) {
     const idJefeSuperiorRaw = (inputJefeSuperior.value || '').trim();
     const idJefeDirecto = idJefeDirectoRaw ? parseInt(idJefeDirectoRaw, 10) : null;
     const idJefeSuperior = idJefeSuperiorRaw ? parseInt(idJefeSuperiorRaw, 10) : null;
-    
-    
 
     if (Number.isNaN(numeroEmpleado) || Number.isNaN(cantidadHoras) || cantidadHoras <= 0) {
         mostrarNotificacion('warning', 'Campos incompletos', 'Selecciona un empleado válido e ingresa una cantidad de horas mayor a cero.');
         return;
     }
 
-    // 🛡️ NUEVA VALIDACIÓN: Evita que se envíe si el motivo tiene menos de 5 caracteres (Error 422 anterior)
     if (motivo.length < 5) {
         mostrarNotificacion('warning', 'Motivo muy corto', 'Por favor, escribe un motivo más detallado (mínimo 5 caracteres).');
         return;
@@ -964,22 +964,14 @@ async function enviarRegistroHoras(event) {
         let errores = 0;
 
         for (const fecha of diasSeleccionados) {
-            // 🛠️ CORRECCIÓN CLAVE: Volvemos a cambiar "fecha_solicitud" por "fecha" para que coincida con tu backend
             const payload = {
                 id_empleado: Number(numeroEmpleado),
-                fecha: fecha,                                      // 👈 ¡LISTO! Ahora coincide con el backend
+                fecha: fecha,
                 horas_solicitadas: parseFloat(cantidadHoras),
                 motivo: motivo,
                 id_jefe_directo: idJefeDirecto,
                 id_jefe_superior: idJefeSuperior
             };
-
-            //if (idJefeDirecto !== null && !Number.isNaN(idJefeDirecto)) {
-                payload.id_jefe_directo = idJefeDirecto;
-            //}
-            //if (idJefeSuperior !== null && !Number.isNaN(idJefeSuperior)) {
-                payload.id_jefe_superior = idJefeSuperior;
-            //}
 
             const respuesta = await fetch(`${API_URL}/api/registros/solicitudes`, {
                 method: "POST",
@@ -988,10 +980,6 @@ async function enviarRegistroHoras(event) {
             });
 
             if (!respuesta.ok) {
-                // Si quieres ver en la consola por qué falló una de las fechas:
-                const errorData = await respuesta.json().catch(() => ({}));
-                console.error(`Error en fecha ${fecha}:`, errorData);
-                
                 errores += 1;
                 continue;
             }
@@ -999,7 +987,6 @@ async function enviarRegistroHoras(event) {
             exitos += 1;
         }
 
-        // Mostramos las notificaciones correspondientes según el resultado
         if (exitos && !errores) {
             mostrarNotificacion('success', 'Éxito', 'Asignación de horas guardada correctamente.');
         } else if (exitos && errores) {
@@ -1008,20 +995,22 @@ async function enviarRegistroHoras(event) {
             mostrarNotificacion('error', 'Errores en registro', `No se pudieron crear las solicitudes.`);
         }
 
-        // Limpieza y actualización de la vista si hubo al menos un éxito
         if (exitos > 0) {
             event.target.reset();
             registroFechasSeleccionadas.clear();
             actualizarResumenFechasRegistro();
             construirCalendarioRegistro(registroCalendarioMes.year, registroCalendarioMes.month);
             mostrarHorasActuales();
-            await cargarSolicitudesReposicion();
+            if (typeof cargarSolicitudesReposicion === 'function') {
+                await cargarSolicitudesReposicion();
+            }
         }
     } catch (error) {
         console.error("Error al registrar horas:", error);
         mostrarNotificacion('error', 'Error', `No se pudo guardar la solicitud: ${error.message}`);
     }
 }
+
 function obtenerColorEstado(estado) {
     if (estado === 'aprobada') return '#15803d';
     if (estado === 'rechazada') return '#b91c1c';
@@ -1041,7 +1030,6 @@ function renderSolicitudesReposicion(solicitudes) {
         return;
     }
 
-    // 🕵️‍♂️ Obtenemos y decodificamos el usuario logueado desde el sessionStorage
     let usuarioLogueado = null;
     try {
         const authUserRaw = sessionStorage.getItem("auth_user");
@@ -1052,7 +1040,6 @@ function renderSolicitudesReposicion(solicitudes) {
         console.error("Error al leer el usuario de la sesión:", e);
     }
 
-    // 🎯 Leemos las propiedades exactas que confirmamos en la consola: 'id' y 'rol'
     const rolActual = String(usuarioLogueado?.rol || "").toLowerCase();
     const idUsuarioActual = Number(usuarioLogueado?.id || 0);
 
@@ -1062,12 +1049,8 @@ function renderSolicitudesReposicion(solicitudes) {
         const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
         const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
         
-        // ID del creador de la solicitud (Mariana = 35)
         const idCreador = Number(sol.id_empleado); 
 
-        // 🛡️ CONDICIÓN DE ACCIÓN PERFECTA:
-        // - Debe estar pendiente la solicitud.
-        // - El usuario actual debe tener rol de 'jefe' o 'admin', O en su defecto, no debe ser el creador de la solicitud.
         const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
         const esAutorizador = idUsuarioActual > 0 && idUsuarioActual !== idCreador;
 
@@ -1103,7 +1086,6 @@ function renderSolicitudesReposicion(solicitudes) {
     });
 }
 
-// Función global para aprobar o rechazar solicitudes
 window.procesarAutorizacion = async function(idSolicitud, accion) {
     const confirmacion = confirm(`¿Estás seguro de que deseas ${accion} la solicitud #${idSolicitud}?`);
     if (!confirmacion) return;
@@ -1121,7 +1103,9 @@ window.procesarAutorizacion = async function(idSolicitud, accion) {
         }
 
         alert(`La solicitud ha sido procesada con éxito.`);
-        await cargarAutorizacionesJefe(); 
+        if (typeof cargarAutorizacionesJefe === 'function') {
+            await cargarAutorizacionesJefe(); 
+        }
     } catch (error) {
         alert(`No se pudo procesar. Error: ${error.message}`);
     }
@@ -1129,14 +1113,12 @@ window.procesarAutorizacion = async function(idSolicitud, accion) {
 
 function inicializarEmpleados() {
     const btnRestaurarCambios = document.getElementById("btn-restaurar-cambios");
-    
     if (btnRestaurarCambios) btnRestaurarCambios.addEventListener("click", limpiarCambiosVisualesEmpleados);
 
-    // Cargar la vista de tabla de equipo general que ya tenías
     cargarEmpleados();
-    
-    // Cargar la nueva bandeja de autorizaciones
-    cargarAutorizacionesJefe();
+    if (typeof cargarAutorizacionesJefe === 'function') {
+        cargarAutorizacionesJefe();
+    }
 }
 
 async function inicializarRegistros() {
@@ -1144,9 +1126,13 @@ async function inicializarRegistros() {
     const filtroEstado = document.getElementById('registros-filtro-estado');
 
     if (registroForm) registroForm.addEventListener("submit", enviarRegistroHoras);
-    if (filtroEstado) filtroEstado.addEventListener('change', () => cargarSolicitudesReposicion());
+    if (filtroEstado) filtroEstado.addEventListener('change', () => {
+        if (typeof cargarSolicitudesReposicion === 'function') cargarSolicitudesReposicion();
+    });
 
-    await cargarSolicitudesReposicion();
+    if (typeof cargarSolicitudesReposicion === 'function') {
+        await cargarSolicitudesReposicion();
+    }
 }
 
 async function cargarReportes() {
@@ -1193,7 +1179,9 @@ function inicializarReportes() {
     const btnExportCsv = document.getElementById('btn-descargar-reporte-csv');
 
     if (btnFiltrar) btnFiltrar.addEventListener('click', (e) => { e.preventDefault(); cargarReportes(); });
-    if (btnExportCsv) btnExportCsv.addEventListener('click', descargarReporteCSV);
+    if (btnExportCsv && typeof descargarReporteCSV === 'function') {
+        btnExportCsv.addEventListener('click', descargarReporteCSV);
+    }
 
     const inicio = document.getElementById('fechaInicio');
     const fin = document.getElementById('fechaFin');
@@ -1207,15 +1195,14 @@ function inicializarReportes() {
     }
 }
 
+// 🛡️ CORREGIDO: Uso de 'page' de forma consistente y sin errores de variables no definidas
 async function loadPage(page, element = null) {
     try {
-        // 1. Marcar enlace activo en el menú
         if (element) {
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
             element.classList.add('active');
         }
 
-        // 2. Formatear la ruta de la pantalla
         let pageFile = page.endsWith('.html') ? page : `${page}.html`;
         let path = pageFile.startsWith('screens/') ? pageFile : `screens/${pageFile}`;
 
@@ -1225,52 +1212,51 @@ async function loadPage(page, element = null) {
         const html = await response.text();
         
         setTimeout(async () => {
-            dynamicCard.innerHTML = html;
-            container.classList.remove('fade-out');
-            console.log("loadPage loaded", pageName);
+            const dynamicCard = document.getElementById('dynamic-card'); // Asegúrate de que este sea tu contenedor principal
+            const container = document.body; // Ajusta según tu estructura contenedora principal si difiere
+
+            if (dynamicCard) dynamicCard.innerHTML = html;
+            if (container) container.classList.remove('fade-out');
+            console.log("loadPage loaded", page);
             
             document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
             if(element) element.classList.add('active');
 
-            if (pageName === 'empleados') {
+            if (page === 'empleados') {
                 inicializarEmpleados();
             }
 
-            if (pageName === 'registros') {
+            if (page === 'registros') {
                 await inicializarRegistros();
             }
 
-            if (pageName === 'notificaciones') {
+            if (page === 'notificaciones') {
                 inicializarNotificaciones();
             }
 
-            if (pageName === 'dashboard') {
+            if (page === 'dashboard') {
                 cargarDashboard();
             }
 
-            if (pageName === 'reportes') {
+            if (page === 'reportes') {
                 inicializarReportes();
             }
 
-            if (pageName === 'perfil') {
+            if (page === 'perfil') {
                 inicializarPerfil();
             }
 
-            if (pageName === 'reportes') {
-                inicializarReportes();
-            }
-
-            if (pageName === 'configuracion') {
+            if (page === 'configuracion' && typeof inicializarConfiguracion === 'function') {
                 await inicializarConfiguracion();
             }
 
         }, 300);
     } catch (e) {
-        dynamicCard.innerHTML = "<h1>Error</h1><p>No se pudo cargar la vista.</p>";
+        const dynamicCard = document.getElementById('dynamic-card');
+        if (dynamicCard) dynamicCard.innerHTML = "<h1>Error</h1><p>No se pudo cargar la vista.</p>";
     }
 }
 
-// Carga inicial
 document.addEventListener("DOMContentLoaded", () => {
     if (!esSesionValida()) {
         window.location.href = '/';

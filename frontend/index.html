@@ -133,15 +133,24 @@
         <a id="logout-link" href="login.html" style="color: var(--gold); border: 1px solid var(--gold); justify-content: center; border-radius: 12px; padding: 12px; text-decoration: none; text-align: center; font-weight: 500;">Cerrar Sesión</a>
     </div>
 
+<main class="main-content" id="content-area">
+        <div id="dynamic-card"></div>
+        <div id="dynamicCard" style="display:none;"></div>
+    </main>
+
     <main class="main-content" id="content-area">
         <div id="dynamic-card"></div>
+        <div id="dynamicCard" style="display:none;"></div>
+        <div id="container" style="display:none;"></div>
     </main>
+
+    
     
     <div class="notification-container" id="notification-container"></div>
 
     <script src="app.js"></script>
     <script>
-        // Script inteligente que valida el rol y adapta el menú automáticamente
+        // Script de seguridad para adaptar el menú según el rol y evitar pantalla en blanco
         document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 try {
@@ -155,7 +164,7 @@
                         } catch(err) {}
                     }
 
-                    // Si es un Empleado raso, se ocultan los módulos de gestión general (Empleados y Reportes)
+                    // Si es un Empleado raso, se ocultan los módulos de gestión general
                     if (rolUsuario.includes("empleado")) {
                         const elementosOcultar = ["nav-empleados", "nav-reportes", "nav-configuracion"];
                         elementosOcultar.forEach(id => {
@@ -163,11 +172,18 @@
                             if (el) el.style.display = "none";
                         });
                     }
-                    // Si es "jefe" o "jefe admin", el menú completo se muestra de forma nativa para administrar al personal a su cargo.
+
+                    // Respaldo automático: Si el área central se quedó en blanco, forzar la carga del dashboard
+                    const contentArea = document.getElementById("dynamic-card");
+                    if (contentArea && (!contentArea.innerHTML || contentArea.innerHTML.trim() === "")) {
+                        if (typeof loadPage === "function") {
+                            loadPage('dashboard', document.getElementById('nav-dashboard'));
+                        }
+                    }
                 } catch (e) {
-                    console.error("Error al adaptar el menú:", e);
+                    console.error("Error al inicializar la interfaz:", e);
                 }
-            }, 200);
+            }, 300);
         });
     </script>
 </body>
