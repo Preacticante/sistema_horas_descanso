@@ -3,6 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles_common.css">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:5500 http://localhost:8000 http://127.0.0.1:8000 http://172.16.6.50:8000; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;">
     <title>Control de Horas</title>
     <style>
         :root { 
@@ -286,7 +288,7 @@
         </div>
 
         <!-- CERRAR SESIÓN -->
-        <a id="logout-link" href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;">
+        <a id="logout-link" href="#" onclick="cerrarSesion(); return false;">
             <span class="icon">🚪</span>
             <span class="nav-text">Cerrar Sesión</span>
         </a>
@@ -313,7 +315,7 @@
                         <span id="topbar-user-name" style="display: block; font-size: 0.88rem; font-weight: 600; color: #ffffff;">Cargando...</span>
                         <span style="display: block; font-size: 0.72rem; color: rgba(255, 255, 255, 0.7); font-weight: 400;">Empleado</span>
                     </div>
-                    <a href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;" title="Cerrar Sesión" style="color: #ffffff; text-decoration: none; font-size: 1.1rem; background: rgba(255,255,255,0.12); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <a href="#" onclick="cerrarSesion(); return false;" title="Cerrar Sesión" style="color: #ffffff; text-decoration: none; font-size: 1.1rem; background: rgba(255,255,255,0.12); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                         🚪
                     </a>
                 </div>
@@ -338,91 +340,8 @@
 
         <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
-            
-            <div style="max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem;">
-
-                <!-- Métricas -->
-                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem;">
-                    
-                    <div style="background: #ffffff; padding: 1.5rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Horas Disponibles</div>
-                            <div id="dash-emp-disponibles" style="font-size: 2.25rem; font-weight: 800; color: #0f172a; margin-top: 0.6rem;">
-                                16.0 <span style="font-size: 1.1rem; font-weight: 700;">hrs</span>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.82rem; color: #64748b; margin-top: 0.75rem;">Saldo listo para compensar.</div>
-                    </div>
-
-                    <div style="background: #ffffff; padding: 1.5rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Horas Repuestas</div>
-                            <div id="dash-emp-tomadas" style="font-size: 2.25rem; font-weight: 800; color: #3b0764; margin-top: 0.6rem;">
-                                8.0 <span style="font-size: 1.1rem; font-weight: 700;">hrs</span>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.82rem; color: #64748b; margin-top: 0.75rem;">Total de horas utilizadas.</div>
-                    </div>
-
-                    <div style="background: #ffffff; padding: 1.5rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Días Solicitados</div>
-                            <div id="dash-emp-dias" style="font-size: 2.25rem; font-weight: 800; color: #ea580c; margin-top: 0.6rem;">
-                                2 <span style="font-size: 1.1rem; font-weight: 700;">días</span>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.82rem; color: #64748b; margin-top: 0.75rem;">Días tomados o en revisión.</div>
-                    </div>
-
-                    <div style="background: #ffffff; padding: 1.5rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03); display: flex; flex-direction: column; justify-content: space-between;">
-                        <div>
-                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 700; text-transform: uppercase;">Total Acumulado</div>
-                            <div id="dash-emp-total" style="font-size: 2.25rem; font-weight: 800; color: var(--forest); margin-top: 0.6rem;">
-                                24.0 <span style="font-size: 1.1rem; font-weight: 700;">hrs</span>
-                            </div>
-                        </div>
-                        <div style="font-size: 0.82rem; color: #64748b; margin-top: 0.75rem;">Histórico total acreditado.</div>
-                    </div>
-
-                </div>
-
-                <!-- Tabla de Datos -->
-                <div style="background: #ffffff; padding: 1.75rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.03);">
-                    <h3 style="color: #0f172a; margin: 0 0 1.25rem 0; font-size: 1.15rem; font-weight: 700;">Mis Días y Horas Tomadas</h3>
-                    <div style="overflow-x: auto;">
-                        <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 0.9rem;">
-                            <thead>
-                                <tr style="background: #f1f5f9; color: #334155;">
-                                    <th style="padding: 12px 16px; font-weight: 700;">Fecha Tomada</th>
-                                    <th style="padding: 12px 16px; font-weight: 700;">Horas Utilizadas</th>
-                                    <th style="padding: 12px 16px; font-weight: 700;">Motivo de la Salida</th>
-                                    <th style="padding: 12px 16px; font-weight: 700;">Estado</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr style="border-bottom: 1px solid #f1f5f9;">
-                                    <td style="padding: 14px 16px; color: #475569;">10/07/2026</td>
-                                    <td style="padding: 14px 16px; font-weight: 700; color: #166534;">4.0 hrs (Medio día)</td>
-                                    <td style="padding: 14px 16px; color: #64748b;">Trámite personal médico</td>
-                                    <td style="padding: 14px 16px;">
-                                        <span style="background: #dcfce7; color: #15803d; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;">Aprobada</span>
-                                    </td>
-                                </tr>
-                                <tr style="border-bottom: 1px solid #f1f5f9;">
-                                    <td style="padding: 14px 16px; color: #475569;">24/07/2026</td>
-                                    <td style="padding: 14px 16px; font-weight: 700; color: #b91c1c;">4.0 hrs (Salida temprano)</td>
-                                    <td style="padding: 14px 16px; color: #64748b;">Compensación por tiempo extra en proyecto</td>
-                                    <td style="padding: 14px 16px;">
-                                        <span style="background: #fef9c3; color: #a16207; padding: 4px 12px; border-radius: 20px; font-size: 0.78rem; font-weight: 700;">Pendiente</span>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-            </div>
-
+            <!-- Contenedor dinámico para inyectar componentes -->
+            <div id="dynamic-card"></div>
         </main>
     </div>
 
@@ -455,23 +374,15 @@
             if (elemNombre) elemNombre.textContent = `¡Hola, ${nombreReal}! 👋`;
             if (elemTopbar) elemTopbar.textContent = nombreReal;
         })();
-
-        function loadPageUsuario(pagina, elemento) {
-    // Mapa con la relación entre la clave y el nombre real del archivo .html
-    const paginas = {
-        'inicio': 'inicio.html',
-        'registros': 'registrosU.html',
-        'notificaciones': 'notificacionesU.html',
-        'configuracion': 'configuracion.html', // o el nombre que le des
-        'perfil': 'perfil.html'                // o el nombre que le des
-    };
-
-    // Si la página existe en nuestro mapa, redirigimos
-    if (paginas[pagina]) {
-        window.location.href = paginas[pagina];
-    }
-}
-
+    </script>
+    <script src="../app.js"></script>
+    <script>
+        // Cargar el componente 'inicio' automáticamente al abrir la página
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof loadPageUsuario === 'function') {
+                loadPageUsuario('inicio');
+            }
+        });
     </script>
 </body>
 </html>

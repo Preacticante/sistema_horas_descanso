@@ -555,7 +555,7 @@ def registrar_usuario(usuario: RegistroUsuario):
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT NombreUsuario, email FROM dbo.tblUsuarios WHERE NombreUsuario = ? OR email = ?",
+            "SELECT nombre_completo, email FROM dbo.tbl_usuarios_sistema WHERE nombre_completo = ? OR email = ?",
             usuario.nombre_usuario,
             usuario.email.lower(),
         )
@@ -594,7 +594,17 @@ def registrar_usuario(usuario: RegistroUsuario):
         cursor.close()
         conn.close()
 
-        return {"status": "success", "mensaje": "Usuario registrado correctamente."}
+        return {
+            "status": "success",
+            "mensaje": "Usuario registrado correctamente.",
+            "usuario": {
+                "nombre": usuario.nombre_usuario,
+                "nombre_usuario": usuario.nombre_usuario,
+                "email": usuario.email.lower(),
+                "rol": usuario.rol,
+                "id_empleado": usuario.id_empleado,
+            },
+        }
     except HTTPException:
         raise
     except Exception as e:
@@ -623,7 +633,8 @@ def login_usuario(datos: LoginRequest):
         if not fila:
             raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
 
-        id_usuario, nombre, nombre_usuario, email, password_hash, password_salt, rol, activo = fila
+        id_usuario, nombre, email, password_hash, password_salt, rol, activo = fila
+        nombre_usuario = nombre
         if not verificar_password(password_hash, password_salt, datos.password):
             raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
 
@@ -791,12 +802,12 @@ def listar_usuarios_sistema(
         cursor = conn.cursor()
 
         query = (
-            "SELECT id, Nombre, NombreUsuario, email, Rol, iEmployeeNum, bActivo, FechaCreacion "
-            "FROM dbo.tblUsuarios "
+            "SELECT id_usuario_sistema, nombre_completo, email, rol, id_usuario_original, estatus "
+            "FROM dbo.tbl_usuarios_sistema "
         )
         if activos_solo:
-            query += "WHERE bActivo = 1 "
-        query += "ORDER BY id DESC"
+            query += "WHERE estatus = 1 "
+        query += "ORDER BY id_usuario_sistema DESC"
 
         cursor.execute(query)
         filas = cursor.fetchall()
@@ -807,12 +818,12 @@ def listar_usuarios_sistema(
             {
                 "id_usuario": int(fila[0]),
                 "nombre": fila[1],
-                "nombre_usuario": fila[2],
-                "email": fila[3],
-                "rol": normalizar_rol(str(fila[4])),
-                "id_empleado": fila[5],
-                "activo": bool(fila[6]),
-                "fecha_creacion": fila[7],
+                "nombre_usuario": fila[1],
+                "email": fila[2],
+                "rol": normalizar_rol(str(fila[3])),
+                "id_empleado": fila[4],
+                "activo": bool(fila[5]),
+                "fecha_creacion": None,
             }
             for fila in filas
         ]
@@ -830,8 +841,8 @@ def obtener_usuario_sistema(
         conn = obtener_conexion()
         cursor = conn.cursor()
         cursor.execute(
-            "SELECT id, Nombre, NombreUsuario, email, Rol, iEmployeeNum, bActivo, FechaCreacion "
-            "FROM dbo.tblUsuarios WHERE id = ?",
+            "SELECT id_usuario_sistema, nombre_completo, email, rol, id_usuario_original, estatus "
+            "FROM dbo.tbl_usuarios_sistema WHERE id_usuario_sistema = ?",
             id_usuario,
         )
         fila = cursor.fetchone()
@@ -844,12 +855,12 @@ def obtener_usuario_sistema(
         return {
             "id_usuario": int(fila[0]),
             "nombre": fila[1],
-            "nombre_usuario": fila[2],
-            "email": fila[3],
-            "rol": normalizar_rol(str(fila[4])),
-            "id_empleado": fila[5],
-            "activo": bool(fila[6]),
-            "fecha_creacion": fila[7],
+            "nombre_usuario": fila[1],
+            "email": fila[2],
+            "rol": normalizar_rol(str(fila[3])),
+            "id_empleado": fila[4],
+            "activo": bool(fila[5]),
+            "fecha_creacion": None,
         }
     except HTTPException:
         raise
@@ -919,7 +930,7 @@ def crear_usuario_sistema(
         cursor = conn.cursor()
 
         cursor.execute(
-            "SELECT NombreUsuario, email FROM dbo.tblUsuarios WHERE NombreUsuario = ? OR email = ?",
+            "SELECT nombre_completo, email FROM dbo.tbl_usuarios_sistema WHERE nombre_completo = ? OR email = ?",
             usuario.nombre_usuario,
             usuario.email.lower(),
         )
@@ -954,6 +965,7 @@ def crear_usuario_sistema(
             usuario.id_empleado,
             1 if usuario.activo else 0,
         )
+        cursor.execute("SELECT SCOPE_IDENTITY()");
         inserted = cursor.fetchone()
         conn.commit()
         cursor.close()
@@ -961,13 +973,13 @@ def crear_usuario_sistema(
 
         return {
             "id_usuario": int(inserted[0]),
-            "nombre": usuario.nombre,
+            "nombre": usuario.nombre_usuario,
             "nombre_usuario": usuario.nombre_usuario,
             "email": usuario.email.lower(),
             "rol": normalizar_rol(rol_db),
             "id_empleado": usuario.id_empleado,
             "activo": usuario.activo,
-            "fecha_creacion": inserted[1],
+            "fecha_creacion": None,
         }
     except HTTPException:
         raise
@@ -986,19 +998,19 @@ def actualizar_usuario_sistema(
     params = []
 
     if datos.nombre is not None:
-        campos.append("Nombre = ?")
+        campos.append("nombre_completo = ?")
         params.append(datos.nombre)
 
     if datos.email is not None:
-        campos.append("Email = ?")
+        campos.append("email = ?")
         params.append(datos.email.lower())
 
     if datos.rol is not None:
-        campos.append("Rol = ?")
+        campos.append("rol = ?")
         params.append(rol_db_desde_normalizado(datos.rol.value))
 
     if datos.activo is not None:
-        campos.append("Activo = ?")
+        campos.append("estatus = ?")
         params.append(1 if datos.activo else 0)
 
     if not campos:
@@ -1010,7 +1022,7 @@ def actualizar_usuario_sistema(
 
         if datos.email is not None:
             cursor.execute(
-                "SELECT id FROM dbo.tblUsuarios WHERE email = ? AND id <> ?",
+                "SELECT id_usuario_sistema FROM dbo.tbl_usuarios_sistema WHERE email = ? AND id_usuario_sistema <> ?",
                 datos.email.lower(),
                 id_usuario,
             )
@@ -1018,9 +1030,9 @@ def actualizar_usuario_sistema(
                 raise HTTPException(status_code=409, detail="El correo electrónico ya está registrado.")
 
         query = (
-            "UPDATE dbo.tblUsuarios SET "
+            "UPDATE dbo.tbl_usuarios_sistema SET "
             + ", ".join(campos)
-            + " WHERE id = ?"
+            + " WHERE id_usuario_sistema = ?"
         )
         params.append(id_usuario)
         cursor.execute(query, *params)
@@ -1029,8 +1041,8 @@ def actualizar_usuario_sistema(
             raise HTTPException(status_code=404, detail="Usuario no encontrado.")
 
         cursor.execute(
-            "SELECT id, Nombre, NombreUsuario, email, Rol, iEmployeeNum, bActivo, FechaCreacion "
-            "FROM dbo.tblUsuarios WHERE id = ?",
+            "SELECT id_usuario_sistema, nombre_completo, email, rol, id_usuario_original, estatus "
+            "FROM dbo.tbl_usuarios_sistema WHERE id_usuario_sistema = ?",
             id_usuario,
         )
         fila = cursor.fetchone()
@@ -1042,12 +1054,12 @@ def actualizar_usuario_sistema(
         return {
             "id_usuario": int(fila[0]),
             "nombre": fila[1],
-            "nombre_usuario": fila[2],
-            "email": fila[3],
-            "rol": normalizar_rol(str(fila[4])),
-            "id_empleado": fila[5],
-            "activo": bool(fila[6]),
-            "fecha_creacion": fila[7],
+            "nombre_usuario": fila[1],
+            "email": fila[2],
+            "rol": normalizar_rol(str(fila[3])),
+            "id_empleado": fila[4],
+            "activo": bool(fila[5]),
+            "fecha_creacion": None,
         }
     except HTTPException:
         raise
@@ -1065,7 +1077,7 @@ def desactivar_usuario_sistema(
         conn = obtener_conexion()
         cursor = conn.cursor()
         cursor.execute(
-            "UPDATE dbo.tblUsuarios SET bActivo = 0 WHERE id = ?",
+            "UPDATE dbo.tbl_usuarios_sistema SET estatus = 0 WHERE id_usuario_sistema = ?",
             id_usuario,
         )
 

@@ -47,24 +47,24 @@ insertados = 0
 actualizados = 0
 
 for id_emp, nombre, username, email, rol, password in USUARIOS:
-    cur.execute("SELECT id FROM dbo.tblUsuarios WHERE iEmployeeNum = ? OR email = ?", id_emp, email)
+    cur.execute("SELECT id_usuario_sistema FROM dbo.tbl_usuarios_sistema WHERE id_usuario_original = ? OR email = ?", id_emp, email)
     existe = cur.fetchone()
     salt, hash_bytes = generar_hash_salt(password)
 
     if existe:
         cur.execute("""
-            UPDATE dbo.tblUsuarios
-            SET Nombre=?, NombreUsuario=?, email=?, PasswordHash=?, PasswordSalt=?, Rol=?, bActivo=1
-            WHERE id=?
-        """, nombre, username, email, hash_bytes, salt, rol, int(existe[0]))
+            UPDATE dbo.tbl_usuarios_sistema
+            SET nombre_usuario = ?, nombre_completo = ?, email = ?, rol = ?, estatus = 1
+            WHERE id_usuario_sistema = ?
+        """, username, nombre, email, rol, int(existe[0]))
         actualizados += 1
         print(f"  ✓ Actualizado: {username}")
     else:
         cur.execute("""
-            INSERT INTO dbo.tblUsuarios
-            (iEmployeeNum, Nombre, NombreUsuario, email, password, PasswordHash, PasswordSalt, Rol, FechaCreacion, bActivo)
-            VALUES (?, ?, ?, ?, '', ?, ?, ?, SYSUTCDATETIME(), 1)
-        """, id_emp, nombre, username, email, hash_bytes, salt, rol)
+            INSERT INTO dbo.tbl_usuarios_sistema
+            (id_usuario_original, nombre_usuario, nombre_completo, email, password, PasswordHash, PasswordSalt, rol, estatus)
+            VALUES (?, ?, ?, ?, '', ?, ?, ?, 1)
+        """, id_emp, username, nombre, email, hash_bytes, salt, rol)
         insertados += 1
         print(f"  + Insertado: {username}")
 
