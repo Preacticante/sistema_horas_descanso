@@ -1,459 +1,99 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Horas - Configuración</title>
-    <style>
-        :root { 
-            --forest: #124416; 
-            --forest-light: #18591d;
-            --purple: #340C51; 
-            --gold: #AA7F31; 
-            --bg-gray: #f4f6f8; 
-            --text-muted: rgba(255, 255, 255, 0.7);
-        }
+<!-- 📌 CONTENIDO DE configuracion.html (Limpio para inyección dinámica) -->
+<div style="max-width: 1100px; margin: 0 auto;">
+
+    <div style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); border-left: 5px solid var(--forest, #124416);">
         
-        * { box-sizing: border-box; }
+        <!-- SECCIÓN: NOTIFICACIONES -->
+        <h3 style="margin: 0 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Alertas y Notificaciones</h3>
         
-        html, body { height: 100%; margin: 0; }
-        
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-gray); overflow: hidden; }
-        
-        /* --- ESTILOS DE LA SIDEBAR COLAPSABLE --- */
-        .sidebar { 
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 90px;
-            background: var(--forest);
-            color: white;
-            padding: 1.2rem 0.8rem;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
-            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .sidebar.expanded {
-            width: 280px;
-        }
-
-        .toggle-btn {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-
-        .toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
-        
-        .logo-container { 
-            text-align: center; 
-            margin-bottom: 1.5rem; 
-            padding: 0.2rem 0.5rem; 
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.8rem;
-        }
-        
-        .logo-container img { 
-            width: 100%;
-            max-width: 160px;
-            height: auto; 
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
-        
-        .logo-container img:hover {
-            transform: scale(1.05);
-        }
-        
-        .menu-wrapper { 
-            flex-grow: 1; 
-            display: flex;
-            flex-direction: column;
-            gap: 1.2rem;
-        }
-        
-        .menu-group { 
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
-            padding-bottom: 1rem; 
-        }
-        
-        .menu-group:last-of-type { border-bottom: none; }
-        
-        .sidebar a { 
-            padding: 12px 16px; 
-            color: var(--text-muted); 
-            text-decoration: none; 
-            border-radius: 12px; 
-            transition: all 0.25s ease; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            font-weight: 500; 
-            font-size: 0.92rem; 
-            position: relative;
-            white-space: nowrap;
-        }
-        
-        .sidebar a:hover { 
-            background: rgba(255, 255, 255, 0.1); 
-            color: #ffffff; 
-            transform: translateX(4px);
-        } 
-        
-        .sidebar a.active { 
-            background: rgba(255, 255, 255, 0.15); 
-            color: #ffffff; 
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); 
-            border: 1px solid rgba(255, 255, 255, 0.2); 
-        }
-
-        .sidebar a.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 20%;
-            height: 60%;
-            width: 4px;
-            background-color: var(--gold);
-            border-radius: 0 4px 4px 0;
-        }
-        
-        .icon { 
-            width: 22px; 
-            height: 22px; 
-            min-width: 22px;
-            margin-right: 16px; 
-            font-size: 1.2rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s ease;
-        }
-
-        .sidebar a:hover .icon {
-            transform: scale(1.15);
-        }
-
-        .sidebar a .nav-text {
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
-        }
-
-        .sidebar.expanded a .nav-text {
-            opacity: 1;
-            pointer-events: auto;
-            transition: opacity 0.3s ease 0.15s;
-        }
-
-        #logout-link { 
-            color: var(--gold); 
-            border: 1px solid var(--gold); 
-            justify-content: flex-start; 
-            border-radius: 12px; 
-            padding: 12px 16px; 
-            text-decoration: none; 
-            font-weight: 600;
-            margin-top: auto;
-            transition: all 0.3s ease;
-        }
-
-        #logout-link:hover {
-            background: var(--gold);
-            color: #ffffff;
-            box-shadow: 0 4px 12px rgba(170, 127, 49, 0.3);
-            transform: translateY(-2px);
-        }
-        
-        /* --- ESTILOS DEL ÁREA DERECHA --- */
-        .main-layout {
-            margin-left: 90px;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .main-layout.sidebar-open {
-            margin-left: 280px;
-        }
-
-        .top-bar-header {
-            background-color: var(--forest);
-            color: white;
-            padding: 1.25rem 2.5rem 1.75rem 2.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            flex-shrink: 0;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
-
-        .main-content { 
-            flex: 1;
-            padding: 2rem 2.5rem; 
-            overflow-y: auto;
-            background-color: var(--bg-gray);
-        }
-
-        /* COMPONENTES DE CONFIGURACIÓN */
-        .setting-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 1rem 0;
-            border-bottom: 1px solid #f1f5f9;
-        }
-
-        .setting-item:last-child {
-            border-bottom: none;
-        }
-
-        /* TOGGLE SWITCH CUSTOM */
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 46px;
-            height: 24px;
-        }
-
-        .switch input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #cbd5e1;
-            transition: .3s;
-            border-radius: 24px;
-        }
-
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 18px;
-            width: 18px;
-            left: 3px;
-            bottom: 3px;
-            background-color: white;
-            transition: .3s;
-            border-radius: 50%;
-        }
-
-        input:checked + .slider {
-            background-color: var(--forest);
-        }
-
-        input:checked + .slider:before {
-            transform: translateX(22px);
-        }
-
-        .btn-primary {
-            background: var(--forest);
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 8px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.2s;
-        }
-
-        .btn-primary:hover {
-            background: var(--forest-light);
-        }
-    </style>
-</head>
-<body>
-
-    <!-- 1. SIDEBAR DESPLEGABLE -->
-    <aside id="sidebar" class="sidebar">
-        
-        <div class="logo-container" onclick="toggleSidebar()">
-            <button class="toggle-btn" title="Abrir/Cerrar menú"></button>
-            <img src="../logo_uco.png" alt="UCO Prepa Contemporánea">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+            <div>
+                <strong style="display: block; color: #334155; font-size: 0.95rem;">Notificaciones por Correo</strong>
+                <span style="font-size: 0.82rem; color: #64748b;">Recibir aviso inmediato cuando se apruebe o rechace una solicitud.</span>
+            </div>
+            <label class="switch">
+                <input type="checkbox" id="check-noti-correo" checked>
+                <span class="slider"></span>
+            </label>
         </div>
 
-        <div class="menu-wrapper">
-            <div class="menu-group">
-                <a href="inicio.html">
-                    <span class="icon">📊</span>
-                    <span class="nav-text">Panel Principal</span>
-                </a>
-                <a href="registrosU.html">
-                    <span class="icon">📄</span>
-                    <span class="nav-text">Registros</span>
-                </a>
-                <a href="notificacionesU.html">
-                    <span class="icon">🔔</span>
-                    <span class="nav-text">Notificaciones</span>
-                </a>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+            <div>
+                <strong style="display: block; color: #334155; font-size: 0.95rem;">Resumen Semanal</strong>
+                <span style="font-size: 0.82rem; color: #64748b;">Envío de reporte semanal con el saldo de horas acumuladas.</span>
             </div>
-
-            <div class="menu-group">
-                <a href="configuracion.html" class="active">
-                    <span class="icon">⚙️</span>
-                    <span class="nav-text">Configuración</span>
-                </a>
-                <a href="perfil.html">
-                    <span class="icon">👤</span>
-                    <span class="nav-text">Perfil</span>
-                </a>
-            </div>
+            <label class="switch">
+                <input type="checkbox" id="check-resumen-semanal">
+                <span class="slider"></span>
+            </label>
         </div>
 
-        <a id="logout-link" href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;">
-            <span class="icon">🚪</span>
-            <span class="nav-text">Cerrar Sesión</span>
-        </a>
+        <!-- SECCIÓN: INTERFAZ -->
+        <h3 style="margin: 2rem 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Preferencias de Aplicación</h3>
 
-    </aside>
-
-    <!-- 2. ÁREA PRINCIPAL -->
-    <div id="main-layout" class="main-layout">
-
-        <!-- CABECERA VERDE -->
-        <header class="top-bar-header">
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">Control de Horas</h2>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="text-align: right;">
-                        <span id="topbar-user-name" style="display: block; font-size: 0.88rem; font-weight: 600; color: #ffffff;">Cargando...</span>
-                        <span style="display: block; font-size: 0.72rem; color: rgba(255, 255, 255, 0.7); font-weight: 400;">Empleado</span>
-                    </div>
-                    <a href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;" title="Cerrar Sesión" style="color: #ffffff; text-decoration: none; font-size: 1.1rem; background: rgba(255,255,255,0.12); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        🚪
-                    </a>
-                </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+            <div>
+                <strong style="display: block; color: #334155; font-size: 0.95rem;">Idioma del Sistema</strong>
+                <span style="font-size: 0.82rem; color: #64748b;">Elige el idioma con el que deseas visualizar la interfaz.</span>
             </div>
+            <select id="select-idioma" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.88rem; outline: none; background: #ffffff;">
+                <option value="es">Español (MX)</option>
+                <option value="en">English</option>
+            </select>
+        </div>
 
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <h1 style="margin: 0; color: #ffffff; font-size: 1.85rem; font-weight: 800; letter-spacing: -0.5px;">Configuración de Preferencias</h1>
-                    <p style="margin: 0.35rem 0 0 0; color: rgba(255, 255, 255, 0.8); font-size: 0.92rem; font-weight: 400;">Ajusta las notificaciones y preferencias del sistema.</p>
-                </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0;">
+            <div>
+                <strong style="display: block; color: #334155; font-size: 0.95rem;">Confirmaciones al Guardar</strong>
+                <span style="font-size: 0.82rem; color: #64748b;">Mostrar alerta de confirmación al registrar una nueva reposición.</span>
             </div>
-        </header>
+            <label class="switch">
+                <input type="checkbox" id="check-confirmaciones" checked>
+                <span class="slider"></span>
+            </label>
+        </div>
 
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="main-content">
-            <div style="max-width: 1100px; margin: 0 auto;">
+        <!-- BOTÓN ACCIÓN -->
+        <div style="text-align: right; margin-top: 2rem;">
+            <button id="btn-guardar-config" class="btn-primary" style="background: var(--forest, #124416); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
+                Guardar Configuración
+            </button>
+        </div>
 
-                <div style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); border-left: 5px solid var(--forest);">
-                    
-                    <!-- SECCIÓN: NOTIFICACIONES -->
-                    <h3 style="margin: 0 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Alertas y Notificaciones</h3>
-                    
-                    <div class="setting-item">
-                        <div>
-                            <strong style="display: block; color: #334155; font-size: 0.95rem;">Notificaciones por Correo</strong>
-                            <span style="font-size: 0.82rem; color: #64748b;">Recibir aviso inmediato cuando se apruebe o rechace una solicitud.</span>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div class="setting-item">
-                        <div>
-                            <strong style="display: block; color: #334155; font-size: 0.95rem;">Resumen Semanal</strong>
-                            <span style="font-size: 0.82rem; color: #64748b;">Envío de reporte semanal con el saldo de horas acumuladas.</span>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox">
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <!-- SECCIÓN: INTERFAZ -->
-                    <h3 style="margin: 2rem 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Preferencias de Aplicación</h3>
-
-                    <div class="setting-item">
-                        <div>
-                            <strong style="display: block; color: #334155; font-size: 0.95rem;">Idioma del Sistema</strong>
-                            <span style="font-size: 0.82rem; color: #64748b;">Elige el idioma con el que deseas visualizar la interfaz.</span>
-                        </div>
-                        <select style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.88rem; outline: none;">
-                            <option value="es">Español (MX)</option>
-                            <option value="en">English</option>
-                        </select>
-                    </div>
-
-                    <div class="setting-item">
-                        <div>
-                            <strong style="display: block; color: #334155; font-size: 0.95rem;">Confirmaciones al Guardar</strong>
-                            <span style="font-size: 0.82rem; color: #64748b;">Mostrar alerta de confirmación al registrar una nueva reposición.</span>
-                        </div>
-                        <label class="switch">
-                            <input type="checkbox" checked>
-                            <span class="slider"></span>
-                        </label>
-                    </div>
-
-                    <div style="text-align: right; margin-top: 2rem;">
-                        <button onclick="guardarAjustes()" class="btn-primary">Guardar Configuración</button>
-                    </div>
-
-                </div>
-
-            </div>
-        </main>
     </div>
 
-    <script>
-        const sidebar = document.getElementById('sidebar');
-        const mainLayout = document.getElementById('main-layout');
+</div>
 
-        function toggleSidebar() {
-            sidebar.classList.toggle('expanded');
-            mainLayout.classList.toggle('sidebar-open');
+<!-- ⚡ LÓGICA DE CONFIGURACIÓN ENCAPSULADA -->
+<script>
+    (function() {
+        // Cargar preferencias guardadas si existen en localStorage
+        const configGuardada = JSON.parse(localStorage.getItem('user_config') || '{}');
+        
+        const checkCorreo = document.getElementById('check-noti-correo');
+        const checkResumen = document.getElementById('check-resumen-semanal');
+        const selectIdioma = document.getElementById('select-idioma');
+        const checkConfirm = document.getElementById('check-confirmaciones');
+        const btnGuardar = document.getElementById('btn-guardar-config');
+
+        if (configGuardada.correo !== undefined && checkCorreo) checkCorreo.checked = configGuardada.correo;
+        if (configGuardada.resumen !== undefined && checkResumen) checkResumen.checked = configGuardada.resumen;
+        if (configGuardada.idioma && selectIdioma) selectIdioma.value = configGuardada.idioma;
+        if (configGuardada.confirmaciones !== undefined && checkConfirm) checkConfirm.checked = configGuardada.confirmaciones;
+
+        // Listener para guardar cambios sin ensuciar el scope global
+        if (btnGuardar) {
+            btnGuardar.addEventListener('click', function() {
+                const nuevaConfig = {
+                    correo: checkCorreo ? checkCorreo.checked : true,
+                    resumen: checkResumen ? checkResumen.checked : false,
+                    idioma: selectIdioma ? selectIdioma.value : 'es',
+                    confirmaciones: checkConfirm ? checkConfirm.checked : true
+                };
+
+                localStorage.setItem('user_config', JSON.stringify(nuevaConfig));
+                alert('Las preferencias de configuración han sido guardadas correctamente.');
+            });
         }
-
-        function guardarAjustes() {
-            alert('Las preferencias de configuración han sido guardadas.');
-        }
-
-        (function() {
-            const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-            let userObj = {};
-            try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(e) {}
-
-            const nombreReal = userObj.nombre_completo || userObj.nombre || localStorage.getItem('nombre_completo') || "Empleado";
-            const elemTopbar = document.getElementById("topbar-user-name");
-            if (elemTopbar) elemTopbar.textContent = nombreReal;
-        })();
-    </script>
-</body>
-</html>
+    })();
+</script>

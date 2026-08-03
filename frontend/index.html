@@ -2,9 +2,9 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: https://cdnjs.cloudflare.com https://fonts.googleapis.com https://fonts.gstatic.com; connect-src 'self' http://127.0.0.1:* ws://127.0.0.1:* http://localhost:* http://172.16.6.50:8000; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data:;">
     <title>Sistema UCO - Horas extras</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Carga de Three.js para renderizar la seda -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
@@ -27,7 +27,6 @@
             position: relative;
         }
 
-        /* --- CANVAS DE SEDA ANIMADO --- */
         #silk-canvas {
             position: fixed;
             top: 0;
@@ -38,20 +37,16 @@
             pointer-events: none;
         }
         
-        /* --- ESTILOS DE LA SIDEBAR COLAPSABLE CON GLASSMORPHISM --- */
         .sidebar { 
             position: fixed;
             top: 0;
             left: 0;
             bottom: 0;
-            width: 90px; /* Ancho inicial (colapsado) */
-            
-            /* Difuminado glassmorphism */
+            width: 90px;
             background: var(--forest-glass);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             border-right: 1px solid rgba(255, 255, 255, 0.12);
-            
             color: white;
             padding: 1.5rem 0.8rem;
             display: flex;
@@ -63,154 +58,36 @@
             transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Estado Expandido */
-        .sidebar.expanded {
-            width: 280px;
-        }
+        .sidebar.expanded { width: 280px; }
         
-        .logo-container { 
-            text-align: center; 
-            margin-bottom: 1.5rem; 
-            padding: 0.5rem; 
-            cursor: pointer;
-        }
+        .logo-container { text-align: center; margin-bottom: 1.5rem; padding: 0.5rem; cursor: pointer; }
+        .logo-container img { width: 100%; max-width: 180px; height: auto; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3)); }
+        .logo-container img:hover { transform: scale(1.08); }
         
-        .logo-container img { 
-            width: 100%;
-            max-width: 180px;
-            height: auto; 
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
-        }
-        
-        .logo-container img:hover {
-            transform: scale(1.08);
-        }
-        
-        .menu-wrapper { 
-            flex-grow: 1; 
-            display: flex;
-            flex-direction: column;
-            gap: 1.5rem;
-        }
-        
-        .menu-group { 
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
-            padding-bottom: 1rem; 
-        }
-        
+        .menu-wrapper { flex-grow: 1; display: flex; flex-direction: column; gap: 1.5rem; }
+        .menu-group { display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 1rem; }
         .menu-group:last-of-type { border-bottom: none; }
         
-        .sidebar a { 
-            padding: 12px 16px; 
-            color: var(--text-muted); 
-            text-decoration: none; 
-            border-radius: 12px; 
-            transition: all 0.25s ease; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            font-weight: 500; 
-            font-size: 0.92rem; 
-            position: relative;
-            white-space: nowrap;
-        }
+        .sidebar a { padding: 12px 16px; color: var(--text-muted); text-decoration: none; border-radius: 12px; transition: all 0.25s ease; cursor: pointer; display: flex; align-items: center; font-weight: 500; font-size: 0.92rem; position: relative; white-space: nowrap; }
+        .sidebar a:hover { background: rgba(255, 255, 255, 0.12); color: #ffffff; transform: translateX(4px); }
+        .sidebar a.active { background: rgba(255, 255, 255, 0.18); color: #ffffff; font-weight: 600; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.2); }
+
+        .sidebar a.active::before { content: ''; position: absolute; left: 0; top: 20%; height: 60%; width: 4px; background-color: var(--gold); border-radius: 0 4px 4px 0; }
         
-        .sidebar a:hover { 
-            background: rgba(255, 255, 255, 0.12); 
-            color: #ffffff; 
-            transform: translateX(4px);
-        }
+        .icon { width: 20px; height: 20px; min-width: 20px; margin-right: 14px; fill: currentColor; transition: transform 0.2s ease; }
+        .sidebar a:hover .icon { transform: scale(1.1); }
+        .sidebar a .nav-text { opacity: 0; transition: opacity 0.2s ease; pointer-events: none; }
+        .sidebar.expanded a .nav-text { opacity: 1; pointer-events: auto; transition: opacity 0.3s ease 0.15s; }
+
+        #logout-link { color: var(--gold); border: 1px solid var(--gold); justify-content: center; border-radius: 12px; padding: 12px; text-decoration: none; text-align: center; font-weight: 600; margin-top: auto; transition: all 0.3s ease; background: rgba(170, 127, 49, 0.1); }
+        #logout-link:hover { background: var(--gold); color: #ffffff; box-shadow: 0 4px 12px rgba(170, 127, 49, 0.4); transform: translateY(-2px); }
         
-        .sidebar a.active { 
-            background: rgba(255, 255, 255, 0.18); 
-            color: #ffffff; 
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25); 
-            border: 1px solid rgba(255, 255, 255, 0.2); 
-        }
-
-        /* Indicador lateral dorado para opción activa */
-        .sidebar a.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 20%;
-            height: 60%;
-            width: 4px;
-            background-color: var(--gold);
-            border-radius: 0 4px 4px 0;
-        }
-        
-        .icon { 
-            width: 20px; 
-            height: 20px; 
-            min-width: 20px;
-            margin-right: 14px; 
-            fill: currentColor; 
-            transition: transform 0.2s ease;
-        }
-
-        .sidebar a:hover .icon {
-            transform: scale(1.1);
-        }
-
-        .sidebar a .nav-text {
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
-        }
-
-        .sidebar.expanded a .nav-text {
-            opacity: 1;
-            pointer-events: auto;
-            transition: opacity 0.3s ease 0.15s;
-        }
-
-        #logout-link { 
-            color: var(--gold); 
-            border: 1px solid var(--gold); 
-            justify-content: center; 
-            border-radius: 12px; 
-            padding: 12px; 
-            text-decoration: none; 
-            text-align: center; 
-            font-weight: 600;
-            margin-top: auto;
-            transition: all 0.3s ease;
-            background: rgba(170, 127, 49, 0.1);
-        }
-
-        #logout-link:hover {
-            background: var(--gold);
-            color: #ffffff;
-            box-shadow: 0 4px 12px rgba(170, 127, 49, 0.4);
-            transform: translateY(-2px);
-        }
-        
-        /* --- ESTILOS DE CONTENIDO PRINCIPAL --- */
-        .main-content { 
-            position: relative;
-            z-index: 10;
-            margin-left: 90px;
-            padding: 3rem; 
-            overflow-y: auto;
-            height: 100vh;
-            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-        }
-
-        .main-content.sidebar-open {
-            margin-left: 280px;
-        }
-        
+        .main-content { position: relative; z-index: 10; margin-left: 90px; padding: 3rem; overflow-y: auto; height: 100vh; transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease; }
+        .main-content.sidebar-open { margin-left: 280px; }
         .notification-container { position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 420px; }
     </style>
 </head>
 <body>
-    <!-- CANVAS DONDE SE DIBUJA LA SEDA ANIMADA -->
     <canvas id="silk-canvas"></canvas>
 
     <div class="sidebar" id="sidebar">
@@ -262,15 +139,13 @@
 
     <main class="main-content" id="content-area">
         <div id="dynamic-card"></div>
-        <div id="dynamicCard" style="display:none;"></div>
-        <div id="container" style="display:none;"></div>
     </main>
 
     <div class="notification-container" id="notification-container"></div>
 
     <script src="app.js"></script>
 
-    <!-- SCRIPT DEL SHADER SILK DE THREE.JS -->
+    <!-- SCRIPT SHADER THREE.JS -->
     <script>
         (function initSilk() {
             const canvas = document.getElementById('silk-canvas');
@@ -339,7 +214,6 @@
                         float sinR = sin(uRotation);
                         uv = vec2(uv.x * cosR - uv.y * sinR, uv.x * sinR + uv.y * cosR);
 
-                        /* Velocidad ajustada para concordar con la referencia (11.2) */
                         float n = snoise(uv + vec2(uTime * 0.35, uTime * 0.2)) * uNoise;
                         float wave = sin(uv.x * 3.0 + n + uTime * 2.0) * 0.5 + 0.5;
 
@@ -368,7 +242,7 @@
         })();
     </script>
 
-    <!-- LOGICA DE CONTROL DE LA INTERFAZ -->
+    <!-- CONTROL DE INTERFAZ -->
     <script>
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
@@ -401,16 +275,20 @@
                         });
                     }
 
-                    const contentArea = document.getElementById("dynamic-card");
-                    if (contentArea && (!contentArea.innerHTML || contentArea.innerHTML.trim() === "")) {
-                        if (typeof loadPage === "function") {
-                            loadPage('dashboard', document.getElementById('nav-dashboard'));
-                        }
+                    // Carga la última página o dashboard por defecto
+                    const lastPage = localStorage.getItem('active_screen_usuario') || 'dashboard';
+                    const navTarget = document.getElementById(`nav-${lastPage}`);
+
+                    if (typeof loadPage === "function") {
+                        loadPage(lastPage, navTarget);
+                    } else if (typeof loadPageUsuario === "function") {
+                        loadPageUsuario(lastPage, navTarget);
                     }
+
                 } catch (e) {
                     console.error("Error al inicializar la interfaz:", e);
                 }
-            }, 300);
+            }, 100);
         });
     </script>
 </body>

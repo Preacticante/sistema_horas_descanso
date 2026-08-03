@@ -92,7 +92,7 @@ def upsert_usuarios(rows: list[dict]) -> None:
     try:
         for r in rows:
             cur.execute(
-                "SELECT IdUsuario FROM dbo.tblUsuarios WHERE IdEmpleado = ? OR Email = ? OR NombreUsuario = ?",
+                "SELECT id_usuario_sistema FROM dbo.tbl_usuarios_sistema WHERE id_usuario_original = ? OR email = ? OR nombre_usuario = ?",
                 r["id_empleado"],
                 r["email"],
                 r["nombre_usuario"],
@@ -101,11 +101,11 @@ def upsert_usuarios(rows: list[dict]) -> None:
 
             if existente:
                 cur.execute(
-                    "UPDATE dbo.tblUsuarios "
-                    "SET Nombre = ?, NombreUsuario = ?, Email = ?, Rol = ?, IdEmpleado = ?, Activo = 1 "
-                    "WHERE IdUsuario = ?",
-                    r["nombre"],
+                    "UPDATE dbo.tbl_usuarios_sistema "
+                    "SET nombre_usuario = ?, nombre_completo = ?, email = ?, rol = ?, id_usuario_original = ?, estatus = 1 "
+                    "WHERE id_usuario_sistema = ?",
                     r["nombre_usuario"],
+                    r["nombre"],
                     r["email"],
                     r["rol"],
                     r["id_empleado"],
@@ -114,11 +114,11 @@ def upsert_usuarios(rows: list[dict]) -> None:
             else:
                 salt, hash_bytes = generar_hash_salt(r["password"])
                 cur.execute(
-                    "INSERT INTO dbo.tblUsuarios "
-                    "(Nombre, NombreUsuario, Email, PasswordHash, PasswordSalt, Rol, IdEmpleado, FechaCreacion, Activo) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), 1)",
-                    r["nombre"],
+                    "INSERT INTO dbo.tbl_usuarios_sistema "
+                    "(nombre_usuario, nombre_completo, email, PasswordHash, PasswordSalt, rol, id_usuario_original, estatus, password) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, 1, '')",
                     r["nombre_usuario"],
+                    r["nombre"],
                     r["email"],
                     hash_bytes,
                     salt,
@@ -140,31 +140,21 @@ def upsert_jerarquia(rows: list[dict]) -> None:
     cur = conn.cursor()
 
     try:
-        cur.execute(
-            "IF OBJECT_ID('dbo.tbl_jerarquia_autorizacion', 'U') IS NULL "
-            "BEGIN "
-            "CREATE TABLE dbo.tbl_jerarquia_autorizacion ("
-            "id_jerarquia INT IDENTITY(1,1) NOT NULL PRIMARY KEY,"
-            "id_empleado INT NOT NULL,"
-            "id_jefe_directo INT NOT NULL,"
-            "id_jefe_superior INT NOT NULL,"
-            "activo BIT NOT NULL DEFAULT 1,"
-            "fecha_creacion DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),"
-            "fecha_actualizacion DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),"
-            "CONSTRAINT UQ_tbl_jerarquia_autorizacion_empleado UNIQUE (id_empleado),"
-            "CONSTRAINT CK_tbl_jerarquia_autorizacion_jefes_distintos CHECK (id_jefe_directo <> id_jefe_superior)"
-            ") END"
-        )
-
         for r in rows:
             jd_emp = r.get("id_jefe_directo_empleado")
             js_emp = r.get("id_jefe_superior_empleado")
             if not jd_emp or not js_emp or jd_emp == js_emp:
                 continue
 
-            cur.execute("SELECT IdUsuario FROM dbo.tblUsuarios WHERE IdEmpleado = ? AND Activo = 1", jd_emp)
+            cur.execute(
+                "SELECT id_usuario_sistema FROM dbo.tbl_usuarios_sistema WHERE id_usuario_original = ? AND estatus = 1",
+                jd_emp,
+            )
             jd_user = cur.fetchone()
-            cur.execute("SELECT IdUsuario FROM dbo.tblUsuarios WHERE IdEmpleado = ? AND Activo = 1", js_emp)
+            cur.execute(
+                "SELECT id_usuario_sistema FROM dbo.tbl_usuarios_sistema WHERE id_usuario_original = ? AND estatus = 1",
+                js_emp,
+            )
             js_user = cur.fetchone()
             if not jd_user or not js_user:
                 continue
@@ -172,26 +162,14 @@ def upsert_jerarquia(rows: list[dict]) -> None:
             id_jd = int(jd_user[0])
             id_js = int(js_user[0])
 
-            cur.execute("SELECT id_jerarquia FROM dbo.tbl_jerarquia_autorizacion WHERE id_empleado = ?", r["id_empleado"])
-            ex = cur.fetchone()
-            if ex:
-                cur.execute(
-                    "UPDATE dbo.tbl_jerarquia_autorizacion "
-                    "SET id_jefe_directo = ?, id_jefe_superior = ?, activo = 1, fecha_actualizacion = SYSUTCDATETIME() "
-                    "WHERE id_jerarquia = ?",
-                    id_jd,
-                    id_js,
-                    int(ex[0]),
-                )
-            else:
-                cur.execute(
-                    "INSERT INTO dbo.tbl_jerarquia_autorizacion "
-                    "(id_empleado, id_jefe_directo, id_jefe_superior, activo, fecha_creacion, fecha_actualizacion) "
-                    "VALUES (?, ?, ?, 1, SYSUTCDATETIME(), SYSUTCDATETIME())",
-                    r["id_empleado"],
-                    id_jd,
-                    id_js,
-                )
+            cur.execute(
+                "UPDATE dbo.tbl_usuarios_sistema "
+                "SET id_jefe = ?, jefe_superior = ? "
+                "WHERE id_usuario_original = ?",
+                id_jd,
+                str(id_js),
+                r["id_empleado"],
+            )
 
         conn.commit()
     except Exception:

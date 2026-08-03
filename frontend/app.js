@@ -1,6 +1,96 @@
-const API_URL = `http://172.16.6.50:8000`; // Cambia el puerto si tu backend está en otro puerto
+window.API_URL = window.API_URL || `http://172.16.6.50:8000`; // Cambia el puerto si tu backend está en otro puerto
+
+// Simple safeguard: prevent duplicate concurrent fetch requests to the same URL+method+body
+(function preventDuplicateFetches(){
+    if (typeof window === 'undefined' || !window.fetch) return;
+    const _origFetch = window.fetch.bind(window);
+    const pending = new Map();
+    const lastCall = new Map();
+    const MIN_INTERVAL_MS = 250; // minimum interval per identical request
+
+    window.fetch = function(input, init){
+        try {
+            const url = (typeof input === 'string') ? input : (input && input.url) || '';
+            const method = (init && init.method) || 'GET';
+            const body = init && init.body ? init.body : '';
+            const key = `${method.toUpperCase()}::${url}::${body}`;
+
+            // Temporary monitoring for dashboard endpoint
+            try {
+                if (url && url.includes('/api/dashboard-empleados')) {
+                    window._dashboardFetchCount = (window._dashboardFetchCount || 0) + 1;
+                    if (window._dashboardFetchCount % 5 === 0) {
+                        console.warn(`dashboard-empleados called ${window._dashboardFetchCount} times`);
+                        console.trace('Call stack for frequent dashboard fetch');
+                    }
+                }
+            } catch (e) { /* ignore */ }
+
+            // If there's already a pending identical request, return it
+            if (pending.has(key)) {
+                return pending.get(key);
+            }
+
+            const now = Date.now();
+            const last = lastCall.get(key) || 0;
+            const since = now - last;
+
+            const doFetch = () => {
+                lastCall.set(key, Date.now());
+                const p = _origFetch(input, init).finally(() => pending.delete(key));
+                pending.set(key, p);
+                return p;
+            };
+
+            if (since < MIN_INTERVAL_MS) {
+                // Throttle: schedule after remaining time and return that promise
+                const delay = MIN_INTERVAL_MS - since;
+                const delayedPromise = new Promise((resolve, reject) => {
+                    setTimeout(() => {
+                        doFetch().then(resolve).catch(reject);
+                    }, delay);
+                });
+                // Mark as pending to deduplicate any other callers during delay
+                pending.set(key, delayedPromise);
+                return delayedPromise;
+            }
+
+            return doFetch();
+        } catch (err) {
+            return _origFetch(input, init);
+        }
+    };
+})();
 let empleadosCache = [];
 let ultimoReporteData = [];
+// Throttle control for dashboard employees loading (ms)
+const DASHBOARD_EMPLEADOS_MIN_INTERVAL = 2000; // 2s
+window._lastDashboardEmpleadosLoad = 0;
+// Simple cached fetch for /api/dashboard-empleados to avoid request storms
+window._dashboardCache = { ts: 0, data: null, pending: null, ttl: DASHBOARD_EMPLEADOS_MIN_INTERVAL };
+async function fetchDashboardEmpleadosCached() {
+    try {
+        const now = Date.now();
+        if (window._dashboardCache.pending) return await window._dashboardCache.pending;
+        if (window._dashboardCache.data && (now - (window._dashboardCache.ts || 0) < window._dashboardCache.ttl)) {
+            return window._dashboardCache.data;
+        }
+        const p = (async () => {
+            const resp = await window.fetch(`${API_URL}/api/dashboard-empleados`, { headers: construirHeadersAuth() });
+            if (!resp.ok) throw new Error(`dashboard-empleados: ${resp.status}`);
+            const json = await resp.json();
+            window._dashboardCache.data = json;
+            window._dashboardCache.ts = Date.now();
+            return json;
+        })();
+        window._dashboardCache.pending = p;
+        try { return await p; } finally { window._dashboardCache.pending = null; }
+    } catch (e) {
+        // on error, clear pending and rethrow
+        window._dashboardCache.pending = null;
+        throw e;
+    }
+}
 let empleadosVisual = {
     deleted: new Set(),
     edited: {},
@@ -33,6 +123,11 @@ function limpiarSesionAuth() {
     sessionStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
+}
+
+function cerrarSesion() {
+    limpiarSesionAuth();
+    window.location.href = '/login.html';
 }
 
 function construirHeadersAuth(extraHeaders = {}) {
@@ -282,41 +377,46 @@ async function cargarSolicitudesNotificaciones() {
 
         const solicitudes = await response.json();
 
-        if (!Array.isArray(solicitudes) || !solicitudes.length) {
+        tbody.innerHTML = '';
+        if (!Array.isArray(solicitudes) || solicitudes.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align:center; padding:14px;">No hay solicitudes para mostrar.</td>
+                    <td colspan="8" style="text-align:center; padding:14px;">No se encontraron solicitudes.</td>
                 </tr>
             `;
             return;
         }
 
-        tbody.innerHTML = '';
+        // Render rows
+        const usuario = obtenerUsuarioAuth() || {};
+        const rolActual = String(usuario?.rol || '').toLowerCase();
+        const idUsuarioActual = Number(usuario?.id || 0);
+
         solicitudes.forEach(sol => {
             const estadoJD = String(sol.estado_jefe_directo || 'pendiente').toLowerCase();
             const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
             const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
-            const nombreEmpleado = sol.nombre_empleado || sol.id_empleado || '';
-            const puedeAccionar = estadoFinal === 'pendiente';
+            const idCreador = Number(sol.id_empleado || sol.id_usuario || 0);
+
+            const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin' || rolActual === 'administrador';
+            const esAutorizador = idUsuarioActual > 0 && idUsuarioActual !== idCreador;
+
+            const puedeAccionar = estadoFinal === 'pendiente' && (esJefeOAdmin || esAutorizador);
 
             tbody.innerHTML += `
                 <tr>
-                    <td>${sol.id_solicitud}</td>
-                    <td>${nombreEmpleado}</td>
-                    <td>${sol.fecha_solicitud || sol.fecha || ''}</td>
-                    <td>${Number(sol.horas_solicitadas || 0).toFixed(2)}</td>
-                    <td style="font-weight:600; color:${obtenerColorEstado(estadoJD)};">${estadoJD}</td>
-                    <td style="font-weight:600; color:${obtenerColorEstado(estadoJS)};">${estadoJS}</td>
+                    <td>${sol.id_solicitud || ''}</td>
+                    <td>${sol.id_empleado || ''}</td>
+                    <td>${sol.fecha || sol.fecha_solicitud || ''}</td>
+                    <td>${Number(sol.horas_solicitadas || sol.horas_a_reponer || 0).toFixed(2)}</td>
+                    <td style="font-weight:700; color:${obtenerColorEstado(estadoJD)};">${estadoJD}</td>
+                    <td style="font-weight:700; color:${obtenerColorEstado(estadoJS)};">${estadoJS}</td>
                     <td style="font-weight:700; color:${obtenerColorEstado(estadoFinal)};">${estadoFinal}</td>
-                    <td>
-                        ${puedeAccionar ? `
-                            <button type="button" onclick="procesarAutorizacion(${sol.id_solicitud}, 'aprobar')" style="margin-right:6px; border:none; border-radius:8px; padding:8px 10px; background:#166534; color:#fff; cursor:pointer;">Aprobar</button>
-                            <button type="button" onclick="procesarAutorizacion(${sol.id_solicitud}, 'rechazar')" style="border:none; border-radius:8px; padding:8px 10px; background:#b91c1c; color:#fff; cursor:pointer;">Rechazar</button>
-                        ` : `<span style="color:#64748b;">Sin acciones</span>`}
-                    </td>
+                    <td>${puedeAccionar ? `<button type="button" onclick="procesarAutorizacion(${sol.id_solicitud}, 'aprobar')" style="margin-right:6px; border:none; border-radius:8px; padding:6px 10px; background:#166534; color:#fff; cursor:pointer;">Aprobar</button><button type="button" onclick="procesarAutorizacion(${sol.id_solicitud}, 'rechazar')" style="border:none; border-radius:8px; padding:6px 10px; background:#b91c1c; color:#fff; cursor:pointer;">Rechazar</button>` : `<span style="color:#64748b;">Sin acciones</span>`}</td>
                 </tr>
             `;
         });
+
     } catch (error) {
         console.error('Error cargando solicitudes de notificaciones:', error);
         tbody.innerHTML = `
@@ -345,15 +445,15 @@ async function cargarEmpleados(ids = null) {
     tabla.innerHTML = `<tr><td colspan="5" style="padding:15px; text-align:center;">Cargando empleados...</td></tr>`;
     
     try {
-        const [respuesta, resSubordinados] = await Promise.all([
+        const [respuesta, subordinados] = await Promise.all([
             fetch(`${API_URL}/api/empleados${query}`, { headers: construirHeadersAuth() }),
-            fetch(`${API_URL}/api/dashboard-empleados`, { headers: construirHeadersAuth() })
+            fetchDashboardEmpleadosCached()
         ]);
 
         if (!respuesta.ok) throw new Error(`Error al obtener la lista de empleados (${respuesta.status})`);
 
         const empleados = await respuesta.json();
-        const subordinados = resSubordinados.ok ? await resSubordinados.json() : [];
+        // 'subordinados' already contains parsed JSON from cached helper
 
         const idsAutorizados = (Array.isArray(subordinados) ? subordinados : []).map(emp => {
             const idVal = emp.id !== undefined ? emp.id : emp.id_usuario_original;
@@ -406,16 +506,11 @@ async function cargarDropdownEmpleados() {
             } catch(e) {}
         }
 
-        const response = await fetch(`${baseUrl}/api/dashboard-empleados`, {
-            method: 'GET',
-            headers: headers,
-            credentials: 'include'
-        });
-
         let empleados = [];
-
-        if (response.ok) {
-            empleados = await response.json();
+        try {
+            empleados = await fetchDashboardEmpleadosCached();
+        } catch (e) {
+            empleados = [];
         }
 
         if (empleados && empleados.data && Array.isArray(empleados.data)) {
@@ -731,6 +826,12 @@ function cerrarModalHorario() {
 
 // 🛡️ CORREGIDO: Blindaje con comprobación de nulos para evitar errores al cambiar de vista
 async function cargarDashboard() {
+    // prevent re-entrancy
+    if (window._loadingDashboard) {
+        console.warn('Skipping cargarDashboard because a load is already in progress');
+        return;
+    }
+    window._loadingDashboard = true;
     try {
         const response = await fetch(`${API_URL}/api/dashboard-resumen`, {
             headers: construirHeadersAuth()
@@ -764,6 +865,8 @@ async function cargarDashboard() {
         if (kpiAprobadas) kpiAprobadas.textContent = 'Error';
         const kpiEficiencia = document.getElementById('kpi-eficiencia');
         if (kpiEficiencia) kpiEficiencia.textContent = 'Error';
+    } finally {
+        window._loadingDashboard = false;
     }
 
     cargarDashboardEmpleados();
@@ -772,6 +875,18 @@ async function cargarDashboard() {
 async function cargarDashboardEmpleados() {
     const tabla = document.getElementById('dashboard-empleados-table');
     if (!tabla) return;
+
+    // Rate-limit repeated calls to avoid request storms
+    try {
+        const now = Date.now();
+        if (now - (window._lastDashboardEmpleadosLoad || 0) < DASHBOARD_EMPLEADOS_MIN_INTERVAL) {
+            console.warn('Skipping cargarDashboardEmpleados due to throttle');
+            return;
+        }
+        window._lastDashboardEmpleadosLoad = now;
+    } catch (e) {
+        // ignore
+    }
 
     const tbody = tabla.querySelector('tbody');
     if (!tbody) return;
@@ -783,15 +898,10 @@ async function cargarDashboardEmpleados() {
     `;
 
     try {
-        const response = await fetch(`${API_URL}/api/dashboard-empleados`, {
-            headers: construirHeadersAuth()
-        });
-
-        if (!response.ok) {
-            throw new Error(`Error al cargar empleados (${response.status})`);
+        const empleados = await fetchDashboardEmpleadosCached();
+        if (!Array.isArray(empleados)) {
+            throw new Error('Respuesta inválida de empleados');
         }
-
-        const empleados = await response.json();
         if (!Array.isArray(empleados) || empleados.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -1494,7 +1604,8 @@ async function loadPage(page, element = null) {
         }
 
         let pageFile = page.endsWith('.html') ? page : `${page}.html`;
-        let path = pageFile.startsWith('screens/') ? pageFile : `screens/${pageFile}`;
+        // Use root-relative paths so fetch works regardless of current page folder
+        let path = pageFile.startsWith('screens/') ? `/frontend/${pageFile}` : `/frontend/screens/${pageFile}`;
 
         const response = await fetch(path);
         if (!response.ok) throw new Error(`No se pudo cargar la vista: ${path}`);
@@ -1589,7 +1700,7 @@ document.addEventListener('DOMContentLoaded', () => {
     loadPage(savedPage);
 });
 
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     if (!esSesionValida()) {
         window.location.href = 'login.html';
         return;
@@ -1604,59 +1715,144 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    try {
+        const empleados = await fetchDashboardEmpleadosCached();
+        if (Array.isArray(empleados) && empleados.length === 0) {
+            // Avoid repeated full-page redirects which can cause reload loops.
+            if (!window._handledNoSubordinates) {
+                window._handledNoSubordinates = true;
+                if (typeof loadPageUsuario === 'function') {
+                    // load the employee-facing screen inside the current SPA
+                    try { loadPageUsuario('inicio'); } catch(e) { window.location.href = '/frontend/screenUsuarios/inicio.html'; }
+                } else {
+                    window.location.href = '/frontend/screenUsuarios/inicio.html';
+                }
+            }
+            return;
+        }
+    } catch (err) {
+        console.warn('No se pudo verificar empleados a cargo:', err);
+    }
+
     loadPage('dashboard', document.querySelector('.sidebar a'));
 });
 
 async function loadPageUsuario(pageName, element = null) {
     try {
-        // 1. Resaltar la opción seleccionada en el menú lateral de usuarios
-        if (element) {
-            document.querySelectorAll('aside nav a').forEach(a => {
-                a.classList.remove('active');
-                a.style.backgroundColor = 'transparent';
-                a.style.color = '#475569';
-                a.style.borderLeft = 'none';
-            });
+        // Normalizar el nombre entrante (ej. 'dashboard' -> 'inicio')
+        let pageClean = pageName.replace('.html', '').split('/').pop().toLowerCase();
 
-            element.classList.add('active');
-            element.style.backgroundColor = '#e3efe3';
-            element.style.color = '#2f582f';
-            element.style.borderLeft = '4px solid #2f582f';
+        // 🗺️ 1. Mapeo de nombres entre los IDs del menú y los archivos reales de screenUsuarios/
+        const userFilesMap = {
+            'dashboard': 'inicio',
+            'inicio': 'inicio',
+            'notificaciones': 'notificacionesU',
+            'registros': 'registrosU',
+            'configuracion': 'configuracion',
+            'perfil': 'perfil'
+        };
+
+        const targetFile = userFilesMap[pageClean] || pageClean;
+
+        // 💾 2. Guardar estado activo
+        localStorage.setItem('active_screen_usuario', pageClean);
+
+        // 🎨 3. Resaltar enlace en el menú lateral
+        document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+        const targetElement = element || document.getElementById(`nav-${pageClean}`) || document.querySelector(`.sidebar a[onclick*="${pageClean}"]`);
+        if (targetElement) targetElement.classList.add('active');
+
+        // 🌐 4. Petición HTTP Limpia con Ruta Absoluta y Relativa Segura
+        const fileName = `${targetFile}.html`;
+        
+        // Orden de búsqueda inteligente: De lo más específico a lo general
+        const possiblePaths = [
+            `/frontend/screenUsuarios/${fileName}`,
+            `/screenUsuarios/${fileName}`,
+            `screenUsuarios/${fileName}`,
+            `./screenUsuarios/${fileName}`
+        ];
+
+        let response = null;
+        let finalPathUsed = "";
+
+        for (const path of possiblePaths) {
+            try {
+                const res = await fetch(path);
+                if (res.ok) {
+                    response = res;
+                    finalPathUsed = path;
+                    break; // ¡Se detiene inmediatamente al encontrar la ruta correcta!
+                }
+            } catch (err) {}
         }
 
-        // 2. Construir la ruta apuntando a screenUsuarios/
-        const fileName = pageName.endsWith('.html') ? pageName : `${pageName}.html`;
-        const path = `screenUsuarios/${fileName}`;
+        if (!response || !response.ok) {
+            throw new Error(`HTTP 404: No se encontró '${fileName}' en /screenUsuarios/`);
+        }
 
-        // 3. Obtener el archivo HTML
-        const response = await fetch(path);
-        if (!response.ok) throw new Error(`No se pudo cargar la vista de usuario: ${path}`);
+        const rawHtml = await response.text();
+        console.log(`✅ Vista cargada con éxito desde: ${finalPathUsed}`);
 
-        const html = await response.text();
+        // 🧹 5. Inyección Limpia y Parseo (Elimina HTML/HEAD/META para proteger CSP)
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(rawHtml, 'text/html');
+        const cleanContent = doc.body ? doc.body.innerHTML : rawHtml;
 
-        // 4. Inyectar en el contenedor dinámico
-        const dynamicCard = document.getElementById('dynamic-card');
-        if (dynamicCard) {
-            dynamicCard.innerHTML = html;
+        let dynamicCard = document.getElementById('dynamic-card');
+        if (!dynamicCard) {
+            const container = document.querySelector('.main-content') || document.body;
+            dynamicCard = document.createElement('div');
+            dynamicCard.id = 'dynamic-card';
+            container.appendChild(dynamicCard);
+        }
 
-            // Ejecutar los scripts que vengan dentro del HTML cargado (ej. el calendario)
-            const scripts = dynamicCard.getElementsByTagName('script');
-            for (let script of scripts) {
+        dynamicCard.innerHTML = cleanContent;
+
+       // ⚡ 6. Inyección de Scripts Compatible con CSP ('unsafe-inline')
+        const scripts = Array.from(dynamicCard.querySelectorAll('script'));
+        for (let script of scripts) {
+            // 🛑 1. Evitar recargar app.js, three.js o librerías globales
+            if (script.src) {
+                const srcLower = script.src.toLowerCase();
+                if (srcLower.includes('app.js') || srcLower.includes('three.js')) {
+                    script.remove();
+                    continue;
+                }
+
+                // Carga de scripts externos permitidos
+                const s = document.createElement('script');
+                s.src = script.src;
+                s.async = false;
+                document.body.appendChild(s);
+                s.remove();
+            } 
+            // 🛑 2. Ejecutar scripts inline sin romper CSP ni lanzar "Identifier already declared"
+            else if (script.textContent.trim() !== '') {
                 try {
-                    eval(script.innerText);
+                    // Envolvemos en un bloque {} para aislar let/const y ejecutamos directo
+                    const safeCode = `{\n${script.textContent}\n}`;
+                    const runScript = new Function(safeCode);
+                    runScript();
                 } catch (err) {
-                    console.error("Error al ejecutar script de la vista:", err);
+                    console.error(`Error al ejecutar script en ${targetFile}:`, err);
                 }
             }
-        }
 
-        console.log("Cargada vista de usuario:", pageName);
+            script.remove(); // Limpieza del HTML
+        }
+        console.log(`Cargada la vista de usuario: screenUsuarios/${targetFile}.html`);
 
     } catch (e) {
         console.error("Error en loadPageUsuario:", e);
         const dynamicCard = document.getElementById('dynamic-card');
         if (dynamicCard) {
-            dynamicCard.innerHTML = "<h2>Error</h2><p>No se pudo cargar la vista solicitada.</p>";
+            dynamicCard.innerHTML = `
+                <div style="background: rgba(255, 68, 68, 0.1); border: 1px solid #ff4444; color: white; padding: 1.5rem; border-radius: 12px; margin-top: 1rem;">
+                    <h3 style="margin-top:0; color: #ff6b6b;">⚠ Error de Carga</h3>
+                    <p>${e.message}</p>
+                </div>
+            `;
         }
     }
 }

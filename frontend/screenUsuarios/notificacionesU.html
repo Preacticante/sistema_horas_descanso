@@ -1,439 +1,109 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Horas - Notificaciones</title>
-    <style>
-        :root { 
-            --forest: #124416; 
-            --forest-light: #18591d;
-            --purple: #340C51; 
-            --gold: #AA7F31; 
-            --bg-gray: #f4f6f8; 
-            --text-muted: rgba(255, 255, 255, 0.7);
-        }
-        
-        * { box-sizing: border-box; }
-        
-        html, body { height: 100%; margin: 0; }
-        
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg-gray); overflow: hidden; }
-        
-        /* --- ESTILOS DE LA SIDEBAR COLAPSABLE --- */
-        .sidebar { 
-            position: fixed;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            width: 90px; /* Ancho colapsado */
-            background: var(--forest);
-            color: white;
-            padding: 1.2rem 0.8rem;
-            display: flex;
-            flex-direction: column;
-            overflow-x: hidden;
-            overflow-y: auto;
-            z-index: 1000;
-            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
-            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+<!-- 📌 CONTENIDO DE notificacionesU.html (Limpio para inyección dinámica) -->
+<div style="max-width: 1100px; margin: 0 auto;">
 
-        /* Estado Expandido SOLO al hacer Clic */
-        .sidebar.expanded {
-            width: 280px;
-        }
-
-        /* BOTÓN DE MENÚ HAMBURGUESA Y LOGO */
-        .toggle-btn {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-
-        .toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
+    <div class="card" style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); border-left: 5px solid var(--forest, #124416);">
         
-        .logo-container { 
-            text-align: center; 
-            margin-bottom: 1.5rem; 
-            padding: 0.2rem 0.5rem; 
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.8rem;
-        }
-        
-        .logo-container img { 
-            width: 100%;
-            max-width: 160px;
-            height: auto; 
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
-        
-        .logo-container img:hover {
-            transform: scale(1.05);
-        }
-        
-        .menu-wrapper { 
-            flex-grow: 1; 
-            display: flex;
-            flex-direction: column;
-            gap: 1.2rem;
-        }
-        
-        .menu-group { 
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
-            padding-bottom: 1rem; 
-        }
-        
-        .menu-group:last-of-type { border-bottom: none; }
-        
-        .sidebar a { 
-            padding: 12px 16px; 
-            color: var(--text-muted); 
-            text-decoration: none; 
-            border-radius: 12px; 
-            transition: all 0.25s ease; 
-            cursor: pointer; 
-            display: flex; 
-            align-items: center; 
-            font-weight: 500; 
-            font-size: 0.92rem; 
-            position: relative;
-            white-space: nowrap;
-        }
-        
-        .sidebar a:hover { 
-            background: rgba(255, 255, 255, 0.1); 
-            color: #ffffff; 
-            transform: translateX(4px);
-        } 
-        
-        .sidebar a.active { 
-            background: rgba(255, 255, 255, 0.15); 
-            color: #ffffff; 
-            font-weight: 600;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); 
-            border: 1px solid rgba(255, 255, 255, 0.2); 
-        }
-
-        /* Indicador lateral dorado */
-        .sidebar a.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 20%;
-            height: 60%;
-            width: 4px;
-            background-color: var(--gold);
-            border-radius: 0 4px 4px 0;
-        }
-        
-        .icon { 
-            width: 22px; 
-            height: 22px; 
-            min-width: 22px;
-            margin-right: 16px; 
-            font-size: 1.2rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s ease;
-        }
-
-        .sidebar a:hover .icon {
-            transform: scale(1.15);
-        }
-
-        /* Ocultar texto cuando está colapsado */
-        .sidebar a .nav-text {
-            opacity: 0;
-            transition: opacity 0.2s ease;
-            pointer-events: none;
-        }
-
-        .sidebar.expanded a .nav-text {
-            opacity: 1;
-            pointer-events: auto;
-            transition: opacity 0.3s ease 0.15s;
-        }
-
-        #logout-link { 
-            color: var(--gold); 
-            border: 1px solid var(--gold); 
-            justify-content: flex-start; 
-            border-radius: 12px; 
-            padding: 12px 16px; 
-            text-decoration: none; 
-            font-weight: 600;
-            margin-top: auto;
-            transition: all 0.3s ease;
-        }
-
-        #logout-link:hover {
-            background: var(--gold);
-            color: #ffffff;
-            box-shadow: 0 4px 12px rgba(170, 127, 49, 0.3);
-            transform: translateY(-2px);
-        }
-        
-        /* --- ESTILOS DEL ÁREA DERECHA --- */
-        .main-layout {
-            margin-left: 90px;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .main-layout.sidebar-open {
-            margin-left: 280px;
-        }
-
-        /* BARRA SUPERIOR EXPANDIDA EN VERDE */
-        .top-bar-header {
-            background-color: var(--forest);
-            color: white;
-            padding: 1.25rem 2.5rem 1.75rem 2.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            flex-shrink: 0;
-            z-index: 10;
-            display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
-        }
-
-        .main-content { 
-            flex: 1;
-            padding: 2rem 2.5rem; 
-            overflow-y: auto;
-            background-color: var(--bg-gray);
-        }
-    </style>
-</head>
-<body>
-
-    <!-- 1. SIDEBAR DESPLEGABLE (SOLO VÍA CLIC) -->
-    <aside id="sidebar" class="sidebar">
-        
-        <!-- LOGO Y BOTÓN PARA ABRIR/CERRAR -->
-        <div class="logo-container" onclick="toggleSidebar()">
-            <button class="toggle-btn" title="Abrir/Cerrar menú">☰</button>
-            <img src="../logo_uco.png" alt="UCO Prepa Contemporánea">
+        <!-- Encabezado con acción -->
+        <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
+            <button id="btn-marcar-leidas" style="background: transparent; border: 1px solid var(--forest, #124416); color: var(--forest, #124416); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;">
+                ✓ Marcar todas como leídas
+            </button>
         </div>
 
-        <!-- MENÚ DE NAVEGACIÓN -->
-        <div class="menu-wrapper">
-            <div class="menu-group">
-                <a href="inicio.html">
-                    <span class="icon">📊</span>
-                    <span class="nav-text">Panel Principal</span>
-                </a>
-                <a href="registrosU.html">
-                    <span class="icon">📄</span>
-                    <span class="nav-text">Registros</span>
-                </a>
-                <!-- Pestaña Activa en Notificaciones -->
-                <a href="notificacionesU.html" class="active">
-                    <span class="icon">🔔</span>
-                    <span class="nav-text">Notificaciones</span>
-                </a>
-            </div>
-
-            <div class="menu-group">
-                <a href="configuracion.html">
-                    <span class="icon">⚙️</span>
-                    <span class="nav-text">Configuración</span>
-                </a>
-                <a href="perfil.html">
-                    <span class="icon">👤</span>
-                    <span class="nav-text">Perfil</span>
-                </a>
-            </div>
+        <!-- Filtros rápidos -->
+        <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">
+            <button data-filtro="todas" class="btn-filtro-noti" style="background: var(--forest, #124416); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Todas (3)</button>
+            <button data-filtro="aprobada" class="btn-filtro-noti" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Aprobadas</button>
+            <button data-filtro="pendiente" class="btn-filtro-noti" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Pendientes</button>
         </div>
 
-        <!-- CERRAR SESIÓN -->
-        <a id="logout-link" href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;">
-            <span class="icon">🚪</span>
-            <span class="nav-text">Cerrar Sesión</span>
-        </a>
-
-    </aside>
-
-    <!-- 2. ÁREA PRINCIPAL -->
-    <div id="main-layout" class="main-layout">
-
-        <!-- CABECERA VERDE EXPANDIDA CON CONTROL DE HORAS ARRIBA -->
-        <header class="top-bar-header">
+        <!-- Lista de Notificaciones -->
+        <div id="lista-notificaciones" style="display: flex; flex-direction: column; gap: 1rem;">
             
-            <!-- FILA SUPERIOR: TÍTULO DEL SISTEMA + USUARIO -->
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">Control de Horas</h2>
-                </div>
-
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="text-align: right;">
-                        <span id="topbar-user-name" style="display: block; font-size: 0.88rem; font-weight: 600; color: #ffffff;">Cargando...</span>
-                        <span style="display: block; font-size: 0.72rem; color: rgba(255, 255, 255, 0.7); font-weight: 400;">Empleado</span>
+            <!-- NOTIFICACIÓN 1: APROBADA -->
+            <div class="item-noti aprobada" style="background: #f4f8f4; border: 1px solid #d2e3d2; border-left: 4px solid #15803d; padding: 1.25rem; border-radius: 12px; position: relative;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">✅</span>
+                        <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Solicitud Aprobada</h4>
+                        <span class="badge-nueva" style="background: var(--forest, #124416); color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 700; text-transform: uppercase;">Nueva</span>
                     </div>
-                    <a href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;" title="Cerrar Sesión" style="color: #ffffff; text-decoration: none; font-size: 1.1rem; background: rgba(255,255,255,0.12); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        🚪
-                    </a>
+                    <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">Hace 2 horas</span>
                 </div>
+                <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
+                    Tu solicitud para el día <strong>15/10/2026</strong> por <strong>4.0 horas</strong> ha sido aprobada exitosamente por tu supervisor.
+                </p>
             </div>
 
-            <!-- FILA INFERIOR: TÍTULO Y DESCRIPCIÓN DE LA SECCIÓN -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <h1 style="margin: 0; color: #ffffff; font-size: 1.85rem; font-weight: 800; letter-spacing: -0.5px;">Centro de Notificaciones</h1>
-                    <p style="margin: 0.35rem 0 0 0; color: rgba(255, 255, 255, 0.8); font-size: 0.92rem; font-weight: 400;">Avisos sobre el estado de tus solicitudes de reposición e incidencias.</p>
+            <!-- NOTIFICACIÓN 2: PENDIENTE -->
+            <div class="item-noti pendiente" style="background: #fefcf8; border: 1px solid #fef3c7; border-left: 4px solid #a16207; padding: 1.25rem; border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">⏳</span>
+                        <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Solicitud Recibida</h4>
+                    </div>
+                    <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">Ayer</span>
                 </div>
+                <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
+                    Tu solicitud de reposición para el día <strong>28/10/2026</strong> por <strong>4.0 horas</strong> está en proceso de revisión.
+                </p>
             </div>
 
-        </header>
-
-        <!-- CONTENIDO PRINCIPAL -->
-        <main class="main-content">
-            
-            <div style="max-width: 1100px; margin: 0 auto;">
-
-                <div class="card" style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); border-left: 5px solid var(--forest);">
-                    
-                    <!-- Encabezado con acción -->
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
-                        <button onclick="marcarTodasLeidas()" style="background: transparent; border: 1px solid var(--forest); color: var(--forest); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;" onmouseover="this.style.background='#e3efe3'" onmouseout="this.style.background='transparent'">
-                            ✓ Marcar todas como leídas
-                        </button>
+            <!-- NOTIFICACIÓN 3: AVISO GENERAL -->
+            <div class="item-noti aprobada" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid var(--gold, #AA7F31); padding: 1.25rem; border-radius: 12px;">
+                <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.2rem;">💡</span>
+                        <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Acreditación de Horas Extra</h4>
                     </div>
-
-                    <!-- Filtros rápidos -->
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">
-                        <button onclick="filtrarNoti('todas', this)" class="btn-filtro-noti" style="background: var(--forest); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Todas (3)</button>
-                        <button onclick="filtrarNoti('aprobada', this)" class="btn-filtro-noti" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Aprobadas</button>
-                        <button onclick="filtrarNoti('pendiente', this)" class="btn-filtro-noti" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Pendientes</button>
-                    </div>
-
-                    <!-- Lista de Notificaciones -->
-                    <div id="lista-notificaciones" style="display: flex; flex-direction: column; gap: 1rem;">
-                        
-                        <!-- NOTIFICACIÓN 1: APROBADA (NUEVA) -->
-                        <div class="item-noti aprobada" style="background: #f4f8f4; border: 1px solid #d2e3d2; border-left: 4px solid #15803d; padding: 1.25rem; border-radius: 12px; position: relative;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 1.2rem;">✅</span>
-                                    <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Solicitud Aprobada</h4>
-                                    <span style="background: var(--forest); color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 700; text-transform: uppercase;">Nueva</span>
-                                </div>
-                                <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">Hace 2 horas</span>
-                            </div>
-                            <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
-                                Tu solicitud para el día <strong>15/10/2026</strong> por <strong>4.0 horas</strong> ha sido aprobada exitosamente por tu supervisor.
-                            </p>
-                        </div>
-
-                        <!-- NOTIFICACIÓN 2: PENDIENTE -->
-                        <div class="item-noti pendiente" style="background: #fefcf8; border: 1px solid #fef3c7; border-left: 4px solid #a16207; padding: 1.25rem; border-radius: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 1.2rem;">⏳</span>
-                                    <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Solicitud Recibida</h4>
-                                </div>
-                                <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">Ayer</span>
-                            </div>
-                            <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
-                                Tu solicitud de reposición para el día <strong>28/10/2026</strong> por <strong>4.0 horas</strong> está en proceso de revisión.
-                            </p>
-                        </div>
-
-                        <!-- NOTIFICACIÓN 3: AVISO GENERAL -->
-                        <div class="item-noti aprobada" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid var(--gold); padding: 1.25rem; border-radius: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 1.2rem;">💡</span>
-                                    <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Acreditación de Horas Extra</h4>
-                                </div>
-                                <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">20/07/2026</span>
-                            </div>
-                            <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
-                                Se han acreditado <strong>8.0 horas extra</strong> a tu saldo disponible por el turno especial del fin de semana.
-                            </p>
-                        </div>
-
-                    </div>
-
+                    <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">20/07/2026</span>
                 </div>
-
+                <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
+                    Se han acreditado <strong>8.0 horas extra</strong> a tu saldo disponible por el turno especial del fin de semana.
+                </p>
             </div>
 
-        </main>
+        </div>
+
     </div>
 
-    <!-- SCRIPT DE INTERACCIÓN Y NAVEGACIÓN -->
-    <script>
-        const sidebar = document.getElementById('sidebar');
-        const mainLayout = document.getElementById('main-layout');
+</div>
 
-        // Función para abrir/cerrar sidebar únicamente al hacer CLIC
-        function toggleSidebar() {
-            sidebar.classList.toggle('expanded');
-            mainLayout.classList.toggle('sidebar-open');
-        }
+<!-- ⚡ LÓGICA DE NOTIFICACIONES TOTALMENTE AISLADA -->
+<script>
+    (function() {
+        // 1. Filtrado de Notificaciones mediante Event Listeners
+        const btnsFiltro = document.querySelectorAll('.btn-filtro-noti');
+        btnsFiltro.forEach(btn => {
+            btn.addEventListener('click', function() {
+                btnsFiltro.forEach(b => {
+                    b.style.background = '#f1f5f9';
+                    b.style.color = '#475569';
+                });
+                this.style.background = 'var(--forest, #124416)';
+                this.style.color = 'white';
 
-        // Lógica para filtrar las notificaciones
-        function filtrarNoti(tipo, btn) {
-            document.querySelectorAll('.btn-filtro-noti').forEach(b => {
-                b.style.background = '#f1f5f9';
-                b.style.color = '#475569';
+                const tipo = this.getAttribute('data-filtro');
+                const items = document.querySelectorAll('.item-noti');
+                
+                items.forEach(item => {
+                    if (tipo === 'todas' || item.classList.contains(tipo)) {
+                        item.style.display = 'block';
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
             });
-            btn.style.background = 'var(--forest)';
-            btn.style.color = 'white';
+        });
 
-            const items = document.querySelectorAll('.item-noti');
-            items.forEach(item => {
-                if (tipo === 'todas') {
-                    item.style.display = 'block';
-                } else if (item.classList.contains(tipo)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
+        // 2. Marcar todas como leídas
+        const btnMarcar = document.getElementById('btn-marcar-leidas');
+        if (btnMarcar) {
+            btnMarcar.addEventListener('click', function() {
+                const badges = document.querySelectorAll('.badge-nueva');
+                badges.forEach(b => b.remove());
+                alert('Todas las notificaciones han sido marcadas como leídas.');
             });
         }
-
-        function marcarTodasLeidas() {
-            const badges = document.querySelectorAll('#lista-notificaciones span');
-            badges.forEach(b => {
-                if (b.textContent === 'Nueva') b.remove();
-            });
-            alert('Todas las notificaciones han sido marcadas como leídas.');
-        }
-
-        // Cargar el nombre del usuario activo al iniciar
-        (function() {
-            const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-            let userObj = {};
-            try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(e) {}
-
-            const nombreReal = userObj.nombre_completo || userObj.nombre || localStorage.getItem('nombre_completo') || localStorage.getItem('username') || "Empleado";
-            const elemTopbar = document.getElementById("topbar-user-name");
-            if (elemTopbar) elemTopbar.textContent = nombreReal;
-        })();
-    </script>
-</body>
-</html>
+    })();
+</script>
