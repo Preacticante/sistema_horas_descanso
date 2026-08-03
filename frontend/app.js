@@ -1,4 +1,5 @@
 const API_URL = `http://172.16.6.50:8000`; // Cambia el puerto si tu backend está en otro puerto
+window.API_URL = API_URL;
 let empleadosCache = [];
 let ultimoReporteData = [];
 let empleadosVisual = {
@@ -33,6 +34,11 @@ function limpiarSesionAuth() {
     sessionStorage.removeItem(AUTH_USER_KEY);
     localStorage.removeItem(AUTH_TOKEN_KEY);
     localStorage.removeItem(AUTH_USER_KEY);
+    // Compatibilidad con llaves legacy usadas en pantallas antiguas
+    sessionStorage.removeItem('usuario');
+    sessionStorage.removeItem('user');
+    localStorage.removeItem('usuario');
+    localStorage.removeItem('user');
 }
 
 function construirHeadersAuth(extraHeaders = {}) {
@@ -508,12 +514,13 @@ function renderEmpleadosTabla(tabla, empleados) {
     }
 
     empleados.forEach(emp => {
-        const colorHoras = emp.total_horas >= 0 ? "#124416" : "#c0392b";
+        const horas = Number(emp.total_horas || 0);
+        const colorHoras = horas >= 0 ? "#124416" : "#c0392b";
         tabla.innerHTML += `
             <tr>
                 <td>${emp.id}</td>
                 <td>${emp.nombre}</td>
-                <td style="color: ${colorHoras}; font-weight: bold;">${emp.total_horas.toFixed(2)} hrs</td>
+                <td style="color: ${colorHoras}; font-weight: bold;">${horas.toFixed(2)} hrs</td>
                 <td>${emp.salidas_temprano || 0}</td>
                 <td>
                     <button class="empleados-btn empleados-btn-secondary ver-horario-btn" data-emp-id="${emp.id}">Horario</button>
@@ -523,6 +530,207 @@ function renderEmpleadosTabla(tabla, empleados) {
             </tr>
         `;
     });
+}
+
+function filtrarEmpleadosPorNombre(nombreBusqueda) {
+    const termino = String(nombreBusqueda || '').trim().toLowerCase();
+    if (!termino) return empleadosCache;
+
+    return empleadosCache.filter((emp) =>
+        String(emp.nombre || '').toLowerCase().includes(termino)
+    );
+}
+
+function resetearBotonConfirmacionModal() {
+    const btnConfirmar = document.getElementById('btn-confirmacion-confirmar');
+    if (!btnConfirmar) return;
+    btnConfirmar.textContent = 'Eliminar';
+    btnConfirmar.className = 'btn-confirm-danger';
+}
+
+function inicializarModalesEmpleados() {
+    const tabla = document.getElementById('tabla-empleados');
+    if (tabla && !tabla.dataset.bound) {
+        tabla.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof HTMLElement)) return;
+
+            const horarioBtn = target.closest('.ver-horario-btn');
+            if (horarioBtn) {
+                const id = Number(horarioBtn.getAttribute('data-emp-id'));
+                if (!Number.isNaN(id)) obtenerHorarioEmpleado(id);
+                return;
+            }
+
+            const editarBtn = target.closest('.editar-empleado-btn');
+            if (editarBtn) {
+                const id = Number(editarBtn.getAttribute('data-emp-id'));
+                const empleado = empleadosCache.find(emp => Number(emp.id) === id);
+                if (empleado) abrirModalEmpleado('edit', empleado);
+                return;
+            }
+
+            const eliminarBtn = target.closest('.eliminar-empleado-btn');
+            if (eliminarBtn) {
+                const id = Number(eliminarBtn.getAttribute('data-emp-id'));
+                if (!Number.isNaN(id)) eliminarEmpleadoVisual(id);
+            }
+        });
+        tabla.dataset.bound = '1';
+    }
+
+    const btnCerrarHorario = document.getElementById('btn-cerrar-horario');
+    if (btnCerrarHorario && !btnCerrarHorario.dataset.bound) {
+        btnCerrarHorario.addEventListener('click', cerrarModalHorario);
+        btnCerrarHorario.dataset.bound = '1';
+    }
+
+    const btnCerrarEmpleado = document.getElementById('btn-cerrar-empleado');
+    if (btnCerrarEmpleado && !btnCerrarEmpleado.dataset.bound) {
+        btnCerrarEmpleado.addEventListener('click', cerrarModalEmpleado);
+        btnCerrarEmpleado.dataset.bound = '1';
+    }
+
+    const btnCancelarEmpleado = document.getElementById('btn-cancelar-empleado');
+    if (btnCancelarEmpleado && !btnCancelarEmpleado.dataset.bound) {
+        btnCancelarEmpleado.addEventListener('click', cerrarModalEmpleado);
+        btnCancelarEmpleado.dataset.bound = '1';
+    }
+
+    const btnCancelarConfirmacion = document.getElementById('btn-confirmacion-cancelar');
+    if (btnCancelarConfirmacion && !btnCancelarConfirmacion.dataset.bound) {
+        btnCancelarConfirmacion.addEventListener('click', () => {
+            resetearBotonConfirmacionModal();
+            cerrarModalConfirmacion();
+        });
+        btnCancelarConfirmacion.dataset.bound = '1';
+    }
+
+    const btnConfirmarConfirmacion = document.getElementById('btn-confirmacion-confirmar');
+    if (btnConfirmarConfirmacion && !btnConfirmarConfirmacion.dataset.bound) {
+        btnConfirmarConfirmacion.addEventListener('click', () => {
+            if (empleadoAEliminar === 'restore_all') {
+                confirmarLimpiar();
+            } else {
+                confirmarEliminacion();
+            }
+            resetearBotonConfirmacionModal();
+        });
+        btnConfirmarConfirmacion.dataset.bound = '1';
+    }
+
+    const formEmpleado = document.getElementById('form-empleado');
+    if (formEmpleado && !formEmpleado.dataset.bound) {
+        formEmpleado.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const idInput = document.getElementById('empleado-id');
+            const nombreInput = document.getElementById('empleado-nombre');
+            const horasInput = document.getElementById('empleado-horas');
+            const salidasInput = document.getElementById('empleado-salidas');
+
+            const id = Number(idInput?.value);
+            const nombre = String(nombreInput?.value || '').trim();
+            const total_horas = Number(horasInput?.value || 0);
+            const salidas_temprano = Number(salidasInput?.value || 0);
+
+            if (!nombre) {
+                mostrarNotificacion('warning', 'Dato requerido', 'Ingresa el nombre del empleado.');
+                return;
+            }
+            if (Number.isNaN(total_horas) || Number.isNaN(salidas_temprano)) {
+                mostrarNotificacion('warning', 'Datos inválidos', 'Verifica horas y salidas tempranas.');
+                return;
+            }
+
+            const payloadEmpleado = { id, nombre, total_horas, salidas_temprano };
+
+            if (empleadoModalMode === 'edit') {
+                const ok = await actualizarEmpleadoEnBD(payloadEmpleado);
+                if (!ok) return;
+            }
+
+            guardarEmpleadoVisual(payloadEmpleado);
+            cerrarModalEmpleado();
+        });
+        formEmpleado.dataset.bound = '1';
+    }
+
+    const modalHorario = document.getElementById('modal-horario');
+    if (modalHorario && !modalHorario.dataset.bound) {
+        modalHorario.addEventListener('click', (event) => {
+            if (event.target === modalHorario) cerrarModalHorario();
+        });
+        modalHorario.dataset.bound = '1';
+    }
+
+    const modalEmpleado = document.getElementById('modal-empleado');
+    if (modalEmpleado && !modalEmpleado.dataset.bound) {
+        modalEmpleado.addEventListener('click', (event) => {
+            if (event.target === modalEmpleado) cerrarModalEmpleado();
+        });
+        modalEmpleado.dataset.bound = '1';
+    }
+
+    const modalConfirmacion = document.getElementById('modal-confirmacion');
+    if (modalConfirmacion && !modalConfirmacion.dataset.bound) {
+        modalConfirmacion.addEventListener('click', (event) => {
+            if (event.target === modalConfirmacion) {
+                resetearBotonConfirmacionModal();
+                cerrarModalConfirmacion();
+            }
+        });
+        modalConfirmacion.dataset.bound = '1';
+    }
+
+    const filtroNombre = document.getElementById('filtro-nombre') || document.getElementById('filtro-ids');
+    const btnBuscar = document.getElementById('btn-buscar-empleados');
+    const btnReset = document.getElementById('btn-reset-empleados');
+
+    if (btnBuscar && !btnBuscar.dataset.bound) {
+        btnBuscar.addEventListener('click', () => {
+            const tabla = document.getElementById('tabla-empleados');
+            if (!tabla) return;
+            const valor = String(filtroNombre?.value || '').trim();
+            const filtrados = filtrarEmpleadosPorNombre(valor);
+            renderEmpleadosTabla(tabla, filtrados);
+        });
+        btnBuscar.dataset.bound = '1';
+    }
+
+    if (btnReset && !btnReset.dataset.bound) {
+        btnReset.addEventListener('click', () => {
+            if (filtroNombre) filtroNombre.value = '';
+            const tabla = document.getElementById('tabla-empleados');
+            if (!tabla) return;
+            renderEmpleadosTabla(tabla, empleadosCache);
+        });
+        btnReset.dataset.bound = '1';
+    }
+
+    if (filtroNombre && !filtroNombre.dataset.bound) {
+        filtroNombre.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const tabla = document.getElementById('tabla-empleados');
+                if (!tabla) return;
+                const valor = String(filtroNombre.value || '').trim();
+                const filtrados = filtrarEmpleadosPorNombre(valor);
+                renderEmpleadosTabla(tabla, filtrados);
+            }
+        });
+        filtroNombre.dataset.bound = '1';
+    }
+
+    if (!document.body.dataset.empleadosEscBound) {
+        document.addEventListener('keydown', (event) => {
+            if (event.key !== 'Escape') return;
+            cerrarModalHorario();
+            cerrarModalEmpleado();
+            resetearBotonConfirmacionModal();
+            cerrarModalConfirmacion();
+        });
+        document.body.dataset.empleadosEscBound = '1';
+    }
 }
 
 function abrirModalEmpleado(mode, empleado = null) {
@@ -621,6 +829,7 @@ function abrirModalConfirmacion(empleadoId, nombreEmpleado) {
     const modal = document.getElementById('modal-confirmacion');
     const titulo = document.getElementById('confirmacion-titulo');
     const mensaje = document.getElementById('confirmacion-mensaje');
+    resetearBotonConfirmacionModal();
     
     if (titulo) titulo.textContent = `Eliminar a ${nombreEmpleado}`;
     if (mensaje) mensaje.textContent = `¿Estás seguro de que deseas eliminar a ${nombreEmpleado}? Esta acción es solo visual y no modifica la base de datos.`;
@@ -1233,7 +1442,6 @@ function renderSolicitudesReposicion(solicitudes) {
     }
 
     const rolActual = String(usuarioLogueado?.rol || "").toLowerCase();
-    const idUsuarioActual = Number(usuarioLogueado?.id || 0);
 
     tbody.innerHTML = '';
     solicitudes.forEach((sol) => {
@@ -1241,12 +1449,8 @@ function renderSolicitudesReposicion(solicitudes) {
         const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
         const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
         
-        const idCreador = Number(sol.id_empleado); 
-
         const esJefeOAdmin = rolActual === 'jefe' || rolActual === 'admin';
-        const esAutorizador = idUsuarioActual > 0 && idUsuarioActual !== idCreador;
-
-        const puedeAccionar = estadoFinal === 'pendiente' && (esJefeOAdmin || esAutorizador);
+        const puedeAccionar = estadoFinal === 'pendiente' && esJefeOAdmin;
 
         tbody.innerHTML += `
             <tr>
@@ -1295,8 +1499,11 @@ window.procesarAutorizacion = async function(idSolicitud, accion) {
         }
 
         alert(`La solicitud ha sido procesada con éxito.`);
-        if (typeof cargarAutorizacionesJefe === 'function') {
-            await cargarAutorizacionesJefe(); 
+        if (typeof cargarSolicitudesNotificaciones === 'function') {
+            await cargarSolicitudesNotificaciones();
+        }
+        if (typeof cargarSolicitudesReposicion === 'function') {
+            await cargarSolicitudesReposicion();
         }
     } catch (error) {
         alert(`No se pudo procesar. Error: ${error.message}`);
@@ -1306,6 +1513,8 @@ window.procesarAutorizacion = async function(idSolicitud, accion) {
 function inicializarEmpleados() {
     const btnRestaurarCambios = document.getElementById("btn-restaurar-cambios");
     if (btnRestaurarCambios) btnRestaurarCambios.addEventListener("click", limpiarCambiosVisualesEmpleados);
+
+    inicializarModalesEmpleados();
 
     cargarEmpleados();
     if (typeof cargarAutorizacionesJefe === 'function') {
@@ -1600,7 +1809,7 @@ document.addEventListener("DOMContentLoaded", () => {
         logoutLink.addEventListener('click', (event) => {
             event.preventDefault();
             limpiarSesionAuth();
-            window.location.href = '/';
+            window.location.href = 'login.html';
         });
     }
 

@@ -1,8 +1,13 @@
 import os
 import re
 import hashlib
+import json
+import smtplib
+import urllib.request
+import urllib.error
 from datetime import datetime, date, timedelta
 from typing import Optional, Annotated, Any
+from email.message import EmailMessage
 
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,7 +16,7 @@ from fastapi.responses import FileResponse, RedirectResponse  # 👈 Ambos impor
 
 from pydantic import BaseModel, Field
 from app.database import obtener_conexion
-from app.rbac_rules import create_access_token, get_current_user, require_roles, normalizar_rol
+from app.rbac_rules import create_access_token, decode_access_token, get_current_user, require_roles, normalizar_rol
 from app.models import (
     UsuarioCreate as UsuarioCreateSchema,
     UsuarioUpdate as UsuarioUpdateSchema,
@@ -107,6 +112,16 @@ class LoginRequest(BaseModel):
     username_or_email: str
     password: str
 
+
+class PasswordRecoveryRequest(BaseModel):
+    email: str
+
+
+class PasswordRecoveryReset(BaseModel):
+    token: str
+    new_password: str
+    confirm_password: str
+
 PERFIL_DATA = {
     "nombre": "Alexis Hernández",
     "rol": "Administrador",
@@ -155,6 +170,108 @@ def verificar_password(stored_hash: bytes, stored_salt: bytes, password: str) ->
     
     return computed_hash == stored_hash_bytes
 
+
+def _enviar_email_recuperacion(destinatario: str, nombre: str, token: str) -> bool:
+    """Envía correo de recuperación con Brevo o SMTP.
+
+    Si no hay proveedor configurado, retorna False para que el flujo use modo desarrollo.
+    """
+    api_key = (os.getenv("BREVO_API_KEY") or "").strip()
+    remitente = (os.getenv("BREVO_SENDER_EMAIL") or "").strip()
+    nombre_remitente = (os.getenv("BREVO_SENDER_NAME") or "Sistema UCO").strip()
+
+    frontend_base = (os.getenv("FRONTEND_BASE_URL") or "").strip()
+    if frontend_base:
+        reset_link = f"{frontend_base.rstrip('/')}/login.html?reset_token={token}"
+    else:
+        reset_link = f"Token de recuperación: {token}"
+
+    asunto = "Recuperación de contraseña - Sistema UCO"
+    html_content = (
+        f"<h3>Recuperación de contraseña</h3>"
+        f"<p>Hola {nombre or 'usuario'},</p>"
+        f"<p>Recibimos una solicitud para restablecer tu contraseña.</p>"
+        f"<p><strong>{reset_link}</strong></p>"
+        f"<p>Este enlace/token expira en 15 minutos.</p>"
+        f"<p>Si no solicitaste este cambio, ignora este correo.</p>"
+    )
+
+    # 1) Brevo API
+    if api_key and remitente:
+        payload = {
+            "sender": {"name": nombre_remitente, "email": remitente},
+            "to": [{"email": destinatario, "name": nombre or "Usuario"}],
+            "subject": asunto,
+            "htmlContent": html_content,
+        }
+
+        req = urllib.request.Request(
+            "https://api.brevo.com/v3/smtp/email",
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "accept": "application/json",
+                "api-key": api_key,
+                "content-type": "application/json",
+            },
+            method="POST",
+        )
+
+        try:
+            with urllib.request.urlopen(req, timeout=12) as resp:
+                if 200 <= resp.status < 300:
+                    return True
+        except (urllib.error.URLError, urllib.error.HTTPError) as exc:
+            print(f"Error al enviar email de recuperación con Brevo: {exc}")
+
+    # 2) SMTP genérico
+    smtp_host = (os.getenv("SMTP_HOST") or "").strip()
+    smtp_port_raw = (os.getenv("SMTP_PORT") or "587").strip()
+    smtp_user = (os.getenv("SMTP_USER") or "").strip()
+    smtp_password = (os.getenv("SMTP_PASSWORD") or "").strip()
+    smtp_from_email = (os.getenv("SMTP_FROM_EMAIL") or smtp_user).strip()
+    smtp_from_name = (os.getenv("SMTP_FROM_NAME") or "Sistema UCO").strip()
+    smtp_use_tls = (os.getenv("SMTP_USE_TLS") or "yes").strip().lower() in {"1", "true", "yes", "on"}
+    smtp_use_ssl = (os.getenv("SMTP_USE_SSL") or "no").strip().lower() in {"1", "true", "yes", "on"}
+
+    if not smtp_host or not smtp_from_email:
+        return False
+
+    try:
+        smtp_port = int(smtp_port_raw)
+    except ValueError:
+        smtp_port = 587
+
+    mensaje = EmailMessage()
+    mensaje["Subject"] = asunto
+    mensaje["From"] = f"{smtp_from_name} <{smtp_from_email}>"
+    mensaje["To"] = destinatario
+    mensaje.set_content(
+        f"Hola {nombre or 'usuario'},\n\n"
+        f"Recibimos una solicitud para restablecer tu contraseña.\n"
+        f"{reset_link}\n\n"
+        f"Este enlace/token expira en 15 minutos.\n"
+        f"Si no solicitaste este cambio, ignora este correo."
+    )
+    mensaje.add_alternative(html_content, subtype="html")
+
+    try:
+        if smtp_use_ssl:
+            with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15) as server:
+                if smtp_user and smtp_password:
+                    server.login(smtp_user, smtp_password)
+                server.send_message(mensaje)
+        else:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                if smtp_use_tls:
+                    server.starttls()
+                if smtp_user and smtp_password:
+                    server.login(smtp_user, smtp_password)
+                server.send_message(mensaje)
+        return True
+    except Exception as exc:
+        print(f"Error al enviar email de recuperación con SMTP: {exc}")
+        return False
+
 def rol_db_desde_normalizado(rol: str) -> str:
     rol_norm = normalizar_rol(rol)
     mapa = {
@@ -187,6 +304,58 @@ def _to_solicitud_out(row: Any) -> dict[str, Any]:
         "estado_final": _estado_normalizado(str(row[8])),
         "fecha_creacion": str(row[9]) if row[9] else None,
     }
+
+
+def _registrar_descuento_reposicion(
+    cursor,
+    *,
+    id_empleado: int,
+    fecha_solicitada: date,
+    horas_a_reponer: float,
+    id_usuario_autoriza_historial: int,
+    id_reposicion: int,
+) -> bool:
+    """Aplica el descuento en banco de horas al aprobarse por completo una solicitud.
+
+    Retorna True si insertó el movimiento; False si ya existía (idempotente).
+    """
+    referencia = f"Reposición autorizada - Solicitud #{id_reposicion}"
+
+    cursor.execute(
+        "SELECT TOP 1 1 "
+        "FROM dbo.tblBancoHorasKardex "
+        "WHERE IdEmpNum = ? "
+        "  AND tTipoTransaccion = 'Reposicion' "
+        "  AND tObservaciones = ?",
+        id_empleado,
+        referencia,
+    )
+    if cursor.fetchone() is not None:
+        return False
+
+    cursor.execute(
+        "INSERT INTO dbo.tblBancoHorasKardex "
+        "(IdEmpNum, FechaAfectacion, fHoras, tTipoTransaccion, tObservaciones, IdUsuarioAutoriza, bActivo, dtFechaEliminacion, IdUsuarioElimina) "
+        "VALUES (?, ?, ?, 'Reposicion', ?, ?, 1, '1900-01-01', NULL)",
+        int(id_empleado),
+        fecha_solicitada,
+        -abs(float(horas_a_reponer)),
+        referencia,
+        None,
+    )
+
+    cursor.execute(
+        "INSERT INTO dbo.tbl_historial_movimientos "
+        "(tabla_afectada, id_registro_afectado, accion, usuario_responsable, fecha_movimiento, descripcion) "
+        "VALUES (?, ?, ?, ?, SYSUTCDATETIME(), ?)",
+        "tblBancoHorasKardex",
+        id_reposicion,
+        "BANCO_DESC",
+        int(id_usuario_autoriza_historial),
+        f"Reposicion aprobada. Emp {id_empleado}, hrs {-abs(float(horas_a_reponer)):.2f}, fecha {fecha_solicitada}.",
+    )
+
+    return True
 
 
 def _obtener_id_empleado_por_usuario(cursor, id_usuario: int) -> Optional[int]:
@@ -226,20 +395,31 @@ def _obtener_jerarquia_autorizacion_por_empleado(cursor, id_empleado: int):
 
 
 def obtener_usuario_por_login(cursor, username_or_email: str):
-    # 1. Imprimimos el valor que viene desde el formulario de login
-    print(f"\n[DEBUG] Buscando en la base de datos el correo/usuario: '{username_or_email}'")
-    
+    login = (username_or_email or "").strip()
+    login_lower = login.lower()
+    print(f"\n[DEBUG] Buscando en la base de datos el correo/usuario: '{login}'")
+
+    # 1) Fuente principal del sistema actual (tblUsuarios)
     cursor.execute(
-        "SELECT id_usuario_sistema, nombre_completo, email, email, PasswordHash, PasswordSalt, rol, estatus "
-        "FROM dbo.tbl_usuarios_sistema "
-        "WHERE email = ?",
-        (username_or_email,)
+        "SELECT TOP 1 id, Nombre, NombreUsuario, email, PasswordHash, PasswordSalt, Rol, bActivo "
+        "FROM dbo.tblUsuarios "
+        "WHERE bActivo = 1 AND (LOWER(email) = ? OR NombreUsuario = ?)",
+        (login_lower, login),
     )
     resultado = cursor.fetchone()
-    
-    # 2. Imprimimos qué nos devolvió exactamente SQL Server
-    print(f"[DEBUG] Resultado devuelto por SQL Server: {resultado}\n")
-    
+    if resultado:
+        print(f"[DEBUG] Resultado devuelto por tblUsuarios: {resultado}\n")
+        return resultado
+
+    # 2) Compatibilidad legacy (tbl_usuarios_sistema)
+    cursor.execute(
+        "SELECT TOP 1 id_usuario_sistema, nombre_completo, email, email, PasswordHash, PasswordSalt, rol, estatus "
+        "FROM dbo.tbl_usuarios_sistema "
+        "WHERE estatus = 1 AND (LOWER(email) = ? OR LOWER(nombre_usuario) = ?)",
+        (login_lower, login_lower),
+    )
+    resultado = cursor.fetchone()
+    print(f"[DEBUG] Resultado devuelto por tablas legacy: {resultado}\n")
     return resultado
 
 EMPLEADOS_DASHBOARD = {
@@ -359,6 +539,12 @@ def registrar_usuario(usuario: RegistroUsuario):
     if usuario.password != usuario.confirm_password:
         raise HTTPException(status_code=400, detail="Las contraseñas no coinciden.")
 
+    if usuario.id_empleado is None:
+        raise HTTPException(
+            status_code=400,
+            detail="El número de empleado es obligatorio para registrar tu cuenta.",
+        )
+
     if not es_email_valido(usuario.email):
         raise HTTPException(status_code=400, detail="El correo electrónico no tiene un formato válido.")
 
@@ -380,22 +566,25 @@ def registrar_usuario(usuario: RegistroUsuario):
             if usuario_existente[1].lower() == usuario.email.lower():
                 raise HTTPException(status_code=409, detail="El correo electrónico ya está registrado.")
 
-        if usuario.id_empleado is not None:
-            cursor.execute(
-                "SELECT IdEmpNum FROM dbo.tblOrganigramaOficial WHERE IdEmpNum = ?",
-                usuario.id_empleado,
+        cursor.execute(
+            "SELECT iEmployeeNum FROM dbo.tblEmployees WHERE iEmployeeNum = ?",
+            usuario.id_empleado,
+        )
+        if cursor.fetchone() is None:
+            raise HTTPException(
+                status_code=400,
+                detail="El número de empleado no existe en el catálogo de empleados activo.",
             )
-            if cursor.fetchone() is None:
-                raise HTTPException(status_code=400, detail="El número de empleado proporcionado no existe.")
 
         salt, hash_bytes = generar_hash_salt(usuario.password)
 
         cursor.execute(
-            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, email, PasswordHash, PasswordSalt, Rol, iEmployeeNum, FechaCreacion, bActivo) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), 1)",
+            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, email, [password], PasswordHash, PasswordSalt, Rol, iEmployeeNum, FechaCreacion, bActivo) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), 1)",
             usuario.nombre,
             usuario.nombre_usuario,
             usuario.email.lower(),
+            usuario.password,
             hash_bytes,
             salt,
             usuario.rol,
@@ -410,6 +599,17 @@ def registrar_usuario(usuario: RegistroUsuario):
         raise
     except Exception as e:
         print(f"Error al registrar usuario: {e}")
+        err = str(e).lower()
+        if "iemployeenum" in err and "null" in err:
+            raise HTTPException(
+                status_code=400,
+                detail="El número de empleado es obligatorio para registrar tu cuenta.",
+            )
+        if "fk__tblusuari__iempl" in err or ("foreign key" in err and "iemployeenum" in err):
+            raise HTTPException(
+                status_code=400,
+                detail="El número de empleado no está habilitado para crear cuenta en este sistema.",
+            )
         raise HTTPException(status_code=500, detail="No se pudo registrar el usuario.")
 
 
@@ -457,6 +657,120 @@ def login_usuario(datos: LoginRequest):
     except Exception as e:
         print(f"Error al iniciar sesión: {e}")
         raise HTTPException(status_code=500, detail="No se pudo iniciar sesión.")
+
+
+@app.post("/api/auth/password-recovery/request")
+def solicitar_recuperacion_password(datos: PasswordRecoveryRequest):
+    email = (datos.email or "").strip().lower()
+    if not es_email_valido(email):
+        raise HTTPException(status_code=400, detail="Correo inválido.")
+
+    # Respuesta genérica para no filtrar usuarios existentes
+    generic_response = {
+        "status": "success",
+        "message": "Si el correo existe, recibirás instrucciones para recuperar tu contraseña.",
+    }
+
+    try:
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT TOP 1 id_usuario_sistema, nombre_completo, email "
+            "FROM dbo.tbl_usuarios_sistema "
+            "WHERE LOWER(email) = LOWER(?) AND estatus = 1",
+            email,
+        )
+        row = cursor.fetchone()
+        cursor.close()
+        conn.close()
+
+        if not row:
+            return generic_response
+
+        id_usuario = int(row[0])
+        nombre = str(row[1] or "")
+        correo = str(row[2] or email)
+
+        token = create_access_token(
+            payload={
+                "id_usuario": id_usuario,
+                "email": correo,
+                "purpose": "password_recovery",
+            },
+            expires_minutes=15,
+        )
+
+        enviado = _enviar_email_recuperacion(correo, nombre, token)
+        if enviado:
+            return {**generic_response, "delivery": "email"}
+
+        # Modo local/desarrollo: devolver token para flujo interno
+        return {
+            **generic_response,
+            "delivery": "dev_token",
+            "recovery_token": token,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error en recuperación de contraseña: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo procesar la recuperación de contraseña.")
+
+
+@app.post("/api/auth/password-recovery/reset")
+def resetear_password(datos: PasswordRecoveryReset):
+    token = (datos.token or "").strip()
+    if not token:
+        raise HTTPException(status_code=400, detail="Token inválido.")
+
+    if datos.new_password != datos.confirm_password:
+        raise HTTPException(status_code=400, detail="Las contraseñas no coinciden.")
+
+    validar_password(datos.new_password)
+
+    try:
+        claims = decode_access_token(token)
+        purpose = str(claims.get("purpose", "")).strip().lower()
+        if purpose != "password_recovery":
+            raise HTTPException(status_code=400, detail="Token de recuperación inválido.")
+
+        id_usuario = claims.get("id_usuario")
+        email = str(claims.get("email", "")).strip().lower()
+        if not id_usuario or not email:
+            raise HTTPException(status_code=400, detail="Token de recuperación inválido.")
+
+        salt, hash_bytes = generar_hash_salt(datos.new_password)
+
+        conn = obtener_conexion()
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE dbo.tbl_usuarios_sistema "
+            "SET PasswordHash = ?, PasswordSalt = ? "
+            "WHERE id_usuario_sistema = ? AND LOWER(email) = LOWER(?) AND estatus = 1",
+            hash_bytes,
+            salt,
+            int(id_usuario),
+            email,
+        )
+        if cursor.rowcount == 0:
+            conn.rollback()
+            cursor.close()
+            conn.close()
+            raise HTTPException(status_code=404, detail="No se encontró la cuenta para actualizar contraseña.")
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+
+        return {
+            "status": "success",
+            "message": "Contraseña actualizada correctamente. Ya puedes iniciar sesión.",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al restablecer contraseña: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo restablecer la contraseña.")
 
 
 @app.get("/api/auth/me")
@@ -627,12 +941,13 @@ def crear_usuario_sistema(
         rol_db = rol_db_desde_normalizado(usuario.rol.value)
 
         cursor.execute(
-            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, email, PasswordHash, PasswordSalt, Rol, iEmployeeNum, FechaCreacion, bActivo) "
+            "INSERT INTO dbo.tblUsuarios (Nombre, NombreUsuario, email, [password], PasswordHash, PasswordSalt, Rol, iEmployeeNum, FechaCreacion, bActivo) "
             "OUTPUT INSERTED.id, INSERTED.FechaCreacion "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), ?)",
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, SYSUTCDATETIME(), ?)",
             usuario.nombre,
             usuario.nombre_usuario,
             usuario.email.lower(),
+            usuario.password,
             hash_bytes,
             salt,
             rol_db,
@@ -906,7 +1221,7 @@ def listar_solicitudes_reposicion(
         query = (
             "SELECT "
             "   s.id_reposicion AS id_solicitud, "
-            "   s.id_usuario_sistema AS id_empleado, "
+            "   COALESCE(u.id_usuario_original, s.id_usuario_sistema) AS id_empleado, "
             "   ISNULL(u.nombre_completo, 'Empleado #' + CAST(s.id_usuario_sistema AS VARCHAR)) AS nombre_empleado, "
             "   s.fecha_solicitada AS fecha_solicitud, "
             "   s.horas_a_reponer AS horas_solicitadas, "
@@ -923,8 +1238,8 @@ def listar_solicitudes_reposicion(
 
         if rol_actual == "admin":
             if id_empleado is not None:
-                query += " AND s.id_usuario_sistema = ?"
-                params.append(id_empleado)
+                query += " AND (s.id_usuario_sistema = ? OR u.id_usuario_original = ?)"
+                params.extend([id_empleado, id_empleado])
                 
         elif rol_actual == "jefe":
             if estado:
@@ -940,8 +1255,8 @@ def listar_solicitudes_reposicion(
                 params.extend([id_usuario_actual, id_usuario_actual])
             
             if id_empleado is not None:
-                query += " AND s.id_usuario_sistema = ?"
-                params.append(id_empleado)
+                query += " AND (s.id_usuario_sistema = ? OR u.id_usuario_original = ?)"
+                params.extend([id_empleado, id_empleado])
                 
         else:
             # Empleado común
@@ -954,8 +1269,8 @@ def listar_solicitudes_reposicion(
 
         query += " ORDER BY s.id_reposicion DESC"
 
-        # ⚡ CORRECCIÓN CLAVE: Pasar 'params' como lista, sin desempaquetar con '*'
-        cursor.execute(query, params)
+        # ⚡ pyodbc requiere parámetros desempaquetados
+        cursor.execute(query, *params)
         rows = cursor.fetchall()
 
         cursor.close()
@@ -1740,7 +2055,7 @@ def actualizar_estado_solicitud(
 
         # 2. Consultar la solicitud actual para saber quién la autoriza
         cursor.execute(
-            "SELECT id_jefe_directo, id_jefe_superior, estado_jefe_directo, estado_jefe_superior "
+            "SELECT id_usuario_sistema, id_jefe_directo, id_jefe_superior, estado_jefe_directo, estado_jefe_superior, estado_final, fecha_solicitada, horas_a_reponer "
             "FROM dbo.tbl_solicitudes_reposicion WHERE id_reposicion = ?", 
             id_reposicion
         )
@@ -1748,14 +2063,30 @@ def actualizar_estado_solicitud(
         if not solicitud:
             raise HTTPException(status_code=404, detail="La solicitud de reposición no existe.")
 
-        id_jd, id_js, estado_jd, estado_js = solicitud
+        id_solicitante_sistema, id_jd, id_js, estado_jd, estado_js, estado_final_actual, fecha_solicitada, horas_a_reponer = solicitud
+
+        estado_jd = _estado_normalizado(str(estado_jd))
+        estado_js = _estado_normalizado(str(estado_js))
+        estado_final_actual = _estado_normalizado(str(estado_final_actual))
+
+        if estado_final_actual in {"aprobada", "rechazada"}:
+            raise HTTPException(status_code=409, detail=f"La solicitud ya está {estado_final_actual}.")
+
+        if int(id_usuario_actual) == int(id_solicitante_sistema):
+            raise HTTPException(status_code=403, detail="No puedes autorizar tu propia solicitud.")
 
         # 3. Determinar qué jefe está firmando y actualizar su columna correspondiente
         columna_a_actualizar = None
         if id_usuario_actual == id_jd:
+            if estado_jd != "pendiente":
+                raise HTTPException(status_code=409, detail="El jefe directo ya procesó esta solicitud.")
             columna_a_actualizar = "estado_jefe_directo"
             estado_jd = nuevo_estado
         elif id_usuario_actual == id_js:
+            if estado_jd != "aprobada":
+                raise HTTPException(status_code=409, detail="El jefe superior solo puede autorizar después de la aprobación del jefe directo.")
+            if estado_js != "pendiente":
+                raise HTTPException(status_code=409, detail="El jefe superior ya procesó esta solicitud.")
             columna_a_actualizar = "estado_jefe_superior"
             estado_js = nuevo_estado
         elif rol_actual == "admin":
@@ -1763,9 +2094,11 @@ def actualizar_estado_solicitud(
             if estado_jd == "pendiente":
                 columna_a_actualizar = "estado_jefe_directo"
                 estado_jd = nuevo_estado
-            else:
+            elif estado_js == "pendiente":
                 columna_a_actualizar = "estado_jefe_superior"
                 estado_js = nuevo_estado
+            else:
+                raise HTTPException(status_code=409, detail="La solicitud ya fue procesada por ambos niveles de autorización.")
         else:
             raise HTTPException(status_code=403, detail="No tienes permisos para autorizar esta solicitud.")
 
@@ -1784,6 +2117,21 @@ def actualizar_estado_solicitud(
             f"WHERE id_reposicion = ?",
             nuevo_estado, estado_final, id_reposicion
         )
+
+        # 5.1 Si ya quedó aprobada por ambos niveles, aplica el descuento del banco de horas
+        if estado_final == "aprobada":
+            id_emp_solicitante = _obtener_id_empleado_por_usuario(cursor, int(id_solicitante_sistema))
+            if id_emp_solicitante is None:
+                raise HTTPException(status_code=500, detail="No se pudo resolver el empleado de la solicitud para aplicar el descuento.")
+
+            _registrar_descuento_reposicion(
+                cursor,
+                id_empleado=int(id_emp_solicitante),
+                fecha_solicitada=fecha_solicitada,
+                horas_a_reponer=float(horas_a_reponer),
+                id_usuario_autoriza_historial=id_usuario_actual,
+                id_reposicion=id_reposicion,
+            )
 
         # 6. Registrar en el historial de movimientos
         cursor.execute(

@@ -7,27 +7,27 @@
 
 </header>
 
-<div class="card">
+<div class="card" style="padding: 24px; border-radius: 24px;">
    
     <!-- Filtro y Botón de Recargar -->
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 1.5rem; flex-wrap: wrap;">
         <h2 style="margin:0; color:#1f2d19; font-size:1.2rem;">Bandeja de solicitudes</h2>
         <div style="display:flex; gap:8px; align-items:center;">
-            <select id="notificaciones-filtro-estado" style="width:auto; min-width: 150px; padding: 8px 12px; border-radius: 8px; border: 1px solid #cbd5e1;">
+            <select id="notificaciones-filtro-estado" style="width:auto; min-width: 150px; padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; background:#fff; color:#1f2937; font-weight:600;">
                 <option value="">Todos los estados</option>
                 <option value="pendiente" selected>Pendientes</option>
                 <option value="aprobado">Aprobadas</option>
                 <option value="rechazado">Rechazadas</option>
             </select>
-            <button type="button" id="btn-recargar-notificaciones" class="btn" onclick="cargarSolicitudesNotificaciones()" style="background:#2f582f; color:#fff; padding: 8px 16px; border-radius: 8px; cursor: pointer;">Recargar</button>
+            <button type="button" id="btn-recargar-notificaciones" class="btn" onclick="cargarSolicitudesNotificaciones()" style="background:#2f582f; color:#fff; padding: 10px 16px; border-radius: 10px; cursor: pointer; border:none; font-weight:700;">Recargar</button>
         </div>
     </div>
 
     <!-- Tabla de Notificaciones -->
-    <div style="overflow-x:auto;">
-        <table style="width: 100%; border-collapse: collapse;">
+    <div style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:16px; background:#fff;">
+        <table style="width: 100%; border-collapse: collapse; min-width: 860px;">
             <thead>
-                <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                <tr style="background: linear-gradient(90deg, rgba(18,68,22,0.08), rgba(170,127,49,0.08)); border-bottom: 2px solid #e2e8f0;">
                     <th style="padding: 12px; text-align: left;">ID</th>
                     <th style="padding: 12px; text-align: left;">Empleado</th>
                     <th style="padding: 12px; text-align: left;">Fecha</th>
@@ -93,5 +93,23 @@
     margin-top:6px;
     color:rgba(255,255,255,.85);
     font-size:.95rem;
+}
+
+#notificaciones-solicitudes-body tr {
+    border-bottom: 1px solid #e2e8f0;
+}
+
+#notificaciones-solicitudes-body tr:hover {
+    background: #f8fafc;
+}
+
+#notificaciones-solicitudes-body td {
+    padding: 12px;
+    color: #334155;
+    vertical-align: middle;
+}
+
+#notificaciones-solicitudes-body td:last-child {
+    white-space: nowrap;
 }
 </style>

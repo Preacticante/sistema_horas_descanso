@@ -125,6 +125,7 @@ class SolicitudReposicionCreate(BaseSchema):
 class SolicitudReposicionOut(BaseSchema):
 	id_solicitud: int
 	id_empleado: int
+	nombre_empleado: Optional[str] = None
 	fecha: date
 	horas_solicitadas: float
 	motivo: str

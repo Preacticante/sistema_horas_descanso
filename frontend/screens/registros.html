@@ -197,12 +197,12 @@
                     const baseUrl = window.API_URL || "http://localhost:8000";
                     for (const fecha of selectedDates) {
                         const payload = {
-                            empleado_id: parseInt(empleadoId),
+                            id_empleado: parseInt(empleadoId),
                             fecha: fecha,
-                            horas: horas,
+                            horas_solicitadas: horas,
                             motivo: motivo,
-                            jefe_directo_id: jefeDirecto ? parseInt(jefeDirecto) : null,
-                            jefe_superior_id: jefeSuperior ? parseInt(jefeSuperior) : null
+                            id_jefe_directo: jefeDirecto ? parseInt(jefeDirecto) : null,
+                            id_jefe_superior: jefeSuperior ? parseInt(jefeSuperior) : null
                         };
                         const response = await fetch(`${baseUrl}/api/registros/solicitudes`, {
                             method: "POST",
@@ -263,8 +263,8 @@
                     select.appendChild(opt);
                 });
 
-                if (empleados.length >= 1) {
-                    select.value = select.options[0].value;
+                if (empleados.length >= 1 && select.options.length > 1) {
+                    select.selectedIndex = 1;
                 }
             } catch (err) {
                 console.error("Error al cargar empleados:", err);
