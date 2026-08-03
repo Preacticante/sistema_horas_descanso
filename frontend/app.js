@@ -253,8 +253,87 @@ function limpiarPanelNotificacionesSalida() {
     renderNotificacionesSalida();
 }
 
+async function cargarSolicitudesNotificaciones() {
+    const tbody = document.getElementById('notificaciones-solicitudes-body');
+    if (!tbody) return;
+
+    const filtro = document.getElementById('notificaciones-filtro-estado');
+    const estadoFiltro = filtro?.value?.trim() || '';
+
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="8" style="text-align:center; padding:14px;">Cargando solicitudes...</td>
+        </tr>
+    `;
+
+    try {
+        const params = new URLSearchParams();
+        if (estadoFiltro) params.set('estado', estadoFiltro);
+
+        const url = `${API_URL}/api/registros/solicitudes${params.toString() ? '?' + params.toString() : ''}`;
+        const response = await fetch(url, {
+            headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.detail || 'No se pudo obtener las solicitudes.');
+        }
+
+        const solicitudes = await response.json();
+
+        if (!Array.isArray(solicitudes) || !solicitudes.length) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align:center; padding:14px;">No hay solicitudes para mostrar.</td>
+                </tr>
+            `;
+            return;
+        }
+
+        tbody.innerHTML = '';
+        solicitudes.forEach(sol => {
+            const estadoJD = String(sol.estado_jefe_directo || 'pendiente').toLowerCase();
+            const estadoJS = String(sol.estado_jefe_superior || 'pendiente').toLowerCase();
+            const estadoFinal = String(sol.estado_final || 'pendiente').toLowerCase();
+            const nombreEmpleado = sol.nombre_empleado || sol.id_empleado || '';
+            const puedeAccionar = estadoFinal === 'pendiente';
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${sol.id_solicitud}</td>
+                    <td>${nombreEmpleado}</td>
+                    <td>${sol.fecha_solicitud || sol.fecha || ''}</td>
+                    <td>${Number(sol.horas_solicitadas || 0).toFixed(2)}</td>
+                    <td style="font-weight:600; color:${obtenerColorEstado(estadoJD)};">${estadoJD}</td>
+                    <td style="font-weight:600; color:${obtenerColorEstado(estadoJS)};">${estadoJS}</td>
+                    <td style="font-weight:700; color:${obtenerColorEstado(estadoFinal)};">${estadoFinal}</td>
+                    <td>
+                        ${puedeAccionar ? `
+                            <button type="button" onclick="procesarAutorizacion(${sol.id_solicitud}, 'aprobar')" style="margin-right:6px; border:none; border-radius:8px; padding:8px 10px; background:#166534; color:#fff; cursor:pointer;">Aprobar</button>
+                            <button type="button" onclick="procesarAutorizacion(${sol.id_solicitud}, 'rechazar')" style="border:none; border-radius:8px; padding:8px 10px; background:#b91c1c; color:#fff; cursor:pointer;">Rechazar</button>
+                        ` : `<span style="color:#64748b;">Sin acciones</span>`}
+                    </td>
+                </tr>
+            `;
+        });
+    } catch (error) {
+        console.error('Error cargando solicitudes de notificaciones:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align:center; padding:14px; color:#b91c1c;">Error al cargar solicitudes.</td>
+            </tr>
+        `;
+        mostrarNotificacion('error', 'Error', error.message || 'No se pudieron cargar las solicitudes.');
+    }
+}
+
 function inicializarNotificaciones() {
-    renderNotificacionesSalida();
+    const filtro = document.getElementById('notificaciones-filtro-estado');
+    if (filtro) {
+        filtro.addEventListener('change', cargarSolicitudesNotificaciones);
+    }
+    cargarSolicitudesNotificaciones();
 }
 
 
@@ -1270,20 +1349,33 @@ async function cargarReportes() {
         const empleados = await response.json();
         ultimoReporteData = Array.isArray(empleados) ? empleados : [];
 
+        // Actualizar resumen
+        const totalRegistros = ultimoReporteData.length;
+        const empleadosConSalidas = ultimoReporteData.filter(e => (e.salidas_temprano || 0) > 0).length;
+        const alertasHoras = ultimoReporteData.filter(e => Math.abs(Number(e.total_horas) || 0) > 0).length;
+
+        const elTotalReg = document.getElementById('reporte-total-registros');
+        const elEmpleados = document.getElementById('reporte-empleados-rango');
+        const elAlertas = document.getElementById('reporte-alertas-horas');
+
+        if (elTotalReg) elTotalReg.textContent = totalRegistros;
+        if (elEmpleados) elEmpleados.textContent = empleadosConSalidas;
+        if (elAlertas) elAlertas.textContent = alertasHoras;
+
         if (!ultimoReporteData.length) {
             tbody.innerHTML = `<tr><td colspan="4" class="reportes-empty">No se encontraron registros.</td></tr>`;
             return;
         }
 
         tbody.innerHTML = '';
-        ultimoReporteData.forEach(emp => {
+        ultimoReporteData.forEach((emp, idx) => {
             const horasTomadas = Math.abs(Number(emp.total_horas) || 0).toFixed(2);
             tbody.innerHTML += `
                 <tr>
                     <td>${emp.nombre}</td>
                     <td>${horasTomadas} hrs</td>
                     <td>${emp.salidas_temprano}</td>
-                    <td><button type="button" class="reportes-btn reportes-btn-secondary">Ver detalles</button></td>
+                    <td><button type="button" class="reportes-btn reportes-btn-secondary" onclick="abrirDetalleReporte(${idx})">Ver detalles</button></td>
                 </tr>
             `;
         });
@@ -1292,13 +1384,94 @@ async function cargarReportes() {
     }
 }
 
+async function abrirDetalleReporte(indice) {
+    if (!ultimoReporteData[indice]) return;
+    
+    const emp = ultimoReporteData[indice];
+    const modal = document.getElementById('reportes-detalle');
+    const body = document.getElementById('reportes-detalle-body');
+    
+    if (!modal || !body) return;
+    
+    // Mostrar cargando mientras se traen detalles
+    body.innerHTML = `<p style="color: #64748b; text-align: center;">Cargando detalles...</p>`;
+    modal.classList.add('show');
+    modal.setAttribute('aria-hidden', 'false');
+    
+    try {
+        // El endpoint devuelve 'id' como el IdEmpNum
+        const empId = emp.id;
+        if (!empId) {
+            body.innerHTML = `<p style="color: #b91c1c;">No se pudo identificar al empleado.</p>`;
+            return;
+        }
+
+        // Llamar al endpoint de detalles de salidas tempranas
+        const response = await fetch(`${API_URL}/api/empleados/${empId}/salidas-temprano`, {
+            headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
+        });
+
+        let detalles = [];
+        if (response.ok) {
+            detalles = await response.json();
+        }
+
+        let contenido = `<h2>${emp.nombre}</h2>`;
+        contenido += `<div style="margin-bottom: 20px; padding: 14px; background: #f0f9ff; border-radius: 12px; border-left: 4px solid #3b82f6;">`;
+        contenido += `<p style="margin: 8px 0;"><strong>Total de horas:</strong> ${Math.abs(Number(emp.total_horas) || 0).toFixed(2)} hrs</p>`;
+        contenido += `<p style="margin: 8px 0;"><strong>Salidas temprano:</strong> ${emp.salidas_temprano || 0} eventos</p>`;
+        contenido += `</div>`;
+        
+        if (detalles && detalles.length > 0) {
+            contenido += `<div><p style="margin-bottom: 12px; font-weight: 600;">Registros de salida temprana detectados</p>`;
+            contenido += `<ul class="reportes-detalle-list">`;
+            
+            detalles.forEach((detalle, idx) => {
+                const fecha = detalle.fecha ? new Date(detalle.fecha).toLocaleDateString('es-ES') : 'Sin fecha';
+                const horasSalida = Math.abs(Number(detalle.horas) || 0).toFixed(2);
+                const observaciones = detalle.observaciones || 'Sin observaciones';
+                
+                contenido += `<li class="reportes-detalle-item">
+                    <strong>Salida temprana #${idx + 1}</strong>
+                    <p style="margin: 8px 0; color: #475569;"><strong>Fecha:</strong> ${fecha}</p>
+                    <p style="margin: 8px 0; color: #475569;"><strong>Horas descontadas:</strong> ${horasSalida} hrs</p>
+                    <p style="margin: 8px 0; color: #475569;"><strong>Detalles:</strong> ${observaciones}</p>
+                </li>`;
+            });
+            contenido += `</ul></div>`;
+        } else {
+            contenido += `<p style="color: #64748b; padding: 16px; background: #f8fafc; border-radius: 12px;">Este empleado no tiene salidas tempranas en el rango seleccionado.</p>`;
+        }
+        
+        body.innerHTML = contenido;
+    } catch (error) {
+        console.error('Error cargando detalles de salidas:', error);
+        body.innerHTML = `<p style="color: #b91c1c;">Error al cargar los detalles: ${error.message}</p>`;
+    }
+}
+
+function cerrarDetalleReporte() {
+    const modal = document.getElementById('reportes-detalle');
+    if (!modal) return;
+    modal.classList.remove('show');
+    modal.setAttribute('aria-hidden', 'true');
+}
+
 function inicializarReportes() {
     const btnFiltrar = document.getElementById('btn-aplicar-reporte');
     const btnExportCsv = document.getElementById('btn-descargar-reporte-csv');
+    const btnCerrarDetalle = document.getElementById('reportes-detalle-close');
+    const modal = document.getElementById('reportes-detalle');
 
     if (btnFiltrar) btnFiltrar.addEventListener('click', (e) => { e.preventDefault(); cargarReportes(); });
     if (btnExportCsv && typeof descargarReporteCSV === 'function') {
         btnExportCsv.addEventListener('click', descargarReporteCSV);
+    }
+    if (btnCerrarDetalle) btnCerrarDetalle.addEventListener('click', cerrarDetalleReporte);
+    if (modal) {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) cerrarDetalleReporte();
+        });
     }
 
     const inicio = document.getElementById('fechaInicio');

@@ -3,140 +3,262 @@
 <head>
     <meta charset="UTF-8">
     <title>Sistema UCO - Horas extras</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Carga de Three.js para renderizar la seda -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
     <style>
-        :root { --forest: #124416; --purple: #340C51; --gold: #AA7F31; --bg-gray: #f4f6f8; }
+        :root { 
+            --forest-dark: #081d17;
+            --forest-glass: rgba(12, 35, 23, 0.65);
+            --purple: #340C51; 
+            --gold: #AA7F31; 
+            --text-muted: rgba(255, 255, 255, 0.7);
+        }
         
         * { box-sizing: border-box; }
         
         html, body { height: 100%; margin: 0; }
         
-        body { font-family: 'Inter', sans-serif; background: var(--bg-gray); overflow: hidden; }
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: var(--forest-dark); 
+            overflow: hidden; 
+            position: relative;
+        }
+
+        /* --- CANVAS DE SEDA ANIMADO --- */
+        #silk-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+        }
         
+        /* --- ESTILOS DE LA SIDEBAR COLAPSABLE CON GLASSMORPHISM --- */
         .sidebar { 
             position: fixed;
             top: 0;
             left: 0;
             bottom: 0;
-            width: 280px;
-            background: var(--forest);
+            width: 90px; /* Ancho inicial (colapsado) */
+            
+            /* Difuminado glassmorphism */
+            background: var(--forest-glass);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border-right: 1px solid rgba(255, 255, 255, 0.12);
+            
             color: white;
-            padding: 2rem 1rem;
+            padding: 1.5rem 0.8rem;
             display: flex;
             flex-direction: column;
+            overflow-x: hidden;
             overflow-y: auto;
             z-index: 1000;
+            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.3);
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Estado Expandido */
+        .sidebar.expanded {
+            width: 280px;
         }
         
-        .logo-container { text-align: center; margin-bottom: 2rem; padding: 1rem; }
-        .logo-container img { width: 250px; height: auto; transition: transform 0.3s ease; }
+        .logo-container { 
+            text-align: center; 
+            margin-bottom: 1.5rem; 
+            padding: 0.5rem; 
+            cursor: pointer;
+        }
         
-        .menu-wrapper { flex-grow: 1; }
+        .logo-container img { 
+            width: 100%;
+            max-width: 180px;
+            height: auto; 
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+            filter: drop-shadow(0 4px 10px rgba(0,0,0,0.3));
+        }
         
-        .menu-group { margin-bottom: 2rem; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 1rem; }
+        .logo-container img:hover {
+            transform: scale(1.08);
+        }
+        
+        .menu-wrapper { 
+            flex-grow: 1; 
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        
+        .menu-group { 
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+            padding-bottom: 1rem; 
+        }
+        
         .menu-group:last-of-type { border-bottom: none; }
         
         .sidebar a { 
-            padding: 14px 20px; 
-            color: #d1d1d1; 
+            padding: 12px 16px; 
+            color: var(--text-muted); 
             text-decoration: none; 
             border-radius: 12px; 
-            margin-bottom: 8px; 
-            transition: all 0.3s ease; 
+            transition: all 0.25s ease; 
             cursor: pointer; 
             display: flex; 
             align-items: center; 
             font-weight: 500; 
-            font-size: 0.95rem; 
+            font-size: 0.92rem; 
+            position: relative;
+            white-space: nowrap;
         }
-        .sidebar a:hover { background: rgba(255,255,255,0.05); color: white; }
-        .sidebar a.active { background: rgba(255,255,255,0.1); color: var(--gold); box-shadow: 0 4px 15px rgba(170, 127, 49, 0.4); border: 1px solid var(--gold); }
         
-        .icon { width: 20px; height: 20px; margin-right: 15px; fill: currentColor; }
+        .sidebar a:hover { 
+            background: rgba(255, 255, 255, 0.12); 
+            color: #ffffff; 
+            transform: translateX(4px);
+        }
         
+        .sidebar a.active { 
+            background: rgba(255, 255, 255, 0.18); 
+            color: #ffffff; 
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+        }
+
+        /* Indicador lateral dorado para opción activa */
+        .sidebar a.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 20%;
+            height: 60%;
+            width: 4px;
+            background-color: var(--gold);
+            border-radius: 0 4px 4px 0;
+        }
+        
+        .icon { 
+            width: 20px; 
+            height: 20px; 
+            min-width: 20px;
+            margin-right: 14px; 
+            fill: currentColor; 
+            transition: transform 0.2s ease;
+        }
+
+        .sidebar a:hover .icon {
+            transform: scale(1.1);
+        }
+
+        .sidebar a .nav-text {
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .sidebar.expanded a .nav-text {
+            opacity: 1;
+            pointer-events: auto;
+            transition: opacity 0.3s ease 0.15s;
+        }
+
+        #logout-link { 
+            color: var(--gold); 
+            border: 1px solid var(--gold); 
+            justify-content: center; 
+            border-radius: 12px; 
+            padding: 12px; 
+            text-decoration: none; 
+            text-align: center; 
+            font-weight: 600;
+            margin-top: auto;
+            transition: all 0.3s ease;
+            background: rgba(170, 127, 49, 0.1);
+        }
+
+        #logout-link:hover {
+            background: var(--gold);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(170, 127, 49, 0.4);
+            transform: translateY(-2px);
+        }
+        
+        /* --- ESTILOS DE CONTENIDO PRINCIPAL --- */
         .main-content { 
-            margin-left: 280px; 
+            position: relative;
+            z-index: 10;
+            margin-left: 90px;
             padding: 3rem; 
             overflow-y: auto;
             height: 100vh;
-            transition: opacity 0.3s ease;
+            transition: margin-left 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
         }
-        
-        .fade-out { opacity: 0; }
-        
-        .card { 
-            background: white; 
-            padding: 2.5rem; 
-            border-radius: 20px; 
-            border-left: 6px solid var(--gold); 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+
+        .main-content.sidebar-open {
+            margin-left: 280px;
         }
-        
-        input, select, textarea, button { font-family: 'Inter', sans-serif; }
-        label { display: block; margin-bottom: 0.5rem; color: #1f2d19; font-weight: 500; }
-        
-        input[type="text"], input[type="email"], input[type="password"], input[type="number"], input[type="date"], select, textarea {
-            width: 100%; padding: 10px 12px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 0.95rem; transition: all 0.2s ease;
-        }
-        
-        button { cursor: pointer; }
-        .btn { padding: 10px 20px; border: none; border-radius: 8px; font-weight: 500; transition: all 0.3s ease; }
-        .btn:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        
-        table { width: 100%; border-collapse: collapse; }
-        th { background: #f5f5f5; padding: 12px; text-align: left; font-weight: 600; color: #1f2d19; border-bottom: 2px solid #e0e0e0; }
-        td { padding: 12px; border-bottom: 1px solid #f0f0f0; }
-        tr:hover { background: #f9f9f9; }
         
         .notification-container { position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 420px; }
-        .notification { background: white; padding: 16px 20px; margin-bottom: 12px; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); display: flex; gap: 12px; align-items: flex-start; border-left: 5px solid #4CAF50; }
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <div class="logo-container">
+    <!-- CANVAS DONDE SE DIBUJA LA SEDA ANIMADA -->
+    <canvas id="silk-canvas"></canvas>
+
+    <div class="sidebar" id="sidebar">
+        <div class="logo-container" onclick="toggleSidebar()" title="Haz clic para desplegar/contraer menú">
             <img src="/frontend/logo_uco.png" alt="Logo UCO">
         </div>
         
         <div class="menu-wrapper">
             <div class="menu-group">
                 <a id="nav-dashboard" onclick="loadPage('dashboard', this)" class="active">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>Panel Principal
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+                    <span class="nav-text">Panel Principal</span>
                 </a>
                 <a id="nav-empleados" onclick="loadPage('empleados', this)">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>Empleados
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+                    <span class="nav-text">Empleados</span>
                 </a>
                 <a id="nav-registros" onclick="loadPage('registros', this)">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-1.99.9-1.99 2L4 20c0 1.1.89 2 1.99 2H18c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                    Registros
+                    <span class="nav-text">Registros</span>
                 </a>
                 <a id="nav-notificaciones" onclick="loadPage('notificaciones', this)">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M12 22c1.66 0 3-1.34 3-3h-6c0 1.66 1.34 3 3 3zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5S10.5 3.17 10.5 4v.68C7.64 5.36 6 7.92 6 11v5l-1.99 2H20l-2-2z"/></svg>
-                    Notificaciones
+                    <span class="nav-text">Notificaciones</span>
                     <span id="sidebar-notificaciones-badge" style="display:none; min-width:22px; padding:0 8px; height:22px; line-height:22px; font-size:0.75rem; font-weight:700; border-radius:999px; background:#AA7F31; color:white; margin-left:auto;">0</span>
                 </a>
                 <a id="nav-reportes" onclick="loadPage('reportes', this)">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>Reportes
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+                    <span class="nav-text">Reportes</span>
                 </a>
             </div>
             
             <div class="menu-group">
                 <a id="nav-configuracion" onclick="loadPage('configuracion', this)">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.63l-1.92-3.32c-.12-.22-.37-.31-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.63l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.63l1.92 3.32c.12.22.37.31.59.22l2.39-.96c-.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.63l-2.03-1.58zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5 3.5z"/></svg>Configuración
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.63l-1.92-3.32c-.12-.22-.37-.31-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.63l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.63l1.92 3.32c.12.22.37.31.59.22l2.39-.96c-.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.57 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.63l-2.03-1.58zM12 15.5c-1.93 0-3.5-1.57-3.5-3.5s1.57-3.5 3.5-3.5 3.5 1.57 3.5 3.5-1.57 3.5-3.5-3.5z"/></svg>
+                    <span class="nav-text">Configuración</span>
                 </a>
                 <a id="nav-perfil" onclick="loadPage('perfil', this)">
-                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>Perfil
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+                    <span class="nav-text">Perfil</span>
                 </a>
             </div>
         </div>
         
-        <a id="logout-link" href="login.html" style="color: var(--gold); border: 1px solid var(--gold); justify-content: center; border-radius: 12px; padding: 12px; text-decoration: none; text-align: center; font-weight: 500;">Cerrar Sesión</a>
+        <a id="logout-link" href="login.html">
+            <span class="nav-text">Cerrar Sesión</span>
+        </a>
     </div>
-
-<main class="main-content" id="content-area">
-        <div id="dynamic-card"></div>
-        <div id="dynamicCard" style="display:none;"></div>
-    </main>
 
     <main class="main-content" id="content-area">
         <div id="dynamic-card"></div>
@@ -144,13 +266,120 @@
         <div id="container" style="display:none;"></div>
     </main>
 
-    
-    
     <div class="notification-container" id="notification-container"></div>
 
     <script src="app.js"></script>
+
+    <!-- SCRIPT DEL SHADER SILK DE THREE.JS -->
     <script>
-        // Script de seguridad para adaptar el menú según el rol y evitar pantalla en blanco
+        (function initSilk() {
+            const canvas = document.getElementById('silk-canvas');
+            const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.z = 2;
+
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    uTime: { value: 0 },
+                    uScale: { value: 2.4 },
+                    uColor: { value: new THREE.Color('#1a4325') },
+                    uNoise: { value: 3.6 },
+                    uRotation: { value: 1.7 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform float uTime;
+                    uniform float uScale;
+                    uniform vec3 uColor;
+                    uniform float uNoise;
+                    uniform float uRotation;
+                    varying vec2 vUv;
+
+                    vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                    vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+                    vec3 permute(vec3 x) { return mod289(((x*34.0)+1.0)*x); }
+
+                    float snoise(vec2 v) {
+                        const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+                        vec2 i  = floor(v + dot(v, C.yy) );
+                        vec2 x0 = v -   i + dot(i, C.xx);
+                        vec2 i1;
+                        i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+                        vec4 x12 = x0.xyxy + C.xxzz;
+                        x12.xy -= i1;
+                        i = mod289(i);
+                        vec3 p = permute( permute( i.y + vec3(0.0, i1.y, 1.0 )) + i.x + vec3(0.0, i1.x, 1.0 ));
+                        vec3 m = max(0.5 - vec3(dot(x0,x0), dot(x12.xy,x12.xy), dot(x12.zw,x12.zw)), 0.0);
+                        m = m*m ;
+                        m = m*m ;
+                        vec3 x = 2.0 * fract(p * C.www) - 1.0;
+                        vec3 h = abs(x) - 0.5;
+                        vec3 ox = floor(x + 0.5);
+                        vec3 a0 = x - ox;
+                        m *= 1.79284291400159 - 0.85373472095314 * ( a0*a0 + h*h );
+                        vec3 g;
+                        g.x  = a0.x  * x0.x  + h.x  * x0.y;
+                        g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+                        return 130.0 * dot(m, g);
+                    }
+
+                    void main() {
+                        vec2 uv = vUv * uScale;
+                        float cosR = cos(uRotation);
+                        float sinR = sin(uRotation);
+                        uv = vec2(uv.x * cosR - uv.y * sinR, uv.x * sinR + uv.y * cosR);
+
+                        /* Velocidad ajustada para concordar con la referencia (11.2) */
+                        float n = snoise(uv + vec2(uTime * 0.35, uTime * 0.2)) * uNoise;
+                        float wave = sin(uv.x * 3.0 + n + uTime * 2.0) * 0.5 + 0.5;
+
+                        vec3 finalColor = mix(uColor * 0.1, uColor * 1.6, wave);
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `
+            });
+
+            const geometry = new THREE.PlaneGeometry(2, 2);
+            const mesh = new THREE.Mesh(geometry, material);
+            scene.add(mesh);
+
+            function animate(time) {
+                material.uniforms.uTime.value = time * 0.0003;
+                renderer.render(scene, camera);
+                requestAnimationFrame(animate);
+            }
+            requestAnimationFrame(animate);
+
+            window.addEventListener('resize', () => {
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+            });
+        })();
+    </script>
+
+    <!-- LOGICA DE CONTROL DE LA INTERFAZ -->
+    <script>
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const mainContent = document.getElementById('content-area');
+            
+            sidebar.classList.toggle('expanded');
+            if (mainContent) {
+                mainContent.classList.toggle('sidebar-open');
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 try {
@@ -164,7 +393,6 @@
                         } catch(err) {}
                     }
 
-                    // Si es un Empleado raso, se ocultan los módulos de gestión general
                     if (rolUsuario.includes("empleado")) {
                         const elementosOcultar = ["nav-empleados", "nav-reportes", "nav-configuracion"];
                         elementosOcultar.forEach(id => {
@@ -173,7 +401,6 @@
                         });
                     }
 
-                    // Respaldo automático: Si el área central se quedó en blanco, forzar la carga del dashboard
                     const contentArea = document.getElementById("dynamic-card");
                     if (contentArea && (!contentArea.innerHTML || contentArea.innerHTML.trim() === "")) {
                         if (typeof loadPage === "function") {

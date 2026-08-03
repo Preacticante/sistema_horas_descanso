@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control de Horas - Notificaciones</title>
+    <title>Control de Horas - Perfil</title>
     <style>
         :root { 
             --forest: #124416; 
@@ -26,7 +26,7 @@
             top: 0;
             left: 0;
             bottom: 0;
-            width: 90px; /* Ancho colapsado */
+            width: 90px;
             background: var(--forest);
             color: white;
             padding: 1.2rem 0.8rem;
@@ -39,12 +39,10 @@
             transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* Estado Expandido SOLO al hacer Clic */
         .sidebar.expanded {
             width: 280px;
         }
 
-        /* BOTÓN DE MENÚ HAMBURGUESA Y LOGO */
         .toggle-btn {
             background: transparent;
             border: none;
@@ -131,7 +129,6 @@
             border: 1px solid rgba(255, 255, 255, 0.2); 
         }
 
-        /* Indicador lateral dorado */
         .sidebar a.active::before {
             content: '';
             position: absolute;
@@ -159,7 +156,6 @@
             transform: scale(1.15);
         }
 
-        /* Ocultar texto cuando está colapsado */
         .sidebar a .nav-text {
             opacity: 0;
             transition: opacity 0.2s ease;
@@ -205,7 +201,6 @@
             margin-left: 280px;
         }
 
-        /* BARRA SUPERIOR EXPANDIDA EN VERDE */
         .top-bar-header {
             background-color: var(--forest);
             color: white;
@@ -224,20 +219,77 @@
             overflow-y: auto;
             background-color: var(--bg-gray);
         }
+
+        /* --- ESTILOS DE FORMULARIO DE PERFIL --- */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 868px) {
+            .profile-grid { grid-template-columns: 1fr; }
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-bottom: 1.2rem;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .form-control {
+            padding: 10px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+
+        .form-control:focus {
+            border-color: var(--forest);
+            box-shadow: 0 0 0 3px rgba(18, 68, 22, 0.1);
+        }
+
+        .form-control[readonly] {
+            background-color: #f8fafc;
+            color: #64748b;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--forest);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .btn-primary:hover {
+            background: var(--forest-light);
+        }
     </style>
 </head>
 <body>
 
-    <!-- 1. SIDEBAR DESPLEGABLE (SOLO VÍA CLIC) -->
+    <!-- 1. SIDEBAR DESPLEGABLE -->
     <aside id="sidebar" class="sidebar">
         
-        <!-- LOGO Y BOTÓN PARA ABRIR/CERRAR -->
         <div class="logo-container" onclick="toggleSidebar()">
-            <button class="toggle-btn" title="Abrir/Cerrar menú">☰</button>
+            <button class="toggle-btn" title="Abrir/Cerrar menú"></button>
             <img src="../logo_uco.png" alt="UCO Prepa Contemporánea">
         </div>
 
-        <!-- MENÚ DE NAVEGACIÓN -->
         <div class="menu-wrapper">
             <div class="menu-group">
                 <a href="inicio.html">
@@ -248,8 +300,7 @@
                     <span class="icon">📄</span>
                     <span class="nav-text">Registros</span>
                 </a>
-                <!-- Pestaña Activa en Notificaciones -->
-                <a href="notificacionesU.html" class="active">
+                <a href="notificacionesU.html">
                     <span class="icon">🔔</span>
                     <span class="nav-text">Notificaciones</span>
                 </a>
@@ -260,14 +311,13 @@
                     <span class="icon">⚙️</span>
                     <span class="nav-text">Configuración</span>
                 </a>
-                <a href="perfil.html">
+                <a href="perfil.html" class="active">
                     <span class="icon">👤</span>
                     <span class="nav-text">Perfil</span>
                 </a>
             </div>
         </div>
 
-        <!-- CERRAR SESIÓN -->
         <a id="logout-link" href="#" onclick="if(typeof cerrarSesion==='function') cerrarSesion(); else { localStorage.clear(); window.location.href='/login.html'; } return false;">
             <span class="icon">🚪</span>
             <span class="nav-text">Cerrar Sesión</span>
@@ -278,10 +328,8 @@
     <!-- 2. ÁREA PRINCIPAL -->
     <div id="main-layout" class="main-layout">
 
-        <!-- CABECERA VERDE EXPANDIDA CON CONTROL DE HORAS ARRIBA -->
+        <!-- CABECERA VERDE -->
         <header class="top-bar-header">
-            
-            <!-- FILA SUPERIOR: TÍTULO DEL SISTEMA + USUARIO -->
             <div style="display: flex; align-items: center; justify-content: space-between;">
                 <div>
                     <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">Control de Horas</h2>
@@ -298,141 +346,131 @@
                 </div>
             </div>
 
-            <!-- FILA INFERIOR: TÍTULO Y DESCRIPCIÓN DE LA SECCIÓN -->
             <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
                 <div>
-                    <h1 style="margin: 0; color: #ffffff; font-size: 1.85rem; font-weight: 800; letter-spacing: -0.5px;">Centro de Notificaciones</h1>
-                    <p style="margin: 0.35rem 0 0 0; color: rgba(255, 255, 255, 0.8); font-size: 0.92rem; font-weight: 400;">Avisos sobre el estado de tus solicitudes de reposición e incidencias.</p>
+                    <h1 style="margin: 0; color: #ffffff; font-size: 1.85rem; font-weight: 800; letter-spacing: -0.5px;">Mi Perfil</h1>
+                    <p style="margin: 0.35rem 0 0 0; color: rgba(255, 255, 255, 0.8); font-size: 0.92rem; font-weight: 400;">Gestiona tus datos personales y credenciales de acceso.</p>
                 </div>
             </div>
-
         </header>
 
         <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
-            
             <div style="max-width: 1100px; margin: 0 auto;">
-
-                <div class="card" style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); border-left: 5px solid var(--forest);">
+                
+                <div class="profile-grid">
                     
-                    <!-- Encabezado con acción -->
-                    <div style="display: flex; justify-content: flex-end; margin-bottom: 1.5rem;">
-                        <button onclick="marcarTodasLeidas()" style="background: transparent; border: 1px solid var(--forest); color: var(--forest); padding: 8px 16px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.85rem; transition: all 0.2s;" onmouseover="this.style.background='#e3efe3'" onmouseout="this.style.background='transparent'">
-                            ✓ Marcar todas como leídas
-                        </button>
-                    </div>
-
-                    <!-- Filtros rápidos -->
-                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">
-                        <button onclick="filtrarNoti('todas', this)" class="btn-filtro-noti" style="background: var(--forest); color: white; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Todas (3)</button>
-                        <button onclick="filtrarNoti('aprobada', this)" class="btn-filtro-noti" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Aprobadas</button>
-                        <button onclick="filtrarNoti('pendiente', this)" class="btn-filtro-noti" style="background: #f1f5f9; color: #475569; border: none; padding: 6px 14px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">Pendientes</button>
-                    </div>
-
-                    <!-- Lista de Notificaciones -->
-                    <div id="lista-notificaciones" style="display: flex; flex-direction: column; gap: 1rem;">
+                    <!-- TARJETA IZQUIERDA: RESUMEN DEL USUARIO -->
+                    <div style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); text-align: center; border-top: 5px solid var(--forest); height: fit-content;">
+                        <div style="width: 100px; height: 100px; background: #e2e8f0; border-radius: 50%; margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; border: 3px solid var(--gold);">
+                            👤
+                        </div>
+                        <h3 id="card-user-name" style="margin: 0; color: #1e293b; font-size: 1.1rem; font-weight: 700;">Cargando...</h3>
+                        <p style="margin: 0.25rem 0 1rem 0; color: #64748b; font-size: 0.85rem;">Empleado Activo</p>
                         
-                        <!-- NOTIFICACIÓN 1: APROBADA (NUEVA) -->
-                        <div class="item-noti aprobada" style="background: #f4f8f4; border: 1px solid #d2e3d2; border-left: 4px solid #15803d; padding: 1.25rem; border-radius: 12px; position: relative;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 1.2rem;">✅</span>
-                                    <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Solicitud Aprobada</h4>
-                                    <span style="background: var(--forest); color: white; font-size: 0.65rem; padding: 2px 6px; border-radius: 10px; font-weight: 700; text-transform: uppercase;">Nueva</span>
-                                </div>
-                                <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">Hace 2 horas</span>
-                            </div>
-                            <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
-                                Tu solicitud para el día <strong>15/10/2026</strong> por <strong>4.0 horas</strong> ha sido aprobada exitosamente por tu supervisor.
-                            </p>
-                        </div>
+                        <span style="display: inline-block; background: #f0fdf4; color: #166534; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; border: 1px solid #bbf7d0;">
+                            Sede Querétaro
+                        </span>
+                    </div>
 
-                        <!-- NOTIFICACIÓN 2: PENDIENTE -->
-                        <div class="item-noti pendiente" style="background: #fefcf8; border: 1px solid #fef3c7; border-left: 4px solid #a16207; padding: 1.25rem; border-radius: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 1.2rem;">⏳</span>
-                                    <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Solicitud Recibida</h4>
+                    <!-- TARJETA DERECHA: FORMULARIO DE EDICIÓN -->
+                    <div style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); border-left: 5px solid var(--forest);">
+                        <h3 style="margin: 0 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Información del Colaborador</h3>
+                        
+                        <form id="form-perfil" onsubmit="guardarPerfil(event)">
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Nombre Completo</label>
+                                    <input type="text" id="input-nombre" class="form-control" placeholder="Nombre completo">
                                 </div>
-                                <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">Ayer</span>
-                            </div>
-                            <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
-                                Tu solicitud de reposición para el día <strong>28/10/2026</strong> por <strong>4.0 horas</strong> está en proceso de revisión.
-                            </p>
-                        </div>
-
-                        <!-- NOTIFICACIÓN 3: AVISO GENERAL -->
-                        <div class="item-noti aprobada" style="background: #f8fafc; border: 1px solid #e2e8f0; border-left: 4px solid var(--gold); padding: 1.25rem; border-radius: 12px;">
-                            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
-                                <div style="display: flex; align-items: center; gap: 8px;">
-                                    <span style="font-size: 1.2rem;">💡</span>
-                                    <h4 style="margin: 0; color: #1f2d19; font-size: 1rem; font-weight: 700;">Acreditación de Horas Extra</h4>
+                                <div class="form-group">
+                                    <label>Correo Electrónico</label>
+                                    <input type="email" id="input-correo" class="form-control" placeholder="correo@uco.edu.mx">
                                 </div>
-                                <span style="font-size: 0.8rem; color: #64748b; font-weight: 500;">20/07/2026</span>
                             </div>
-                            <p style="margin: 0; color: #334155; font-size: 0.9rem; line-height: 1.4;">
-                                Se han acreditado <strong>8.0 horas extra</strong> a tu saldo disponible por el turno especial del fin de semana.
-                            </p>
-                        </div>
 
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Número de Empleado (Fijo)</label>
+                                    <input type="text" value="EMP-2026-882" class="form-control" readonly>
+                                </div>
+                                <div class="form-group">
+                                    <label>Área / Departamento</label>
+                                    <input type="text" value="Docencia / Prepa" class="form-control" readonly>
+                                </div>
+                            </div>
+
+                            <h3 style="margin: 1.5rem 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Seguridad</h3>
+
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                                <div class="form-group">
+                                    <label>Nueva Contraseña</label>
+                                    <input type="password" id="input-pass" class="form-control" placeholder="••••••••">
+                                </div>
+                                <div class="form-group">
+                                    <label>Confirmar Contraseña</label>
+                                    <input type="password" id="input-pass-confirm" class="form-control" placeholder="••••••••">
+                                </div>
+                            </div>
+
+                            <div style="text-align: right; margin-top: 1.5rem;">
+                                <button type="submit" class="btn-primary">Guardar Cambios</button>
+                            </div>
+                        </form>
                     </div>
 
                 </div>
 
             </div>
-
         </main>
     </div>
 
-    <!-- SCRIPT DE INTERACCIÓN Y NAVEGACIÓN -->
     <script>
         const sidebar = document.getElementById('sidebar');
         const mainLayout = document.getElementById('main-layout');
 
-        // Función para abrir/cerrar sidebar únicamente al hacer CLIC
         function toggleSidebar() {
             sidebar.classList.toggle('expanded');
             mainLayout.classList.toggle('sidebar-open');
         }
 
-        // Lógica para filtrar las notificaciones
-        function filtrarNoti(tipo, btn) {
-            document.querySelectorAll('.btn-filtro-noti').forEach(b => {
-                b.style.background = '#f1f5f9';
-                b.style.color = '#475569';
-            });
-            btn.style.background = 'var(--forest)';
-            btn.style.color = 'white';
+        function guardarPerfil(e) {
+            e.preventDefault();
+            const nombre = document.getElementById('input-nombre').value;
+            const pass = document.getElementById('input-pass').value;
+            const passConfirm = document.getElementById('input-pass-confirm').value;
 
-            const items = document.querySelectorAll('.item-noti');
-            items.forEach(item => {
-                if (tipo === 'todas') {
-                    item.style.display = 'block';
-                } else if (item.classList.contains(tipo)) {
-                    item.style.display = 'block';
-                } else {
-                    item.style.display = 'none';
-                }
-            });
+            if(pass && pass !== passConfirm) {
+                alert('Las contraseñas no coinciden.');
+                return;
+            }
+
+            // Actualizar LocalStorage
+            const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
+            let userObj = {};
+            try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(err) {}
+
+            userObj.nombre_completo = nombre;
+            localStorage.setItem('usuario', JSON.stringify(userObj));
+            
+            document.getElementById('topbar-user-name').textContent = nombre;
+            document.getElementById('card-user-name').textContent = nombre;
+
+            alert('Perfil actualizado correctamente.');
         }
 
-        function marcarTodasLeidas() {
-            const badges = document.querySelectorAll('#lista-notificaciones span');
-            badges.forEach(b => {
-                if (b.textContent === 'Nueva') b.remove();
-            });
-            alert('Todas las notificaciones han sido marcadas como leídas.');
-        }
-
-        // Cargar el nombre del usuario activo al iniciar
         (function() {
             const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
             let userObj = {};
             try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(e) {}
 
-            const nombreReal = userObj.nombre_completo || userObj.nombre || localStorage.getItem('nombre_completo') || localStorage.getItem('username') || "Empleado";
-            const elemTopbar = document.getElementById("topbar-user-name");
-            if (elemTopbar) elemTopbar.textContent = nombreReal;
+            const nombreReal = userObj.nombre_completo || userObj.nombre || localStorage.getItem('nombre_completo') || "Empleado";
+            const correoReal = userObj.email || userObj.correo || "empleado@uco.edu.mx";
+
+            document.getElementById("topbar-user-name").textContent = nombreReal;
+            document.getElementById("card-user-name").textContent = nombreReal;
+            document.getElementById("input-nombre").value = nombreReal;
+            document.getElementById("input-correo").value = correoReal;
         })();
     </script>
 </body>

@@ -144,16 +144,42 @@
     .empleados-table tbody tr:last-child {
         border-bottom: none;
     }
+.top-bar-header{
+    background:#124416;
+    color:#fff;
+    padding:25px 32px;
+    margin:-60px -60px 32px -60px;
+    box-shadow:0 4px 12px rgba(0,0,0,.12);
+}
 </style>
 
-<div class="dashboard-container">
-    <div class="dashboard-header">
-        <div>
-            <h2>Panel de Control</h2>
-            <small>Resumen de los últimos 30 días para el equipo de control.</small>
-        </div>
-        <div class="status-chip">Bienvenido</div>
+
+<header class="top-bar-header">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+        <h2 style="margin:0;color:#fff;font-size:1.4rem;font-weight:800;">
+            Control de Horas
+        </h2>
+
+        <span style="background:rgba(255,255,255,.15);
+                     padding:8px 16px;
+                     border-radius:20px;
+                     color:#fff;
+                     font-weight:600;">
+            Bienvenido
+        </span>
     </div>
+
+    <div style="margin-top:15px;">
+        <h1 style="margin:0;color:#fff;font-size:1.9rem;font-weight:800;">
+            Panel de Control
+        </h1>
+
+        <p style="margin:6px 0 0;
+                  color:rgba(255,255,255,.8);">
+            Resumen de los últimos 30 días para el equipo de control.
+        </p>
+    </div>
+</header>
 
     <div class="kpi-grid">
         <div class="kpi-card">

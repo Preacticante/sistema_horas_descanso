@@ -1,10 +1,14 @@
-<div class="card">
-    <!-- Encabezado de Notificaciones -->
+<header class="top-bar-header">
+
     <div style="margin-bottom: 2rem;">
-        <h1 style="margin-top: 0; margin-bottom: 0.5rem; color: #340C51; font-size: 1.8rem; font-weight: 700;">Notificaciones de salida</h1>
-        <p style="margin: 0; color: #475569; font-size: 0.95rem;">Aquí se muestran las solicitudes de salida pendientes para autorizar o rechazar.</p>
+        <h1 style="margin-top: 0; margin-bottom: 0.5rem; color: #ffffff; font-size: 1.8rem; font-weight: 700;">Notificaciones de salida</h1>
+        <p style="margin: 0; color: #ffffff; font-size: 0.95rem;">Aquí se muestran las solicitudes de salida pendientes para autorizar o rechazar.</p>
     </div>
 
+</header>
+
+<div class="card">
+   
     <!-- Filtro y Botón de Recargar -->
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 1.5rem; flex-wrap: wrap;">
         <h2 style="margin:0; color:#1f2d19; font-size:1.2rem;">Bandeja de solicitudes</h2>
@@ -42,3 +46,52 @@
         </table>
     </div>
 </div>
+<style>
+   /*=========================================
+  CABECERA VERDE GLOBAL
+=========================================*/
+.top-bar-header{
+    background:#124416;
+    color:#fff;
+    padding:25px 32px;
+    margin:-60px -60px 60px -60px;
+    box-shadow:0 4px 12px rgba(0,0,0,.12);
+}
+
+.top-bar-top{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+}
+
+.top-bar-title{
+    margin:0;
+    font-size:1.4rem;
+    font-weight:800;
+    color:#fff;
+}
+
+.top-bar-user{
+    background:rgba(255,255,255,.15);
+    padding:8px 16px;
+    border-radius:20px;
+    font-weight:600;
+}
+
+.top-bar-content{
+    margin-top:18px;
+}
+
+.top-bar-content h1{
+    margin:0;
+    color:#fff;
+    font-size:2rem;
+    font-weight:800;
+}
+
+.top-bar-content p{
+    margin-top:6px;
+    color:rgba(255,255,255,.85);
+    font-size:.95rem;
+}
+</style>
