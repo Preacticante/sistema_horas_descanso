@@ -8,6 +8,22 @@
     </div>
 
 </header>
+<script>
+// Helper local para usar global apiFetch si está disponible
+async function fetchApiLocal(path, options = {}) {
+    if (typeof window !== 'undefined' && window.apiFetch) return await window.apiFetch(path, options);
+    const base = (typeof window !== 'undefined' && window.API_URL) ? window.API_URL : 'http://localhost:8000';
+    const url = /^https?:\/\//.test(path) ? path : `${base}${path}`;
+    return await fetch(url, options);
+}
+
+function mostrarAlertaLocal(tipo, titulo, mensaje) {
+    if (typeof window !== 'undefined' && window.mostrarNotificacion) {
+        try { window.mostrarNotificacion(tipo, titulo, mensaje); return; } catch(e){}
+    }
+    try { alert(`${titulo}: ${mensaje}`); } catch(e) { console.warn(titulo, mensaje); }
+}
+</script>
 <div class="perfil-card">
     <style>
 
@@ -468,11 +484,11 @@
 
             // 2. Sincronizar métricas de horas desde la API de FastAPI
             try {
-                const response = await fetch(`${API_URL}/api/perfil`, {
+                const resPerfil = await fetchApiLocal(`/api/perfil`, {
                     headers: construirHeadersAuth()
                 });
-                if (response.ok) {
-                    const data = await response.json();
+                if (resPerfil && resPerfil.ok) {
+                    const data = await resPerfil.json();
                     if (data.horas_historicas !== undefined) document.getElementById('kpi-historicas').innerText = `${Number(data.horas_historicas).toFixed(0)}h`;
                     if (data.horas_consumidas !== undefined) document.getElementById('kpi-consumidas').innerText = `${Number(data.horas_consumidas).toFixed(0)}h`;
                     if (data.saldo_disponible !== undefined) document.getElementById('kpi-saldo').innerText = `${Number(data.saldo_disponible).toFixed(0)}h`;
@@ -505,13 +521,13 @@
                     }
 
                     try {
-                        const res = await fetch(`${API_URL}/api/perfil/actualizar`, {
+                        const res = await fetchApiLocal(`/api/perfil/actualizar`, {
                             method: 'POST',
                             headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
                             body: JSON.stringify({ nombre: nombreVal, correo: emailVal })
                         });
 
-                        if (res.ok) {
+                        if (res && res.ok) {
                             mostrarNotificacionPerfil('¡Perfil actualizado con éxito!');
                             document.getElementById('perfil-nombre').innerText = nombreVal;
 

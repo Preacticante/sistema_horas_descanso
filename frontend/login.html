@@ -431,6 +431,15 @@
             for (const base of API_BASES) {
                 try {
                     const resp = await fetch(`${base}${path}`, options);
+                    // Si el backend responde 401, limpiamos sesión local y redirigimos al login
+                    if (resp.status === 401) {
+                        try { sessionStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(AUTH_TOKEN_KEY); } catch(_){}
+                        // Marcar expiración para mostrar mensaje en login
+                        try { localStorage.setItem('session_expired', '1'); } catch(_){}
+                        window.location.href = '/login.html';
+                        // retornamos para evitar seguir con otros intentos
+                        return resp;
+                    }
                     if (resp.status === 404) {
                         saw404 = true;
                         continue;
@@ -447,6 +456,22 @@
             }
             throw lastNetworkError || new Error('No se pudo conectar con el servidor.');
         }
+        // Limpia tokens locales (usado por otros scripts que llaman a login.html)
+        function limpiarSesionLocal() {
+            try { sessionStorage.removeItem(AUTH_TOKEN_KEY); sessionStorage.removeItem(AUTH_USER_KEY); } catch(_){}
+            try { localStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(AUTH_USER_KEY); } catch(_){}
+        }
+
+        // Si venimos por expiración de sesión mostrar mensaje amistoso
+        (function(){
+            try {
+                const expired = new URLSearchParams(window.location.search).get('expired') || localStorage.getItem('session_expired');
+                if (expired) {
+                    mostrarAlerta('Tu sesión ha expirado. Por favor, inicia sesión de nuevo.', 'error');
+                    localStorage.removeItem('session_expired');
+                }
+            } catch (e) { /* ignore */ }
+        })();
         const AUTH_TOKEN_KEY = 'auth_token';
         const AUTH_USER_KEY = 'auth_user';
         if (sessionStorage.getItem(AUTH_TOKEN_KEY) || localStorage.getItem(AUTH_TOKEN_KEY)) {
@@ -614,7 +639,7 @@
                 guardarSesion(data.access_token, data.usuario || {}, remember);
 
                 try {
-                    const redirectResp = await fetch(`${API_URL}/api/dashboard-empleados`, {
+                    const redirectResp = await apiFetch('/api/dashboard-empleados', {
                         method: 'GET',
                         headers: {
                             'Authorization': `Bearer ${data.access_token}`,
@@ -622,8 +647,8 @@
                         },
                     });
 
-                    if (redirectResp.ok) {
-                        const lista = await redirectResp.json();
+                    if (redirectResp && redirectResp.ok) {
+                        const lista = await redirectResp.json().catch(() => []);
                         if (Array.isArray(lista) && lista.length === 0) {
                             window.location.href = '/frontend/screenUsuarios/inicio.html';
                         } else {

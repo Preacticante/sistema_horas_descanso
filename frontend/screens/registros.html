@@ -214,6 +214,14 @@
                         if (!response.ok) {
                             const error = await response.text();
                             throw new Error(`Error (${response.status}): ${error}`);
+                        const urlPath = `/api/registros/solicitudes`;
+                        const headers = {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"};
+                        const response = typeof window.apiFetch === 'function'
+                            ? await window.apiFetch(urlPath, { method: 'POST', headers, body: JSON.stringify(payload) })
+                            : await fetch(`${baseUrl}/api/registros/solicitudes`, { method: 'POST', headers, body: JSON.stringify(payload) });
+                        if (!response || !response.ok) {
+                            const error = await response.text().catch(() => 'Error');
+                            throw new Error(`Error (${response?.status || '??'}): ${error}`);
                         }
                     }
 
@@ -225,7 +233,7 @@
 
                 } catch (err) {
                     console.error("Error:", err);
-                    alert("No se pudieron guardar las solicitudes. Intenta de nuevo.");
+                    try { if (window.mostrarNotificacion) window.mostrarNotificacion('error','Registro','No se pudieron guardar las solicitudes. Intenta de nuevo.'); else alert('No se pudieron guardar las solicitudes. Intenta de nuevo.'); } catch(e){ alert('No se pudieron guardar las solicitudes. Intenta de nuevo.'); }
                 }
             });
         }
@@ -239,14 +247,12 @@
                 const token = window.obtenerTokenAuth ? window.obtenerTokenAuth() : (localStorage.getItem('auth_token') || localStorage.getItem('token') || '');
                 const baseUrl = window.API_URL || "http://localhost:8000";
 
-                const response = await fetch(`${baseUrl}/api/dashboard-empleados`, {
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    }
-                });
+                const headers = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+                const resp = typeof window.apiFetch === 'function'
+                    ? await window.apiFetch('/api/dashboard-empleados', { headers })
+                    : await fetch(`${baseUrl}/api/dashboard-empleados`, { headers });
 
-                let empleados = response.ok ? await response.json() : [];
+                let empleados = (resp && resp.ok) ? await resp.json() : [];
 
                 if (!Array.isArray(empleados) || empleados.length === 0) {
                     const userRaw = localStorage.getItem('usuario') || localStorage.getItem('user');

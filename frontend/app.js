@@ -1,5 +1,33 @@
 const API_URL = `http://172.16.6.50:8000`; // Cambia el puerto si tu backend está en otro puerto
 window.API_URL = API_URL;
+// Asegurar que exista un contenedor para notificaciones en todas las páginas
+(function ensureNotificationContainer(){
+    try {
+        if (!document) return;
+        let container = document.getElementById('notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            document.body.appendChild(container);
+        }
+
+        // Añadir estilos mínimos si no existen
+        if (!document.getElementById('notification-styles')) {
+            const style = document.createElement('style');
+            style.id = 'notification-styles';
+            style.textContent = `
+                .notification { display:flex; gap:12px; align-items:center; padding:12px 16px; border-radius:12px; box-shadow:0 10px 25px rgba(0,0,0,0.15); margin-bottom:10px; max-width:420px; }
+                .notification.success { background:#f0fdf4; border:1px solid #34d399; color:#064e3b; }
+                .notification.error { background:#fff1f2; border:1px solid #f87171; color:#7f1d1d; }
+                .notification.info { background:#eff6ff; border:1px solid #60a5fa; color:#1e3a8a; }
+                .notification .notification-icon { width:34px; height:34px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-weight:700; }
+                .notification.removing { opacity:0; transform:translateY(8px); transition: all 0.25s ease; }
+                #notification-container { position: fixed; right: 24px; bottom: 24px; z-index:9999; display:flex; flex-direction:column; align-items:flex-end; }
+            `;
+            document.head.appendChild(style);
+        }
+    } catch (e) { /* noop */ }
+})();
 let empleadosCache = [];
 let ultimoReporteData = [];
 // Throttle control for dashboard employees loading (ms)
@@ -15,7 +43,7 @@ async function fetchDashboardEmpleadosCached() {
             return window._dashboardCache.data;
         }
         const p = (async () => {
-            const resp = await window.fetch(`${API_URL}/api/dashboard-empleados`, { headers: construirHeadersAuth() });
+            const resp = await window.apiFetch('/api/dashboard-empleados', { headers: construirHeadersAuth() });
             if (!resp.ok) throw new Error(`dashboard-empleados: ${resp.status}`);
             const json = await resp.json();
             window._dashboardCache.data = json;
@@ -83,8 +111,20 @@ function getLoginUrl() {
 }
 
 function cerrarSesion() {
-    limpiarSesionAuth();
-    window.location.href = getLoginUrl();
+    // Intentar notificar al backend (opcional). Si falla, igualmente limpiar cliente.
+    const token = obtenerTokenAuth();
+    if (token) {
+        window.apiFetch(`/api/auth/logout`, {
+            method: 'POST',
+            headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
+        }).catch(() => {/* ignore errors */}).finally(() => {
+            limpiarSesionAuth();
+            window.location.href = '/login.html';
+        });
+    } else {
+        limpiarSesionAuth();
+        window.location.href = '/login.html';
+    }
 }
 
 function construirHeadersAuth(extraHeaders = {}) {
@@ -322,8 +362,8 @@ async function cargarSolicitudesNotificaciones() {
         const params = new URLSearchParams();
         if (estadoFiltro) params.set('estado', estadoFiltro);
 
-        const url = `${API_URL}/api/registros/solicitudes${params.toString() ? '?' + params.toString() : ''}`;
-        const response = await fetch(url, {
+        const urlPath = `/api/registros/solicitudes${params.toString() ? '?' + params.toString() : ''}`;
+        const response = await window.apiFetch(urlPath, {
             headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
         });
 
@@ -403,7 +443,7 @@ async function cargarEmpleados(ids = null) {
     
     try {
         const [respuesta, subordinados] = await Promise.all([
-            fetch(`${API_URL}/api/empleados${query}`, { headers: construirHeadersAuth() }),
+            window.apiFetch(`/api/empleados${query}`, { headers: construirHeadersAuth() }),
             fetchDashboardEmpleadosCached()
         ]);
 
@@ -494,8 +534,8 @@ async function cargarDropdownEmpleados() {
             // Si sigue sin haber nombre real y solo tenemos 'ds' (username), consultamos la API de perfil
             if (!nombreMostrar || nombreMostrar === localStorage.getItem('username')) {
                 try {
-                    const resPerfil = await fetch(`${baseUrl}/api/perfil`, { headers, credentials: 'include' });
-                    if (resPerfil.ok) {
+                    const resPerfil = await window.apiFetch(`/api/perfil`, { headers, credentials: 'include' });
+                    if (resPerfil && resPerfil.ok) {
                         const perfil = await resPerfil.json();
                         nombreMostrar = perfil.nombre_completo || perfil.nombre || perfil.nombres;
                         idLogueado = perfil.id || perfil.id_usuario || idLogueado;
@@ -819,7 +859,7 @@ function obtenerSiguienteIdTemporal() {
 
 async function actualizarEmpleadoEnBD(empleado) {
     try {
-        const response = await fetch(`${API_URL}/api/empleados/${empleado.id}`, {
+        const response = await window.apiFetch(`/api/empleados/${empleado.id}`, {
             method: 'PATCH',
             headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({
@@ -949,7 +989,7 @@ async function obtenerHorarioEmpleado(empleadoId) {
     if (modal) modal.style.display = 'flex';
 
     try {
-        const response = await fetch(`${API_URL}/api/empleados/${empleadoId}/horario`);
+        const response = await window.apiFetch(`/api/empleados/${empleadoId}/horario`);
         if (!response.ok) throw new Error('No se pudo cargar el horario');
 
         const horario = await response.json();
@@ -993,7 +1033,7 @@ async function cargarDashboard() {
     }
     window._loadingDashboard = true;
     try {
-        const response = await fetch(`${API_URL}/api/dashboard-resumen`, {
+        const response = await window.apiFetch(`/api/dashboard-resumen`, {
             headers: construirHeadersAuth()
         });
 
@@ -1096,8 +1136,8 @@ async function cargarDashboardEmpleados() {
 
 async function cargarEmpleadosParaRegistro() {
     try {
-        const response = await fetch(`${API_URL}/api/perfil`, { headers: construirHeadersAuth() });
-        if (!response.ok) throw new Error('No se pudo cargar el perfil');
+        const response = await window.apiFetch(`/api/perfil`, { headers: construirHeadersAuth() });
+        if (!response || !response.ok) throw new Error('No se pudo cargar el perfil');
         
         const perfil = await response.json();
         
@@ -1152,20 +1192,20 @@ function inicializarPerfil() {
             const nombre = document.getElementById('nombre')?.value.trim() || '';
             const email = document.getElementById('email')?.value.trim() || '';
 
-            if (!nombre || !email) return alert('Completa los campos');
+            if (!nombre || !email) { mostrarNotificacion('warning','Perfil','Completa los campos'); return; }
 
             try {
-                const response = await fetch(`${API_URL}/api/perfil/actualizar`, {
+                const response = await window.apiFetch(`/api/perfil/actualizar`, {
                     method: 'POST',
                     headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
                     body: JSON.stringify({ nombre, correo: email }),
                 });
 
-                if (!response.ok) throw new Error('Error al guardar');
-                alert('Perfil actualizado correctamente');
+                if (!response || !response.ok) throw new Error('Error al guardar');
+                mostrarNotificacion('success','Perfil','Perfil actualizado correctamente');
                 cargarPerfil();
             } catch (error) {
-                alert('Error al guardar perfil.');
+                mostrarNotificacion('error','Perfil','Error al guardar perfil.');
             }
         });
     }
@@ -1435,7 +1475,7 @@ async function enviarRegistroHoras(event) {
                 id_jefe_superior: idJefeSuperior
             };
 
-            const respuesta = await fetch(`${API_URL}/api/registros/solicitudes`, {
+            const respuesta = await window.apiFetch(`/api/registros/solicitudes`, {
                 method: "POST",
                 headers: construirHeadersAuth({ "Content-Type": "application/json" }),
                 body: JSON.stringify(payload),
@@ -1548,18 +1588,18 @@ window.procesarAutorizacion = async function(idSolicitud, accion) {
     if (!confirmacion) return;
 
     try {
-        const response = await fetch(`${API_URL}/api/registros/solicitudes/${idSolicitud}/estado`, {
+        const response = await window.apiFetch(`/api/registros/solicitudes/${idSolicitud}/estado`, {
             method: 'PUT', 
             headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
             body: JSON.stringify({ estado: accion }) 
         });
 
-        if (!response.ok) {
+        if (!response || !response.ok) {
             const errorData = await response.json().catch(() => ({}));
             throw new Error(errorData.detail || `Error del servidor`);
         }
 
-        alert(`La solicitud ha sido procesada con éxito.`);
+        mostrarNotificacion('success', 'Solicitud', 'La solicitud ha sido procesada con éxito.');
         if (typeof cargarSolicitudesNotificaciones === 'function') {
             await cargarSolicitudesNotificaciones();
         }
@@ -1613,8 +1653,8 @@ async function cargarReportes() {
     const fechaFin = fin.value;
 
     try {
-        const response = await fetch(`${API_URL}/api/reportes?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
-        if (!response.ok) throw new Error(`Error al cargar el reporte`);
+        const response = await window.apiFetch(`/api/reportes?fecha_inicio=${fechaInicio}&fecha_fin=${fechaFin}`);
+        if (!response || !response.ok) throw new Error(`Error al cargar el reporte`);
 
         const empleados = await response.json();
         ultimoReporteData = Array.isArray(empleados) ? empleados : [];
@@ -1677,7 +1717,7 @@ async function abrirDetalleReporte(indice) {
         }
 
         // Llamar al endpoint de detalles de salidas tempranas
-        const response = await fetch(`${API_URL}/api/empleados/${empId}/salidas-temprano`, {
+        const response = await window.apiFetch(`/api/empleados/${empId}/salidas-temprano`, {
             headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
         });
 
@@ -2013,5 +2053,31 @@ async function loadPageUsuario(pageName, element = null) {
                 </div>
             `;
         }
+    }
+}
+
+// Global API fetch wrapper: maneja base URL, 401, y muestra notificaciones de error
+window.apiFetch = async function(path, options = {}) {
+    const isAbsolute = /^https?:\/\//i.test(path);
+    const url = isAbsolute ? path : `${API_URL}${path}`;
+    try {
+        const resp = await window.fetch(url, options);
+        if (resp.status === 401) {
+            limpiarSesionAuth();
+            try { localStorage.setItem('session_expired', '1'); } catch(_){}
+            mostrarNotificacion('error', 'Sesión', 'Tu sesión ha expirado. Por favor inicia sesión de nuevo.');
+            window.location.href = '/login.html?expired=1';
+            return resp;
+        }
+        if (!resp.ok) {
+            // Try to parse JSON error message
+            let text = '';
+            try { const j = await resp.clone().json(); text = j?.detail || j?.message || j?.error || JSON.stringify(j); } catch(_) { try { text = await resp.clone().text(); } catch(_) { text = resp.statusText; } }
+            mostrarNotificacion('error', `Error ${resp.status}`, text || 'Ocurrió un error en la petición');
+        }
+        return resp;
+    } catch (err) {
+        mostrarNotificacion('error', 'Error de red', String(err));
+        throw err;
     }
 }
