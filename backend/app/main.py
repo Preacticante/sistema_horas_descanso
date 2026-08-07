@@ -672,6 +672,23 @@ def login_usuario(datos: LoginRequest):
         raise HTTPException(status_code=500, detail="No se pudo iniciar sesión.")
 
 
+@app.post("/api/auth/logout")
+def logout_usuario(user: dict = Depends(get_current_user)):
+    """Logout endpoint (stateless): verifica token y devuelve confirmación.
+
+    Nota: como los tokens son JWT sin blacklist por defecto, este endpoint
+    simplemente valida el token actual y devuelve éxito para que el cliente
+    pueda limpiar su sesión localmente.
+    """
+    try:
+        return {"status": "success", "message": "Sesión cerrada."}
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error al cerrar sesión: {e}")
+        raise HTTPException(status_code=500, detail="Error al cerrar sesión.")
+
+
 @app.post("/api/auth/password-recovery/request")
 def solicitar_recuperacion_password(datos: PasswordRecoveryRequest):
     email = (datos.email or "").strip().lower()

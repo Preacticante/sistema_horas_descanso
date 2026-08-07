@@ -145,14 +145,14 @@
 
         async function cargarConfiguracionSistema() {
             try {
-                const response = await fetch(`${API_URL}/api/configuracion`, {
-                    headers: construirHeadersAuth()
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    rellenarFormularioConfig(data);
-                    return;
-                }
+                    const resp = (typeof window !== 'undefined' && window.apiFetch)
+                        ? await window.apiFetch('/api/configuracion', { headers: construirHeadersAuth() })
+                        : await fetch(`${API_URL}/api/configuracion`, { headers: construirHeadersAuth() });
+                    if (resp && resp.ok) {
+                        const data = await resp.json();
+                        rellenarFormularioConfig(data);
+                        return;
+                    }
             } catch (err) {
                 console.warn('Conexión con servidor no disponible, cargando respaldo local:', err);
             }
@@ -184,19 +184,17 @@
                 };
 
                 try {
-                    const response = await fetch(`${API_URL}/api/configuracion`, {
-                        method: 'POST',
-                        headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
-                        body: JSON.stringify(payload)
-                    });
+                    const resp = (typeof window !== 'undefined' && window.apiFetch)
+                        ? await window.apiFetch('/api/configuracion', { method: 'POST', headers: construirHeadersAuth({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload) })
+                        : await fetch(`${API_URL}/api/configuracion`, { method: 'POST', headers: construirHeadersAuth({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload) });
 
-                    if (response.ok) {
-                        localStorage.setItem('sistema_configuracion', JSON.stringify(payload));
-                        mostrarAvisoConfig('¡Configuración guardada correctamente!');
-                    } else {
-                        const errData = await response.json().catch(() => ({}));
-                        mostrarAvisoConfig(errData.detail || 'Error al guardar la configuración.', true);
-                    }
+                        if (resp && resp.ok) {
+                            localStorage.setItem('sistema_configuracion', JSON.stringify(payload));
+                            mostrarAvisoConfig('¡Configuración guardada correctamente!');
+                        } else {
+                            const errData = await resp.json().catch(() => ({}));
+                            mostrarAvisoConfig(errData.detail || 'Error al guardar la configuración.', true);
+                        }
                 } catch (error) {
                     localStorage.setItem('sistema_configuracion', JSON.stringify(payload));
                     mostrarAvisoConfig('Configuración guardada localmente (sin conexión al servidor).');

@@ -1,5 +1,22 @@
 const API_URL = "http://172.16.6.86:8000";
 
+// Helper: usa `window.apiFetch` si está disponible, sino hace fetch normal.
+async function fetchApi(path, options = {}) {
+    if (typeof window !== 'undefined' && window.apiFetch) {
+        return await window.apiFetch(path, options);
+    }
+    const isAbsolute = /^https?:\/\//i.test(path);
+    const url = isAbsolute ? path : `${API_URL}${path}`;
+    return await fetch(url, options);
+}
+
+function mostrarAlertaLocal(tipo, titulo, mensaje) {
+    if (typeof window !== 'undefined' && window.mostrarNotificacion) {
+        try { window.mostrarNotificacion(tipo, titulo, mensaje); return; } catch(e) {}
+    }
+    try { alert(`${titulo}: ${mensaje}`); } catch(e) { console.warn(titulo, mensaje); }
+}
+
 function aplicarCambiosVisualesLocal(empleados) {
     try {
         const raw = localStorage.getItem('empleados_visual_changes');
@@ -27,8 +44,8 @@ async function obtenerDatosDashboard() {
 
     try {
         // Cargamos KPIs del dashboard resumen
-        const resumenResp = await fetch(`${API_URL}/api/dashboard-resumen`);
-        if (resumenResp.ok) {
+        const resumenResp = await fetchApi(`/api/dashboard-resumen`);
+        if (resumenResp && resumenResp.ok) {
             const resumen = await resumenResp.json();
             document.getElementById("kpi-total").textContent = `${resumen.total_horas.toFixed(2)} hrs`;
             document.getElementById("kpi-pendientes").textContent = resumen.empleados_pendientes;
@@ -37,9 +54,9 @@ async function obtenerDatosDashboard() {
         }
 
         // Hacemos la petición a la ruta de empleados con all=true
-        const respuesta = await fetch(`${API_URL}/api/empleados?all=true`);
+        const respuesta = await fetchApi(`/api/empleados?all=true`);
         
-        if (!respuesta.ok) {
+        if (!respuesta || !respuesta.ok) {
             throw new Error("No se pudo obtener la lista de empleados");
         }
 
