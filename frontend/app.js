@@ -97,6 +97,19 @@ function limpiarSesionAuth() {
     localStorage.removeItem('user');
 }
 
+function getLoginUrl() {
+    const pathname = window.location.pathname;
+    if (pathname.endsWith('/login.html')) {
+        return window.location.href;
+    }
+
+    if (pathname.includes('/frontend/')) {
+        return `${window.location.origin}/frontend/login.html`;
+    }
+
+    return `${window.location.origin}/login.html`;
+}
+
 function cerrarSesion() {
     // Intentar notificar al backend (opcional). Si falla, igualmente limpiar cliente.
     const token = obtenerTokenAuth();
@@ -1897,8 +1910,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (logoutLink) {
         logoutLink.addEventListener('click', (event) => {
             event.preventDefault();
-            limpiarSesionAuth();
-            window.location.href = 'login.html';
+            cerrarSesion();
         });
     }
 
