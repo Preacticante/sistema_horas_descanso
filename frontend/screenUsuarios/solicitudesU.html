@@ -1,0 +1,68 @@
+<main>
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:1rem; margin-bottom:1.5rem;">
+        <div>
+            <small style="display:block; color:rgba(255,255,255,0.65); text-transform:uppercase; letter-spacing:0.15em; font-weight:700;">Solicitud</small>
+            <h2 style="margin:0; font-size:2rem; color:#ffffff;">Solicitudes</h2>
+        </div>
+        <div style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.15); border-radius:999px; padding:10px 18px; color:#ffffff; font-weight:700;">
+            Estado actualizado
+        </div>
+    </div>
+
+    <div class="card-grid">
+        <div class="magic-bento-card magic-bento-card--border-glow span-full">
+            <h3>Solicitud de Reposición de Horas</h3>
+            <p style="color:rgba(255,255,255,0.78); line-height:1.6;">
+                Envía tu solicitud y revisa el estado aquí.
+            </p>
+
+            <div style="display:grid; gap:1rem; margin-top:1.5rem;">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:1rem;">
+                    <div style="padding:1rem; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);">
+                        <small style="color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.1em;">Fecha evento</small>
+                        <div style="margin-top:0.75rem; font-size:1rem; color:#fff;">25/10/2026</div>
+                    </div>
+                    <div style="padding:1rem; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);">
+                        <small style="color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.1em;">Horas a reponer</small>
+                        <div style="margin-top:0.75rem; font-size:1rem; color:#4ade80;">4.0 hrs</div>
+                    </div>
+                </div>
+
+                <div style="padding:1rem; border-radius:16px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12);">
+                    <small style="color:rgba(255,255,255,0.7); text-transform:uppercase; letter-spacing:0.1em;">Motivo</small>
+                    <p style="margin:0.75rem 0 0; color:rgba(255,255,255,0.78); line-height:1.6;">
+                        Necesité salir antes por una consulta médica y solicito reposición de horas.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="magic-bento-card magic-bento-card--border-glow span-full">
+            <h3>Historial de solicitudes</h3>
+            <table class="custom-table">
+                <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Horas</th>
+                        <th>Motivo</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>28/10/2026</td>
+                        <td>4.0 hrs</td>
+                        <td>Cita médica</td>
+                        <td><span class="badge warning">Pendiente</span></td>
+                    </tr>
+                    <tr>
+                        <td>15/10/2026</td>
+                        <td>4.0 hrs</td>
+                        <td>Salida temprana</td>
+                        <td><span class="badge success">Aprobada</span></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</main>
