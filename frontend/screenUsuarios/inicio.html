@@ -3,105 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="../styles_common.css">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob: https://cdnjs.cloudflare.com; connect-src 'self' http://127.0.0.1:5500 http://localhost:8000 http://127.0.0.1:8000 http://172.16.6.50:8000; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;">
-    <title>Control de Horas</title>
+    <title>Mi Panel - Control de Horas</title>
+
     <style>
         :root { 
-            --forest: #124416; 
-            --forest-light: #18591d;
-            --purple: #340C51; 
-            --gold: #AA7F31; 
-            --bg-gray: #f4f6f8; 
-            --text-muted: rgba(255, 255, 255, 0.7);
+            --forest: #0B290E; 
+            --white-pure: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.75);
+
+            /* Bento Glow variables (Tarjetas Blancas Translúcidas) */
+            --uco-border: rgba(255, 255, 255, 0.35);
+            --uco-card-bg: rgba(255, 255, 255, 0.12); /* Fondo blanco vidrio */
+            --uco-white-glow: rgba(255, 255, 255, 0.5); /* Glow blanco */
         }
         
         * { box-sizing: border-box; }
-        
         html, body { height: 100%; margin: 0; }
         
-        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; background: var(--bg-gray); overflow: hidden; }
-        
-        /* --- ESTILOS DE LA SIDEBAR COLAPSABLE --- */
-        .sidebar { 
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            background: #000000; 
+            color: #ffffff; 
+            overflow: hidden; 
+        }
+
+        /* --- CANVA DE FONDO FLUIDO CANONICO (DESENFOCADO) --- */
+        #fluid-canvas {
             position: fixed;
             top: 0;
             left: 0;
-            bottom: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(80px); /* Efecto de desenfoque profundo */
+            transform: scale(1.1); /* Evita bordes rectos por el blur */
+        }
+        
+        /* --- SIDEBAR --- */
+        .sidebar { 
+            position: fixed;
+            top: 0; left: 0; bottom: 0;
             width: 280px;
-            background: var(--forest);
+            background: rgba(6, 20, 7, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             color: white;
-            padding: 1.2rem 1rem;
+            padding: 1.5rem 1.2rem;
             display: flex;
             flex-direction: column;
-            overflow-x: hidden;
-            overflow-y: auto;
             z-index: 1000;
-            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
         }
 
-        /* Estado Expandido SOLO al hacer Clic */
-        .sidebar.expanded {
-            width: 280px;
-        }
-
-        /* BOTÓN DE MENÚ HAMBURGUESA Y LOGO */
-        .toggle-btn {
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 1.5rem;
-            cursor: pointer;
-            padding: 8px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: background 0.2s;
-        }
-
-        .toggle-btn:hover {
-            background: rgba(255, 255, 255, 0.15);
-        }
+        .logo-container { text-align: center; margin-bottom: 2rem; }
+        .logo-container img { width: 100%; max-width: 150px; height: auto; }
         
-        .logo-container { 
-            text-align: center; 
-            margin-bottom: 1.5rem; 
-            padding: 0.2rem 0.5rem; 
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 0.8rem;
-        }
-        
-        .logo-container img { 
-            width: 100%;
-            max-width: 160px;
-            height: auto; 
-            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
-        
-        .logo-container img:hover {
-            transform: scale(1.05);
-        }
-        
-        .menu-wrapper { 
-            flex-grow: 1; 
-            display: flex;
-            flex-direction: column;
-            gap: 1.2rem;
-        }
-        
-        .menu-group { 
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
-            padding-bottom: 1rem; 
-        }
-        
-        .menu-group:last-of-type { border-bottom: none; }
+        .menu-wrapper { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
         
         .sidebar a { 
             padding: 12px 16px; 
@@ -109,246 +67,498 @@
             text-decoration: none; 
             border-radius: 12px; 
             transition: all 0.25s ease; 
-            cursor: pointer; 
             display: flex; 
             align-items: center; 
             font-weight: 500; 
             font-size: 0.92rem; 
-            position: relative;
-            white-space: nowrap;
+            gap: 12px;
         }
         
-        .sidebar a:hover { 
-            background: rgba(255, 255, 255, 0.1); 
-            color: #ffffff; 
-            transform: translateX(4px);
-        } 
-        
+        .sidebar a:hover { background: rgba(255, 255, 255, 0.15); color: #ffffff; } 
         .sidebar a.active { 
-            background: rgba(255, 255, 255, 0.15); 
+            background: rgba(255, 255, 255, 0.25); 
             color: #ffffff; 
             font-weight: 600;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); 
-            border: 1px solid rgba(255, 255, 255, 0.2); 
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
         }
 
-        /* Indicador lateral dorado */
-        .sidebar a.active::before {
-            content: '';
-            position: absolute;
-            left: 0;
-            top: 20%;
-            height: 60%;
-            width: 4px;
-            background-color: var(--gold);
-            border-radius: 0 4px 4px 0;
-        }
-        
-        .icon { 
-            width: 22px; 
-            height: 22px; 
-            min-width: 22px;
-            margin-right: 16px; 
-            font-size: 1.2rem;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: transform 0.2s ease;
-        }
-
-        .sidebar a:hover .icon {
-            transform: scale(1.15);
-        }
-
-        /* Ocultar texto cuando está colapsado */
-        .sidebar a .nav-text {
-            display: inline;
-            opacity: 1;
-            transition: opacity 0.2s ease;
-        }
-
-        .sidebar.expanded a .nav-text {
-            display: inline;
-            opacity: 1;
-            transition: opacity 0.3s ease 0.15s;
-        }
-
+        /* Botón Cerrar Sesión en Blanco */
         #logout-link { 
-            color: var(--gold); 
-            border: 1px solid var(--gold); 
-            justify-content: flex-start; 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            text-align: center;
+            justify-content: center; 
             border-radius: 12px; 
             padding: 12px 16px; 
             text-decoration: none; 
             font-weight: 600;
             margin-top: auto;
+            background: rgba(255, 255, 255, 0.08);
             transition: all 0.3s ease;
         }
-
         #logout-link:hover {
-            background: var(--gold);
-            color: #ffffff;
-            box-shadow: 0 4px 12px rgba(170, 127, 49, 0.3);
-            transform: translateY(-2px);
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
         }
-        
-        /* --- ESTILOS DEL ÁREA DERECHA --- */
+
+        /* --- LAYOUT PRINCIPAL --- */
         .main-layout {
+            position: relative;
+            z-index: 1;
             margin-left: 280px;
             height: 100vh;
             display: flex;
             flex-direction: column;
             overflow: hidden;
-            transition: margin-left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .main-layout.sidebar-open {
-            margin-left: 280px;
-        }
-
-        /* BARRA SUPERIOR EXPANDIDA EN VERDE */
+        /* HEADER */
         .top-bar-header {
-            background-color: var(--forest);
+            background: rgba(6, 20, 7, 0.82);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
             color: white;
-            padding: 1.25rem 2.5rem 1.75rem 2.5rem;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            flex-shrink: 0;
-            z-index: 10;
+            padding: 24px 36px;
             display: flex;
-            flex-direction: column;
-            gap: 1.25rem;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-bar-header h1 { margin: 4px 0 0 0; font-size: 1.65rem; font-weight: 800; }
+        .top-bar-header p { margin: 0; color: rgba(255, 255, 255, 0.7); font-size: 0.88rem; }
+
+        /* Botón Solicitar Reposición Blanco */
+        .btn-solicitar {
+            background: #ffffff;
+            color: #050a06;
+            border: none;
+            padding: 11px 22px;
+            border-radius: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            font-size: 0.88rem;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.3);
+            transition: transform 0.2s, background-color 0.2s, box-shadow 0.2s;
+        }
+        .btn-solicitar:hover { 
+            transform: translateY(-2px); 
+            background: #f0f0f0; 
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.5);
         }
 
         .main-content { 
-            flex: 1;
-            padding: 2rem 2.5rem; 
+            flex: 1; 
+            padding: 28px 36px; 
             overflow-y: auto;
-            background-color: var(--bg-gray);
         }
+
+        /* --- BENTO GRID SYSTEM (TARJETAS BLANCAS) --- */
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .magic-bento-card {
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            position: relative;
+            padding: 1.5em;
+            border-radius: 20px;
+            border: 1px solid var(--uco-border);
+            background: var(--uco-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            color: #ffffff;
+            overflow: hidden;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+
+            --glow-x: 50%;
+            --glow-y: 50%;
+            --glow-intensity: 0;
+            --glow-radius: 250px;
+        }
+
+        .magic-bento-card:hover {
+            transform: translateY(-3px);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 
+                0 12px 30px rgba(0, 0, 0, 0.45),
+                0 0 25px var(--uco-white-glow);
+        }
+
+        .magic-bento-card--border-glow::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            padding: 1.5px;
+            background: radial-gradient(
+                var(--glow-radius) circle at var(--glow-x) var(--glow-y),
+                rgba(255, 255, 255, calc(var(--glow-intensity) * 0.95)) 0%,
+                rgba(255, 255, 255, calc(var(--glow-intensity) * 0.3)) 40%,
+                transparent 70%
+            );
+            border-radius: inherit;
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1;
+        }
+
+        .magic-bento-card--border-glow:hover::after {
+            opacity: 1;
+        }
+
+        .span-full { grid-column: 1 / -1; }
+        .span-2 { grid-column: span 2; }
+
+        @media (max-width: 1024px) {
+            .card-grid { grid-template-columns: repeat(2, 1fr); }
+            .span-2 { grid-column: span 2; }
+        }
+
+        @media (max-width: 640px) {
+            .card-grid { grid-template-columns: 1fr; }
+            .span-2, .span-full { grid-column: span 1; }
+        }
+
+        .magic-bento-card small {
+            display: block;
+            margin-bottom: 6px;
+            color: rgba(255, 255, 255, 0.85);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+        }
+
+        .magic-bento-card h3 {
+            margin-top: 0;
+            margin-bottom: 16px;
+            font-size: 1.1rem;
+            color: #ffffff;
+            font-weight: 600;
+        }
+
+        .kpi-value { font-size: 2.1rem; font-weight: 800; margin-bottom: 6px; }
+        .kpi-value.red { color: #f87171; }
+        .kpi-value.green { color: #4ade80; }
+        .kpi-value.white { color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); }
+
+        .kpi-note { color: rgba(255, 255, 255, 0.75); font-size: 0.82rem; }
+
+        .custom-table { width: 100%; border-collapse: collapse; text-align: left; }
+        .custom-table thead th {
+            padding: 12px 16px; 
+            background: rgba(255, 255, 255, 0.12); 
+            color: #ffffff; 
+            font-size: 0.82rem; 
+            font-weight: 700;
+            border-radius: 8px;
+        }
+        .custom-table td { 
+            padding: 14px 16px; 
+            color: rgba(255, 255, 255, 0.9); 
+            font-size: 0.88rem; 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); 
+        }
+
+        .badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-block;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+        .badge.success { background: rgba(34, 197, 94, 0.25); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.4); }
+        .badge.warning { background: rgba(255, 255, 255, 0.2); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 0 10px rgba(255, 255, 255, 0.3); }
+        .badge.danger { background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.4); }
+
     </style>
+    <script>
+        function navigateUsuario(page, el) {
+            try {
+                if (typeof loadPageUsuario === 'function') {
+                    return loadPageUsuario(page, el);
+                }
+            } catch (e) {}
+
+            const map = {
+                'inicio': '/frontend/screenUsuarios/inicio.html',
+                'registros': '/frontend/screenUsuarios/registrosU.html',
+                'notificaciones': '/frontend/screenUsuarios/notificacionesU.html',
+                'perfil': '/frontend/screenUsuarios/perfil.html',
+                'configuracion': '/frontend/screenUsuarios/configuracion.html'
+            };
+            const target = map[page] || `/frontend/screenUsuarios/${page}.html`;
+
+            const container = document.querySelector('.main-content');
+            if (!container) {
+                window.location.href = target;
+                return;
+            }
+
+            fetch(target, { cache: 'no-store' })
+                .then(async (res) => {
+                    if (!res.ok) throw new Error('fetch failed');
+                    const raw = await res.text();
+                    const parser = new DOMParser();
+                    const doc = parser.parseFromString(raw, 'text/html');
+                    const newContent = (doc.querySelector('main') && doc.querySelector('main').innerHTML) || doc.body.innerHTML || raw;
+                    container.innerHTML = newContent;
+
+                    try {
+                        document.querySelectorAll('.menu-wrapper a, .sidebar a').forEach(a => a.classList.remove('active'));
+                        if (el) el.classList.add('active');
+                    } catch (e) {}
+
+                    const scripts = Array.from(container.querySelectorAll('script'));
+                    for (let s of scripts) {
+                        if (s.src) {
+                            const ns = document.createElement('script');
+                            ns.src = s.src;
+                            ns.async = false;
+                            document.body.appendChild(ns);
+                            ns.remove();
+                        } else if (s.textContent && s.textContent.trim()) {
+                            try {
+                                const code = `(function(){${s.textContent}\n})();`;
+                                new Function(code)();
+                            } catch (err) { console.error('inline script error', err); }
+                        }
+                        s.remove();
+                    }
+                    initBentoGlow();
+                })
+                .catch(() => {
+                    window.location.href = target;
+                });
+        }
+
+        function initBentoGlow() {
+            document.querySelectorAll('.magic-bento-card').forEach(card => {
+                card.addEventListener('mousemove', e => {
+                    const rect = card.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+
+                    card.style.setProperty('--glow-x', `${x}px`);
+                    card.style.setProperty('--glow-y', `${y}px`);
+                    card.style.setProperty('--glow-intensity', '1');
+                });
+
+                card.addEventListener('mouseleave', () => {
+                    card.style.setProperty('--glow-intensity', '0');
+                });
+            });
+        }
+
+        document.addEventListener('DOMContentLoaded', initBentoGlow);
+    </script>
 </head>
 <body>
 
-    <!-- 1. SIDEBAR DESPLEGABLE (SOLO VÍA CLIC) -->
-    <aside id="sidebar" class="sidebar">
-        
-        <!-- LOGO Y BOTÓN PARA ABRIR/CERRAR -->
+    <!-- CANVAS ANIMADO EN 2D NATIVO (SIN LIBRERÍAS EXTERNAS) -->
+    <canvas id="fluid-canvas"></canvas>
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
         <div class="logo-container">
-            <img src="../logo_uco.png" alt="UCO Prepa Contemporánea">
+            <img src="../logo_uco.png" alt="UCO Prepa">
         </div>
 
-        <!-- MENÚ DE NAVEGACIÓN -->
         <div class="menu-wrapper">
-            <div class="menu-group">
-                <a href="#" class="active" onclick="loadPageUsuario('inicio', this); return false;">
-                    <span class="icon">📊</span>
-                    <span class="nav-text">Panel Principal</span>
-                </a>
-                <a href="#" onclick="loadPageUsuario('registros', this); return false;">
-                    <span class="icon">📄</span>
-                    <span class="nav-text">Registros</span>
-                </a>
-                <a href="#" onclick="loadPageUsuario('notificaciones', this); return false;">
-                    <span class="icon">🔔</span>
-                    <span class="nav-text">Notificaciones</span>
-                </a>
-            </div>
-
-            <div class="menu-group">
-                <a href="#" onclick="loadPageUsuario('configuracion', this); return false;">
-                    <span class="icon">⚙️</span>
-                    <span class="nav-text">Configuración</span>
-                </a>
-                <a href="#" onclick="loadPageUsuario('perfil', this); return false;">
-                    <span class="icon">👤</span>
-                    <span class="nav-text">Perfil</span>
-                </a>
-            </div>
+            <a id="nav-inicio" href="#" class="active" onclick="navigateUsuario('inicio', this); return false;">📊 <span>Mi Panel</span></a>
+            <a id="nav-registros" href="#" onclick="navigateUsuario('registros', this); return false;">📄 <span>Mis Registros</span></a>
+            <a id="nav-solicitudes" href="#" onclick="navigateUsuario('registros', this); return false;">⏳ <span>Solicitudes</span></a>
+            <a id="nav-notificaciones" href="#" onclick="navigateUsuario('notificaciones', this); return false;">🔔 <span>Notificaciones</span></a>
+            <a id="nav-perfil" href="#" onclick="navigateUsuario('perfil', this); return false;">👤 <span>Mi Perfil</span></a>
         </div>
 
-        <!-- CERRAR SESIÓN -->
-        <a id="logout-link" href="#" onclick="cerrarSesion(); return false;">
-            <span class="icon">🚪</span>
-            <span class="nav-text">Cerrar Sesión</span>
-        </a>
-
+        <a id="logout-link" href="#">Cerrar Sesión</a>
     </aside>
 
-    <!-- 2. ÁREA PRINCIPAL -->
-    <div id="main-layout" class="main-layout">
+    <!-- LAYOUT PRINCIPAL -->
+    <div class="main-layout">
 
-        <!-- CABECERA VERDE EXPANDIDA -->
+        <!-- HEADER -->
         <header class="top-bar-header">
-            
-            <!-- FILA SUPERIOR -->
-            <div style="display: flex; align-items: center; justify-content: space-between;">
-                <div>
-                    <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">Control de Horas</h2>
-                </div>
-
-                <!-- USUARIO Y SALIR -->
-                <div style="display: flex; align-items: center; gap: 1rem;">
-                    <div style="text-align: right;">
-                        <span id="topbar-user-name" style="display: block; font-size: 0.88rem; font-weight: 600; color: #ffffff;">Cargando...</span>
-                        <span style="display: block; font-size: 0.72rem; color: rgba(255, 255, 255, 0.7); font-weight: 400;">Empleado</span>
-                    </div>
-                    <a href="#" onclick="cerrarSesion(); return false;" title="Cerrar Sesión" style="color: #ffffff; text-decoration: none; font-size: 1.1rem; background: rgba(255,255,255,0.12); width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
-                        🚪
-                    </a>
-                </div>
+            <div>
+                <p>Bienvenido de nuevo</p>
+                <h1>Luis Francisco Valencia</h1>
             </div>
 
-            <!-- FILA INFERIOR: SALUDO -->
-            <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
-                <div>
-                    <h1 id="dash-emp-nombre" style="margin: 0; color: #ffffff; font-size: 1.85rem; font-weight: 800; letter-spacing: -0.5px;">¡Hola! 👋</h1>
-                    <p style="margin: 0.35rem 0 0 0; color: rgba(255, 255, 255, 0.8); font-size: 0.92rem; font-weight: 400;">Resumen de tu saldo de horas, días tomados y reposición.</p>
-                </div>
-                
-                <div style="display: flex; align-items: center; gap: 0.75rem;">
-                    <span style="background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-weight: 600; padding: 8px 16px; border-radius: 20px; font-size: 0.82rem; backdrop-filter: blur(4px);">Bienvenido</span>
-                    <button onclick="if(typeof loadPageUsuario==='function') loadPageUsuario('registros');" style="background: var(--gold); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); transition: all 0.2s;">
-                        + Solicitar Reposición
-                    </button>
-                </div>
-            </div>
-
+            <button class="btn-solicitar">+ Solicitar Reposición</button>
         </header>
 
-        <!-- CONTENIDO PRINCIPAL -->
+        <!-- CONTENIDO BENTO -->
         <main class="main-content">
-            <!-- Contenedor dinámico donde se cargan las vistas sin repetir cabeceras -->
-            <div id="dynamic-card"></div>
+            
+            <div class="card-grid">
+
+                <!-- KPI 1 -->
+                <div class="magic-bento-card magic-bento-card--border-glow">
+                    <small>Balance del Mes</small>
+                    <div class="kpi-value red">-2.25 hrs</div>
+                    <div class="kpi-note">Horas pendientes por reponer.</div>
+                </div>
+
+                <!-- KPI 2 -->
+                <div class="magic-bento-card magic-bento-card--border-glow">
+                    <small>Horas Trabajadas</small>
+                    <div class="kpi-value green">158.0 hrs</div>
+                    <div class="kpi-note">Total registrado este mes.</div>
+                </div>
+
+                <!-- KPI 3 -->
+                <div class="magic-bento-card magic-bento-card--border-glow">
+                    <small>Salidas Tempranas</small>
+                    <div class="kpi-value red">5</div>
+                    <div class="kpi-note">Incidencias acumuladas.</div>
+                </div>
+
+                <!-- KPI 4 -->
+                <div class="magic-bento-card magic-bento-card--border-glow">
+                    <small>Solicitudes Pendientes</small>
+                    <div class="kpi-value white">1</div>
+                    <div class="kpi-note">En revisión por RH.</div>
+                </div>
+
+                <!-- TARJETA BLANCA TRANSLÚCIDA GRANDE: MIS ÚLTIMOS REGISTROS -->
+                <div class="magic-bento-card magic-bento-card--border-glow span-full">
+                    <h3>Mis Últimos Registros de Asistencia</h3>
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Entrada</th>
+                                <th>Salida</th>
+                                <th>Horas Cumplidas</th>
+                                <th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Today, 07 Ago</td>
+                                <td>08:02 AM</td>
+                                <td>--:--</td>
+                                <td>--</td>
+                                <td><span class="badge success">En jornada</span></td>
+                            </tr>
+                            <tr>
+                                <td>Ayer, 06 Ago</td>
+                                <td>08:00 AM</td>
+                                <td>03:30 PM</td>
+                                <td>-1.50 hrs</td>
+                                <td><span class="badge danger">Salida Temprana</span></td>
+                            </tr>
+                            <tr>
+                                <td>05 Ago 2026</td>
+                                <td>07:55 AM</td>
+                                <td>05:00 PM</td>
+                                <td>8.00 hrs</td>
+                                <td><span class="badge success">Correcto</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- TARJETA BLANCA TRANSLÚCIDA GRANDE: MIS SOLICITUDES -->
+                <div class="magic-bento-card magic-bento-card--border-glow span-full">
+                    <h3>Estado de mis Solicitudes</h3>
+                    <table class="custom-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha Solicitud</th>
+                                <th>Motivo / Justificación</th>
+                                <th>Horas a Reponer</th>
+                                <th>Estatus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>06 Ago 2026</td>
+                                <td>Cita médica familiar</td>
+                                <td>1.50 hrs</td>
+                                <td><span class="badge warning">Pendiente de Aprobación</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+
         </main>
     </div>
 
-    <!-- SCRIPT DE INTERACTIVIDAD -->
+    <!-- SCRIPT DE ANIMACIÓN FLUIDA EN CANVAS 2D NATIVO -->
     <script>
-        (function() {
-            const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
-            let userObj = {};
-            try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(e) {}
+        const canvas = document.getElementById('fluid-canvas');
+        const ctx = canvas.getContext('2d');
 
-            const nombreReal = userObj.nombre_completo || 
-                               userObj.nombre || 
-                               localStorage.getItem('nombre_completo') || 
-                               localStorage.getItem('username') || 
-                               "Empleado";
+        function resize() {
+            canvas.width = window.innerWidth / 2;  // Baja resolución para optimizar y suavizar el blur
+            canvas.height = window.innerHeight / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
-            const elemNombre = document.getElementById("dash-emp-nombre");
-            const elemTopbar = document.getElementById("topbar-user-name");
-            
-            if (elemNombre) elemNombre.textContent = `¡Hola, ${nombreReal}! 👋`;
-            if (elemTopbar) elemTopbar.textContent = nombreReal;
-        })();
-    </script>
-    <script src="../app.js"></script>
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof loadPageUsuario === 'function') {
-                loadPageUsuario('inicio');
-            }
-        });
+        // Configuración de las "orbes" de color que crean la textura orgánica
+        const blobs = [
+            { x: 0.2, y: 0.3, r: 0.4, vx: 0.0015, vy: 0.001, color: '#2d6a37' },
+            { x: 0.8, y: 0.7, r: 0.5, vx: -0.001, vy: -0.0012, color: '#1a4323' },
+            { x: 0.5, y: 0.2, r: 0.35, vx: 0.0008, vy: 0.0015, color: '#3f8a4e' },
+            { x: 0.3, y: 0.8, r: 0.45, vx: -0.0012, vy: 0.0008, color: '#0f2913' },
+            { x: 0.7, y: 0.4, r: 0.4, vx: 0.001, vy: -0.0014, color: '#25582e' }
+        ];
+
+        function animate() {
+            // Fondo base totalmente negro
+            ctx.fillStyle = '#050a06';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            // Dibujar cada mancha de color
+            blobs.forEach(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+
+                // Rebotar en los bordes
+                if (b.x < 0.1 || b.x > 0.9) b.vx *= -1;
+                if (b.y < 0.1 || b.y > 0.9) b.vy *= -1;
+
+                const bx = b.x * w;
+                const by = b.y * h;
+                const radius = b.r * Math.min(w, h);
+
+                const grad = ctx.createRadialGradient(bx, by, 0, bx, by, radius);
+                grad.addColorStop(0, b.color);
+                grad.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(bx, by, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
     </script>
 </body>
 </html>

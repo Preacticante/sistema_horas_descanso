@@ -1,93 +1,70 @@
-<!-- 📌 CONTENIDO DE perfil.html (Limpio para inyección dinámica) -->
-<div style="max-width: 1100px; margin: 0 auto;">
+<div class="magic-bento-card">
+    <h3>Mi Perfil</h3>
     
-    <div class="profile-grid">
-        
-        <!-- TARJETA IZQUIERDA: RESUMEN DEL USUARIO -->
-        <div style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); text-align: center; border-top: 5px solid var(--forest, #124416); height: fit-content;">
-            <div style="width: 100px; height: 100px; background: #e2e8f0; border-radius: 50%; margin: 0 auto 1rem auto; display: flex; align-items: center; justify-content: center; font-size: 2.8rem; border: 3px solid var(--gold, #AA7F31);">
-                👤
+    <form id="form-perfil">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 1.5rem;">
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.9rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Nombre Completo</label>
+                <input type="text" id="input-nombre" placeholder="Nombre completo" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 12px 14px; color: #ffffff; font-family: inherit; font-size: 0.9rem;">
             </div>
-            <h3 id="card-user-name" style="margin: 0; color: #1e293b; font-size: 1.1rem; font-weight: 700;">Cargando...</h3>
-            <p style="margin: 0.25rem 0 1rem 0; color: #64748b; font-size: 0.85rem;">Empleado Activo</p>
-            
-            <span style="display: inline-block; background: #f0fdf4; color: #166534; padding: 4px 12px; border-radius: 12px; font-size: 0.75rem; font-weight: 700; border: 1px solid #bbf7d0;">
-                Sede Querétaro
-            </span>
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.9rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Correo Electrónico</label>
+                <input type="email" id="input-correo" placeholder="correo@uco.edu.mx" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 12px 14px; color: #ffffff; font-family: inherit; font-size: 0.9rem;">
+            </div>
         </div>
 
-        <!-- TARJETA DERECHA: FORMULARIO DE EDICIÓN -->
-        <div style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); border-left: 5px solid var(--forest, #124416);">
-            <h3 style="margin: 0 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Información del Colaborador</h3>
-            
-            <form id="form-perfil">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label>Nombre Completo</label>
-                        <input type="text" id="input-nombre" class="form-control" placeholder="Nombre completo">
-                    </div>
-                    <div class="form-group">
-                        <label>Correo Electrónico</label>
-                        <input type="email" id="input-correo" class="form-control" placeholder="correo@uco.edu.mx">
-                    </div>
-                </div>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label>Número de Empleado (Fijo)</label>
-                        <input type="text" value="EMP-2026-882" class="form-control" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label>Área / Departamento</label>
-                        <input type="text" value="Docencia / Prepa" class="form-control" readonly>
-                    </div>
-                </div>
-
-                <h3 style="margin: 1.5rem 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Seguridad</h3>
-
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-                    <div class="form-group">
-                        <label>Nueva Contraseña</label>
-                        <input type="password" id="input-pass" class="form-control" placeholder="••••••••">
-                    </div>
-                    <div class="form-group">
-                        <label>Confirmar Contraseña</label>
-                        <input type="password" id="input-pass-confirm" class="form-control" placeholder="••••••••">
-                    </div>
-                </div>
-
-                <div style="text-align: right; margin-top: 1.5rem;">
-                    <button type="submit" class="btn-primary">Guardar Cambios</button>
-                </div>
-            </form>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.9rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Número de Empleado</label>
+                <input type="text" value="EMP-2026-882" readonly style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; padding: 12px 14px; color: rgba(255, 255, 255, 0.6); font-family: inherit; font-size: 0.9rem;">
+            </div>
+            <div style="display: flex; flex-direction: column;">
+                <label style="font-size: 0.9rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Departamento</label>
+                <input type="text" value="Docencia / Prepa" readonly style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.15); border-radius: 10px; padding: 12px 14px; color: rgba(255, 255, 255, 0.6); font-family: inherit; font-size: 0.9rem;">
+            </div>
         </div>
 
-    </div>
+        <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 2rem; margin-bottom: 1.5rem;">
+            <h4 style="margin: 0 0 1.5rem 0; color: rgba(255, 255, 255, 0.9); font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Cambiar Contraseña</h4>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+                <div style="display: flex; flex-direction: column;">
+                    <label style="font-size: 0.9rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Nueva Contraseña</label>
+                    <input type="password" id="input-pass" placeholder="••••••••" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 12px 14px; color: #ffffff; font-family: inherit; font-size: 0.9rem;">
+                </div>
+                <div style="display: flex; flex-direction: column;">
+                    <label style="font-size: 0.9rem; font-weight: 700; color: rgba(255, 255, 255, 0.9); margin-bottom: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px;">Confirmar Contraseña</label>
+                    <input type="password" id="input-pass-confirm" placeholder="••••••••" style="background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 10px; padding: 12px 14px; color: #ffffff; font-family: inherit; font-size: 0.9rem;">
+                </div>
+            </div>
+        </div>
 
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="button" style="flex: 1; padding: 12px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: #ffffff; font-size: 0.9rem;" onclick="navigateUsuario('inicio', null)">
+                Cancelar
+            </button>
+            <button type="submit" style="flex: 2; padding: 12px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; background: #4ade80; border: none; color: #000000; font-size: 0.9rem;">
+                Guardar Cambios
+            </button>
+        </div>
+    </form>
 </div>
 
-<!-- ⚡ SCRIPT ENCAPSULADO Y AUTOCONTENIDO -->
 <script>
     (function() {
-        // 1. Cargar datos iniciales del usuario
         const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
         let userObj = {};
         try { userObj = rawUser ? JSON.parse(rawUser) : {}; } catch(e) {}
 
-        const nombreReal = userObj.nombre_completo || userObj.nombre || localStorage.getItem('nombre_completo') || "Empleado";
+        const nombreReal = userObj.nombre_completo || userObj.nombre || "Empleado";
         const correoReal = userObj.email || userObj.correo || "empleado@uco.edu.mx";
 
-        const topbarName = document.getElementById("topbar-user-name");
-        const cardName = document.getElementById("card-user-name");
         const inputNombre = document.getElementById("input-nombre");
         const inputCorreo = document.getElementById("input-correo");
 
-        if (topbarName) topbarName.textContent = nombreReal;
-        if (cardName) cardName.textContent = nombreReal;
         if (inputNombre) inputNombre.value = nombreReal;
         if (inputCorreo) inputCorreo.value = correoReal;
 
-        // 2. Manejar el envío del formulario mediante EventListener
         const formPerfil = document.getElementById('form-perfil');
         if (formPerfil) {
             formPerfil.addEventListener('submit', function(e) {
@@ -104,10 +81,6 @@
 
                 userObj.nombre_completo = nombre;
                 localStorage.setItem('usuario', JSON.stringify(userObj));
-                
-                if (topbarName) topbarName.textContent = nombre;
-                if (cardName) cardName.textContent = nombre;
-
                 alert('Perfil actualizado correctamente.');
             });
         }

@@ -1,73 +1,70 @@
-<!-- 📌 CONTENIDO DE configuracion.html (Limpio para inyección dinámica) -->
-<div style="max-width: 1100px; margin: 0 auto;">
-
-    <div style="background: white; padding: 2rem; border-radius: 18px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.03); border-left: 5px solid var(--forest, #124416);">
+<div class="magic-bento-card">
+    <h3>Configuración</h3>
+    
+    <div style="border-bottom: 1px solid rgba(255, 255, 255, 0.1); padding-bottom: 1.5rem; margin-bottom: 1.5rem;">
+        <h4 style="margin: 0 0 1rem 0; color: rgba(255, 255, 255, 0.9); font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Alertas y Notificaciones</h4>
         
-        <!-- SECCIÓN: NOTIFICACIONES -->
-        <h3 style="margin: 0 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Alertas y Notificaciones</h3>
-        
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
             <div>
-                <strong style="display: block; color: #334155; font-size: 0.95rem;">Notificaciones por Correo</strong>
-                <span style="font-size: 0.82rem; color: #64748b;">Recibir aviso inmediato cuando se apruebe o rechace una solicitud.</span>
+                <strong style="display: block; color: rgba(255, 255, 255, 0.9); font-size: 0.95rem;">Notificaciones por Correo</strong>
+                <span style="font-size: 0.82rem; color: rgba(255, 255, 255, 0.6);">Recibir aviso inmediato cuando se apruebe o rechace.</span>
             </div>
-            <label class="switch">
-                <input type="checkbox" id="check-noti-correo" checked>
-                <span class="slider"></span>
+            <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                <input type="checkbox" id="check-noti-correo" checked style="opacity: 0; width: 0; height: 0;">
+                <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4ade80; border-radius: 24px; transition: 0.3s;"></span>
             </label>
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0;">
             <div>
-                <strong style="display: block; color: #334155; font-size: 0.95rem;">Resumen Semanal</strong>
-                <span style="font-size: 0.82rem; color: #64748b;">Envío de reporte semanal con el saldo de horas acumuladas.</span>
+                <strong style="display: block; color: rgba(255, 255, 255, 0.9); font-size: 0.95rem;">Resumen Semanal</strong>
+                <span style="font-size: 0.82rem; color: rgba(255, 255, 255, 0.6);">Envío de reporte semanal con horas acumuladas.</span>
             </div>
-            <label class="switch">
-                <input type="checkbox" id="check-resumen-semanal">
-                <span class="slider"></span>
+            <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                <input type="checkbox" id="check-resumen-semanal" style="opacity: 0; width: 0; height: 0;">
+                <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255, 255, 255, 0.2); border-radius: 24px; transition: 0.3s;"></span>
             </label>
         </div>
+    </div>
 
-        <!-- SECCIÓN: INTERFAZ -->
-        <h3 style="margin: 2rem 0 1.25rem 0; color: #1f2d19; font-size: 1.1rem; font-weight: 700; border-bottom: 1px solid #edf2f7; padding-bottom: 0.75rem;">Preferencias de Aplicación</h3>
+    <div style="padding-bottom: 1.5rem;">
+        <h4 style="margin: 0 0 1rem 0; color: rgba(255, 255, 255, 0.9); font-size: 0.95rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Preferencias de Aplicación</h4>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0; border-bottom: 1px solid #f1f5f9;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px solid rgba(255, 255, 255, 0.08);">
             <div>
-                <strong style="display: block; color: #334155; font-size: 0.95rem;">Idioma del Sistema</strong>
-                <span style="font-size: 0.82rem; color: #64748b;">Elige el idioma con el que deseas visualizar la interfaz.</span>
+                <strong style="display: block; color: rgba(255, 255, 255, 0.9); font-size: 0.95rem;">Idioma del Sistema</strong>
+                <span style="font-size: 0.82rem; color: rgba(255, 255, 255, 0.6);">Elige el idioma para visualizar la interfaz.</span>
             </div>
-            <select id="select-idioma" style="padding: 6px 12px; border-radius: 8px; border: 1px solid #cbd5e1; font-size: 0.88rem; outline: none; background: #ffffff;">
-                <option value="es">Español (MX)</option>
-                <option value="en">English</option>
+            <select id="select-idioma" style="padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.2); font-size: 0.88rem; background: rgba(255, 255, 255, 0.08); color: #ffffff; outline: none; cursor: pointer;">
+                <option value="es" style="background: #050a06; color: #ffffff;">Español (MX)</option>
+                <option value="en" style="background: #050a06; color: #ffffff;">English</option>
             </select>
         </div>
 
-        <div style="display: flex; align-items: center; justify-content: space-between; padding: 1rem 0;">
+        <div style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem 0;">
             <div>
-                <strong style="display: block; color: #334155; font-size: 0.95rem;">Confirmaciones al Guardar</strong>
-                <span style="font-size: 0.82rem; color: #64748b;">Mostrar alerta de confirmación al registrar una nueva reposición.</span>
+                <strong style="display: block; color: rgba(255, 255, 255, 0.9); font-size: 0.95rem;">Confirmaciones al Guardar</strong>
+                <span style="font-size: 0.82rem; color: rgba(255, 255, 255, 0.6);">Mostrar alerta de confirmación al registrar.</span>
             </div>
-            <label class="switch">
-                <input type="checkbox" id="check-confirmaciones" checked>
-                <span class="slider"></span>
+            <label class="switch" style="position: relative; display: inline-block; width: 50px; height: 24px;">
+                <input type="checkbox" id="check-confirmaciones" checked style="opacity: 0; width: 0; height: 0;">
+                <span class="slider" style="position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #4ade80; border-radius: 24px; transition: 0.3s;"></span>
             </label>
         </div>
-
-        <!-- BOTÓN ACCIÓN -->
-        <div style="text-align: right; margin-top: 2rem;">
-            <button id="btn-guardar-config" class="btn-primary" style="background: var(--forest, #124416); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; transition: background 0.2s;">
-                Guardar Configuración
-            </button>
-        </div>
-
     </div>
 
+    <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+        <button type="button" style="flex: 1; padding: 12px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(255, 255, 255, 0.3); color: #ffffff; font-size: 0.9rem;" onclick="navigateUsuario('inicio', null)">
+            Cancelar
+        </button>
+        <button id="btn-guardar-config" type="button" style="flex: 2; padding: 12px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; background: #4ade80; border: none; color: #000000; font-size: 0.9rem;">
+            Guardar Configuración
+        </button>
+    </div>
 </div>
 
-<!-- ⚡ LÓGICA DE CONFIGURACIÓN ENCAPSULADA -->
 <script>
     (function() {
-        // Cargar preferencias guardadas si existen en localStorage
         const configGuardada = JSON.parse(localStorage.getItem('user_config') || '{}');
         
         const checkCorreo = document.getElementById('check-noti-correo');
@@ -81,7 +78,23 @@
         if (configGuardada.idioma && selectIdioma) selectIdioma.value = configGuardada.idioma;
         if (configGuardada.confirmaciones !== undefined && checkConfirm) checkConfirm.checked = configGuardada.confirmaciones;
 
-        // Listener para guardar cambios sin ensuciar el scope global
+        // Actualizar color del slider cuando cambia el checkbox
+        const updateSliders = () => {
+            const sliders = document.querySelectorAll('.slider');
+            const checkboxes = [checkCorreo, checkConfirm];
+            checkboxes.forEach((cb, i) => {
+                if (cb && cb.checked) {
+                    sliders[i]?.style.setProperty('background-color', '#4ade80');
+                } else {
+                    sliders[i]?.style.setProperty('background-color', 'rgba(255, 255, 255, 0.2)');
+                }
+            });
+        };
+
+        [checkCorreo, checkResumen, checkConfirm].forEach(cb => {
+            if (cb) cb.addEventListener('change', updateSliders);
+        });
+
         if (btnGuardar) {
             btnGuardar.addEventListener('click', function() {
                 const nuevaConfig = {
@@ -92,8 +105,10 @@
                 };
 
                 localStorage.setItem('user_config', JSON.stringify(nuevaConfig));
-                alert('Las preferencias de configuración han sido guardadas correctamente.');
+                alert('Configuración guardada correctamente.');
             });
         }
+
+        updateSliders();
     })();
 </script>

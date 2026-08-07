@@ -1,22 +1,13 @@
-
 <header class="top-bar-header">
-
     <div class="top-bar-top">
-
         <span class="top-bar-user">
             Bienvenido
         </span>
-
     </div>
-
     <div class="top-bar-content">
-
         <h1>Registros</h1>
-
         <p>Consulta el historial completo de registros de horas</p>
-
     </div>
-
 </header>
 
 <div class="card" style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
@@ -75,11 +66,10 @@
 
 <script>
 (function() {
-    // Forzamos la ejecución justo después de que el DOM reciba el HTML
     setTimeout(async function() {
         
         // -------------------------------------------------------------
-        // 1. RENDERIZADOR DEL CALENDARIO
+        // 1. RENDERIZADOR DEL CALENDARIO (SELECCIÓN MÚLTIPLE CORREGIDA)
         // -------------------------------------------------------------
         const calendarContainer = document.getElementById("reg-calendar-container");
         const fechasText = document.getElementById("reg-fechas-seleccionadas");
@@ -90,7 +80,7 @@
         }
 
         let currentDate = new Date();
-        let selectedDates = [];
+        let selectedDates = []; // Mantiene las fechas acumuladas
 
         window.renderCalendarApp = function() {
             const year = currentDate.getFullYear();
@@ -123,8 +113,8 @@
                 const isSelected = selectedDates.includes(dateStr);
 
                 const style = isSelected
-                    ? "background: #2f582f; color: white; border-radius: 8px; font-weight: bold; cursor: pointer; padding: 10px 0; border: 1px solid #2f582f;"
-                    : "background: #f8faf8; color: #1f2d19; border-radius: 8px; cursor: pointer; padding: 10px 0; border: 1px solid #e0e0e0;";
+                    ? "background: #2f582f; color: white; border-radius: 8px; font-weight: bold; cursor: pointer; padding: 10px 0; border: 1px solid #2f582f; transition: all 0.2s;"
+                    : "background: #f8faf8; color: #1f2d19; border-radius: 8px; cursor: pointer; padding: 10px 0; border: 1px solid #e0e0e0; transition: all 0.2s;";
 
                 html += `<div class="cal-day-item" data-date="${dateStr}" style="${style}">${day}</div>`;
             }
@@ -132,43 +122,50 @@
             html += `</div>`;
             calendarContainer.innerHTML = html;
 
-            // Eventos botones mes
+            // Navegación de meses
             document.getElementById("prev-month-btn").onclick = (e) => {
                 e.preventDefault();
                 currentDate.setMonth(currentDate.getMonth() - 1);
                 window.renderCalendarApp();
             };
+            
             document.getElementById("next-month-btn").onclick = (e) => {
                 e.preventDefault();
                 currentDate.setMonth(currentDate.getMonth() + 1);
                 window.renderCalendarApp();
             };
 
-            // Eventos clics en días
+            // Evento selección/deselección de casillas
             document.querySelectorAll(".cal-day-item").forEach(el => {
-                el.onclick = function() {
+                el.onclick = function(e) {
+                    e.preventDefault();
                     const date = this.getAttribute("data-date");
+                    
                     if (selectedDates.includes(date)) {
                         selectedDates = selectedDates.filter(d => d !== date);
                     } else {
                         selectedDates.push(date);
                     }
-                    selectedDates.sort();
                     
+                    selectedDates.sort();
+
                     if (fechasText) {
                         fechasText.innerHTML = selectedDates.length === 0 
                             ? "No hay fechas seleccionadas." 
                             : `<strong>Fechas seleccionadas (${selectedDates.length}):</strong> ${selectedDates.join(', ')}`;
                     }
+
                     window.renderCalendarApp();
                 };
             });
         };
 
-        // Render inicial del calendario
+        // Render inicial
         window.renderCalendarApp();
 
-        // Manejador del formulario para validar y enviar fechas
+        // -------------------------------------------------------------
+        // 2. ENVÍO DE FORMULARIO
+        // -------------------------------------------------------------
         const form = document.getElementById("registroForm");
         if (form) {
             form.addEventListener("submit", async (e) => {
@@ -182,12 +179,13 @@
                 const motivo = document.getElementById("reg-motivo").value;
                 const jefeDirecto = document.getElementById("reg-jefe-directo").value || null;
                 const jefeSuperior = document.getElementById("reg-jefe-superior").value || null;
+                
                 if (!empleadoId || !horas || !motivo) {
                     alert("Completa todos los campos requeridos.");
                     return;
                 }
+
                 try {
-                    // Obtener token usando la función global de app.js
                     const token = window.obtenerTokenAuth ? window.obtenerTokenAuth() : (localStorage.getItem('auth_token') || localStorage.getItem('token') || '');
                     if (!token) {
                         alert("Sesión expirada. Por favor, vuelve a iniciar sesión.");
@@ -195,6 +193,8 @@
                         return;
                     }
                     const baseUrl = window.API_URL || "http://localhost:8000";
+
+                    // Crear petición por cada fecha seleccionada
                     for (const fecha of selectedDates) {
                         const payload = {
                             id_empleado: parseInt(empleadoId),
@@ -204,21 +204,25 @@
                             id_jefe_directo: jefeDirecto ? parseInt(jefeDirecto) : null,
                             id_jefe_superior: jefeSuperior ? parseInt(jefeSuperior) : null
                         };
+
                         const response = await fetch(`${baseUrl}/api/registros/solicitudes`, {
                             method: "POST",
                             headers: {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"},
                             body: JSON.stringify(payload)
                         });
+
                         if (!response.ok) {
                             const error = await response.text();
                             throw new Error(`Error (${response.status}): ${error}`);
                         }
                     }
+
                     alert(`¡Se crearon ${selectedDates.length} solicitud(es) exitosamente!`);
                     form.reset();
                     selectedDates = [];
                     window.renderCalendarApp();
                     if (fechasText) fechasText.innerHTML = "No hay fechas seleccionadas.";
+
                 } catch (err) {
                     console.error("Error:", err);
                     alert("No se pudieron guardar las solicitudes. Intenta de nuevo.");
@@ -227,7 +231,7 @@
         }
 
         // -------------------------------------------------------------
-        // 2. LÓGICA DE EMPLEADOS Y DATOS
+        // 3. LÓGICA DE EMPLEADOS
         // -------------------------------------------------------------
         const select = document.getElementById("reg-empleado");
         if (select) {
@@ -271,7 +275,7 @@
             }
         }
 
-    }, 100); // 100ms de tiempo de espera para asegurar la inyección DOM
+    }, 100);
 })();
 </script>
 
