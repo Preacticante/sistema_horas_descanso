@@ -28,42 +28,22 @@
             top: 0;
             left: 0;
             bottom: 0;
-            width: 90px; /* Ancho inicial colapsado */
+            width: 280px;
             background: var(--forest);
             color: white;
-            padding: 1.2rem 0.8rem;
+            padding: 1.2rem 1rem;
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 4px 0 25px rgba(0, 0, 0, 0.15);
-            transition: width 0.35s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         /* Estado Expandido SOLO al hacer Clic */
         .sidebar.expanded {
             width: 280px;
         }
-
-        /* BARRA SUPERIOR VERDE */
-.top-bar-header {
-    background: #124416;
-    color: white;
-    padding: 1.25rem 2.5rem 1.75rem;
-    box-shadow: 0 4px 12px rgba(0,0,0,.1);
-    display: flex;
-    flex-direction: column;
-    gap: 1.25rem;
-    margin: -32px -32px 32px -32px;
-}
-
-.top-bar-header h1,
-.top-bar-header h2,
-.top-bar-header p{
-    margin:0;
-    color:#fff;
-}
 
         /* BOTÓN DE MENÚ HAMBURGUESA Y LOGO */
         .toggle-btn {
@@ -182,14 +162,14 @@
 
         /* Ocultar texto cuando está colapsado */
         .sidebar a .nav-text {
-            opacity: 0;
+            display: inline;
+            opacity: 1;
             transition: opacity 0.2s ease;
-            pointer-events: none;
         }
 
         .sidebar.expanded a .nav-text {
+            display: inline;
             opacity: 1;
-            pointer-events: auto;
             transition: opacity 0.3s ease 0.15s;
         }
 
@@ -214,7 +194,7 @@
         
         /* --- ESTILOS DEL ÁREA DERECHA --- */
         .main-layout {
-            margin-left: 90px;
+            margin-left: 280px;
             height: 100vh;
             display: flex;
             flex-direction: column;
@@ -253,8 +233,7 @@
     <aside id="sidebar" class="sidebar">
         
         <!-- LOGO Y BOTÓN PARA ABRIR/CERRAR -->
-        <div class="logo-container" onclick="toggleSidebar()">
-            <button class="toggle-btn" title="Abrir/Cerrar menú"></button>
+        <div class="logo-container">
             <img src="../logo_uco.png" alt="UCO Prepa Contemporánea">
         </div>
 
@@ -301,10 +280,8 @@
         <!-- CABECERA VERDE EXPANDIDA -->
         <header class="top-bar-header">
             
-            <!-- FILA SUPERIOR: TÍTULO "CONTROL DE HORAS" + USUARIO -->
+            <!-- FILA SUPERIOR -->
             <div style="display: flex; align-items: center; justify-content: space-between;">
-                
-                <!-- TÍTULO EN LA SECCIÓN INDICADA EN ROJO -->
                 <div>
                     <h2 style="margin: 0; font-size: 1.4rem; font-weight: 800; color: #ffffff; letter-spacing: -0.3px;">Control de Horas</h2>
                 </div>
@@ -321,7 +298,7 @@
                 </div>
             </div>
 
-            <!-- FILA INFERIOR: SALUDO Y BOTÓN DE ACCIÓN -->
+            <!-- FILA INFERIOR: SALUDO -->
             <div style="display: flex; justify-content: space-between; align-items: flex-end; flex-wrap: wrap; gap: 1rem;">
                 <div>
                     <h1 id="dash-emp-nombre" style="margin: 0; color: #ffffff; font-size: 1.85rem; font-weight: 800; letter-spacing: -0.5px;">¡Hola! 👋</h1>
@@ -330,7 +307,7 @@
                 
                 <div style="display: flex; align-items: center; gap: 0.75rem;">
                     <span style="background-color: rgba(255, 255, 255, 0.15); color: #ffffff; font-weight: 600; padding: 8px 16px; border-radius: 20px; font-size: 0.82rem; backdrop-filter: blur(4px);">Bienvenido</span>
-                    <button onclick="if(typeof loadPage==='function') loadPage('registros');" style="background: var(--gold); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); transition: all 0.2s;" onmouseover="this.style.backgroundColor='#bd8e37'; this.style.transform='translateY(-1px)';" onmouseout="this.style.backgroundColor='var(--gold)'; this.style.transform='translateY(0)';">
+                    <button onclick="if(typeof loadPageUsuario==='function') loadPageUsuario('registros');" style="background: var(--gold); color: white; border: none; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 0.88rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); transition: all 0.2s;">
                         + Solicitar Reposición
                     </button>
                 </div>
@@ -340,23 +317,13 @@
 
         <!-- CONTENIDO PRINCIPAL -->
         <main class="main-content">
-            <!-- Contenedor dinámico para inyectar componentes -->
+            <!-- Contenedor dinámico donde se cargan las vistas sin repetir cabeceras -->
             <div id="dynamic-card"></div>
         </main>
     </div>
 
-    <!-- SCRIPT DE INTERACTIVIDAD POR CLIC EXCLUSIVAMENTE -->
+    <!-- SCRIPT DE INTERACTIVIDAD -->
     <script>
-        const sidebar = document.getElementById('sidebar');
-        const mainLayout = document.getElementById('main-layout');
-
-        // Función encargada de abrir/cerrar al hacer Clic
-        function toggleSidebar() {
-            sidebar.classList.toggle('expanded');
-            mainLayout.classList.toggle('sidebar-open');
-        }
-
-        // Cargar Nombre de Usuario desde LocalStorage
         (function() {
             const rawUser = localStorage.getItem('usuario') || localStorage.getItem('user');
             let userObj = {};
@@ -377,7 +344,6 @@
     </script>
     <script src="../app.js"></script>
     <script>
-        // Cargar el componente 'inicio' automáticamente al abrir la página
         document.addEventListener('DOMContentLoaded', function() {
             if (typeof loadPageUsuario === 'function') {
                 loadPageUsuario('inicio');

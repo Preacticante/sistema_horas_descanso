@@ -45,20 +45,19 @@
             top: 0;
             left: 0;
             bottom: 0;
-            width: 90px;
+            width: 280px;
             background: var(--forest-glass);
             backdrop-filter: blur(18px);
             -webkit-backdrop-filter: blur(18px);
             border-right: 1px solid rgba(255, 255, 255, 0.12);
             color: white;
-            padding: 1.5rem 0.8rem;
+            padding: 1.5rem 1rem;
             display: flex;
             flex-direction: column;
             overflow-x: hidden;
             overflow-y: auto;
             z-index: 1000;
             box-shadow: 4px 0 25px rgba(0, 0, 0, 0.3);
-            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .sidebar.expanded { width: 280px; }
@@ -117,12 +116,14 @@
         }
 
         .sidebar a .nav-text {
-            opacity: 0;
+            display: inline;
+            opacity: 1;
             transition: opacity 0.2s ease;
-            pointer-events: none;
+            pointer-events: auto;
         }
 
         .sidebar.expanded a .nav-text {
+            display: inline;
             opacity: 1;
             pointer-events: auto;
             transition: opacity 0.3s ease 0.15s;
@@ -153,7 +154,7 @@
         .main-content { 
             position: relative;
             z-index: 10;
-            margin-left: 90px;
+            margin-left: 280px;
             padding: clamp(1rem, 2.2vw, 2rem); 
             overflow-y: auto;
             height: 100vh;
@@ -275,7 +276,7 @@
     <canvas id="silk-canvas"></canvas>
 
     <div class="sidebar" id="sidebar">
-        <div class="logo-container" onclick="toggleSidebar()" title="Haz clic para desplegar/contraer menú">
+        <div class="logo-container">
             <img src="/frontend/logo_uco.png" alt="Logo UCO">
         </div>
         
@@ -428,16 +429,6 @@
 
     <!-- CONTROL DE INTERFAZ -->
     <script>
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('content-area');
-            
-            sidebar.classList.toggle('expanded');
-            if (mainContent) {
-                mainContent.classList.toggle('sidebar-open');
-            }
-        }
-
         document.addEventListener("DOMContentLoaded", () => {
             setTimeout(() => {
                 try {

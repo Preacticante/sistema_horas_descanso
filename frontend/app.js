@@ -69,9 +69,22 @@ function limpiarSesionAuth() {
     localStorage.removeItem('user');
 }
 
+function getLoginUrl() {
+    const pathname = window.location.pathname;
+    if (pathname.endsWith('/login.html')) {
+        return window.location.href;
+    }
+
+    if (pathname.includes('/frontend/')) {
+        return `${window.location.origin}/frontend/login.html`;
+    }
+
+    return `${window.location.origin}/login.html`;
+}
+
 function cerrarSesion() {
     limpiarSesionAuth();
-    window.location.href = '/login.html';
+    window.location.href = getLoginUrl();
 }
 
 function construirHeadersAuth(extraHeaders = {}) {
@@ -1857,8 +1870,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (logoutLink) {
         logoutLink.addEventListener('click', (event) => {
             event.preventDefault();
-            limpiarSesionAuth();
-            window.location.href = 'login.html';
+            cerrarSesion();
         });
     }
 
