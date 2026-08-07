@@ -399,7 +399,19 @@ def obtener_usuario_por_login(cursor, username_or_email: str):
     login_lower = login.lower()
     print(f"\n[DEBUG] Buscando en la base de datos el correo/usuario: '{login}'")
 
-    # 1) Fuente principal del sistema actual (tblUsuarios)
+    # 1) Compatibilidad legacy (tbl_usuarios_sistema)
+    cursor.execute(
+        "SELECT TOP 1 id_usuario_sistema, nombre_completo, nombre_completo AS nombre_usuario, email, PasswordHash, PasswordSalt, rol, estatus "
+        "FROM dbo.tbl_usuarios_sistema "
+        "WHERE estatus = 1 AND (LOWER(email) = ? OR LOWER(nombre_completo) = ?)",
+        (login_lower, login_lower),
+    )
+    resultado = cursor.fetchone()
+    if resultado:
+        print(f"[DEBUG] Resultado devuelto por tbl_usuarios_sistema: {resultado}\n")
+        return resultado
+
+    # 2) Fuente principal del sistema actual (tblUsuarios)
     cursor.execute(
         "SELECT TOP 1 id, Nombre, NombreUsuario, email, PasswordHash, PasswordSalt, Rol, bActivo "
         "FROM dbo.tblUsuarios "
@@ -407,19 +419,7 @@ def obtener_usuario_por_login(cursor, username_or_email: str):
         (login_lower, login),
     )
     resultado = cursor.fetchone()
-    if resultado:
-        print(f"[DEBUG] Resultado devuelto por tblUsuarios: {resultado}\n")
-        return resultado
-
-    # 2) Compatibilidad legacy (tbl_usuarios_sistema)
-    cursor.execute(
-        "SELECT TOP 1 id_usuario_sistema, nombre_completo, email, email, PasswordHash, PasswordSalt, rol, estatus "
-        "FROM dbo.tbl_usuarios_sistema "
-        "WHERE estatus = 1 AND (LOWER(email) = ? OR LOWER(nombre_usuario) = ?)",
-        (login_lower, login_lower),
-    )
-    resultado = cursor.fetchone()
-    print(f"[DEBUG] Resultado devuelto por tablas legacy: {resultado}\n")
+    print(f"[DEBUG] Resultado devuelto por tblUsuarios: {resultado}\n")
     return resultado
 
 EMPLEADOS_DASHBOARD = {
@@ -633,8 +633,10 @@ def login_usuario(datos: LoginRequest):
         if not fila:
             raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
 
-        id_usuario, nombre, email, password_hash, password_salt, rol, activo = fila
-        nombre_usuario = nombre
+        id_usuario, nombre, nombre_usuario, email, password_hash, password_salt, rol, activo = fila
+        if password_hash is None or password_salt is None:
+            raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
+
         if not verificar_password(password_hash, password_salt, datos.password):
             raise HTTPException(status_code=401, detail="Usuario o contraseña incorrectos.")
 
