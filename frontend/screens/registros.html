@@ -69,7 +69,7 @@
     setTimeout(async function() {
         
         // -------------------------------------------------------------
-        // 1. RENDERIZADOR DEL CALENDARIO (SELECCIÓN MÚLTIPLE CORREGIDA)
+        // 1. RENDERIZADOR DEL CALENDARIO
         // -------------------------------------------------------------
         const calendarContainer = document.getElementById("reg-calendar-container");
         const fechasText = document.getElementById("reg-fechas-seleccionadas");
@@ -94,11 +94,11 @@
 
             let html = `
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <button type="button" id="prev-month-btn" style="background: #f0f4f0; border: 1px solid #c49a45; color: #2f582f; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">&lt;</button>
-                    <span style="font-weight: 700; color: #2f582f; font-size: 1.1rem;">${monthNames[month]} ${year}</span>
-                    <button type="button" id="next-month-btn" style="background: #f0f4f0; border: 1px solid #c49a45; color: #2f582f; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">&gt;</button>
+                    <button type="button" id="prev-month-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">&lt;</button>
+                    <span style="font-weight: 700; color: #ffffff; font-size: 1.1rem;">${monthNames[month]} ${year}</span>
+                    <button type="button" id="next-month-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">&gt;</button>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px; font-weight: 600; color: #64748b; margin-bottom: 8px; font-size: 0.85rem;">
+                <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 8px; font-size: 0.85rem;">
                     ${dayNames.map(d => `<div>${d}</div>`).join('')}
                 </div>
                 <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center;">
@@ -113,8 +113,8 @@
                 const isSelected = selectedDates.includes(dateStr);
 
                 const style = isSelected
-                    ? "background: #2f582f; color: white; border-radius: 8px; font-weight: bold; cursor: pointer; padding: 10px 0; border: 1px solid #2f582f; transition: all 0.2s;"
-                    : "background: #f8faf8; color: #1f2d19; border-radius: 8px; cursor: pointer; padding: 10px 0; border: 1px solid #e0e0e0; transition: all 0.2s;";
+                    ? "background: #ffffff; color: #000; border-radius: 8px; font-weight: bold; cursor: pointer; padding: 10px 0; border: 1px solid #ffffff; transition: all 0.2s;"
+                    : "background: rgba(255,255,255,0.08); color: #ffffff; border-radius: 8px; cursor: pointer; padding: 10px 0; border: 1px solid rgba(255,255,255,0.15); transition: all 0.2s;";
 
                 html += `<div class="cal-day-item" data-date="${dateStr}" style="${style}">${day}</div>`;
             }
@@ -123,19 +123,26 @@
             calendarContainer.innerHTML = html;
 
             // Navegación de meses
-            document.getElementById("prev-month-btn").onclick = (e) => {
-                e.preventDefault();
-                currentDate.setMonth(currentDate.getMonth() - 1);
-                window.renderCalendarApp();
-            };
-            
-            document.getElementById("next-month-btn").onclick = (e) => {
-                e.preventDefault();
-                currentDate.setMonth(currentDate.getMonth() + 1);
-                window.renderCalendarApp();
-            };
+            const prevBtn = document.getElementById("prev-month-btn");
+            const nextBtn = document.getElementById("next-month-btn");
 
-            // Evento selección/deselección de casillas
+            if (prevBtn) {
+                prevBtn.onclick = (e) => {
+                    e.preventDefault();
+                    currentDate.setMonth(currentDate.getMonth() - 1);
+                    window.renderCalendarApp();
+                };
+            }
+            
+            if (nextBtn) {
+                nextBtn.onclick = (e) => {
+                    e.preventDefault();
+                    currentDate.setMonth(currentDate.getMonth() + 1);
+                    window.renderCalendarApp();
+                };
+            }
+
+            // Evento selección/deselección
             document.querySelectorAll(".cal-day-item").forEach(el => {
                 el.onclick = function(e) {
                     e.preventDefault();
@@ -164,21 +171,23 @@
         window.renderCalendarApp();
 
         // -------------------------------------------------------------
-        // 2. ENVÍO DE FORMULARIO
+        // 2. ENVÍO DE FORMULARIO (CORREGIDO)
         // -------------------------------------------------------------
         const form = document.getElementById("registroForm");
         if (form) {
             form.addEventListener("submit", async (e) => {
                 e.preventDefault();
+                
                 if (selectedDates.length === 0) {
                     alert("Selecciona al menos una fecha en el calendario.");
                     return;
                 }
-                const empleadoId = document.getElementById("reg-empleado").value;
-                const horas = parseFloat(document.getElementById("reg-horas").value);
-                const motivo = document.getElementById("reg-motivo").value;
-                const jefeDirecto = document.getElementById("reg-jefe-directo").value || null;
-                const jefeSuperior = document.getElementById("reg-jefe-superior").value || null;
+
+                const empleadoId = document.getElementById("reg-empleado")?.value;
+                const horas = parseFloat(document.getElementById("reg-horas")?.value);
+                const motivo = document.getElementById("reg-motivo")?.value;
+                const jefeDirecto = document.getElementById("reg-jefe-directo")?.value || null;
+                const jefeSuperior = document.getElementById("reg-jefe-superior")?.value || null;
                 
                 if (!empleadoId || !horas || !motivo) {
                     alert("Completa todos los campos requeridos.");
@@ -192,7 +201,13 @@
                         window.location.href = '/login.html';
                         return;
                     }
+
                     const baseUrl = window.API_URL || "http://localhost:8000";
+                    const urlPath = `/api/registros/solicitudes`;
+                    const headers = { 
+                        "Authorization": `Bearer ${token}`, 
+                        "Content-Type": "application/json" 
+                    };
 
                     // Crear petición por cada fecha seleccionada
                     for (const fecha of selectedDates) {
@@ -205,23 +220,13 @@
                             id_jefe_superior: jefeSuperior ? parseInt(jefeSuperior) : null
                         };
 
-                        const response = await fetch(`${baseUrl}/api/registros/solicitudes`, {
-                            method: "POST",
-                            headers: {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"},
-                            body: JSON.stringify(payload)
-                        });
-
-                        if (!response.ok) {
-                            const error = await response.text();
-                            throw new Error(`Error (${response.status}): ${error}`);
-                        const urlPath = `/api/registros/solicitudes`;
-                        const headers = {"Authorization": `Bearer ${token}`, "Content-Type": "application/json"};
                         const response = typeof window.apiFetch === 'function'
                             ? await window.apiFetch(urlPath, { method: 'POST', headers, body: JSON.stringify(payload) })
-                            : await fetch(`${baseUrl}/api/registros/solicitudes`, { method: 'POST', headers, body: JSON.stringify(payload) });
+                            : await fetch(`${baseUrl}${urlPath}`, { method: 'POST', headers, body: JSON.stringify(payload) });
+
                         if (!response || !response.ok) {
-                            const error = await response.text().catch(() => 'Error');
-                            throw new Error(`Error (${response?.status || '??'}): ${error}`);
+                            const errorText = await response?.text().catch(() => 'Error en la solicitud');
+                            throw new Error(`Error (${response?.status || '??'}): ${errorText}`);
                         }
                     }
 
@@ -232,22 +237,26 @@
                     if (fechasText) fechasText.innerHTML = "No hay fechas seleccionadas.";
 
                 } catch (err) {
-                    console.error("Error:", err);
-                    try { if (window.mostrarNotificacion) window.mostrarNotificacion('error','Registro','No se pudieron guardar las solicitudes. Intenta de nuevo.'); else alert('No se pudieron guardar las solicitudes. Intenta de nuevo.'); } catch(e){ alert('No se pudieron guardar las solicitudes. Intenta de nuevo.'); }
+                    console.error("Error al guardar solicitudes:", err);
+                    if (window.mostrarNotificacion) {
+                        window.mostrarNotificacion('error', 'Registro', 'No se pudieron guardar las solicitudes. Intenta de nuevo.');
+                    } else {
+                        alert('No se pudieron guardar las solicitudes. Intenta de nuevo.');
+                    }
                 }
             });
         }
 
         // -------------------------------------------------------------
-        // 3. LÓGICA DE EMPLEADOS
+        // 3. LÓGICA DE CARGA DE EMPLEADOS
         // -------------------------------------------------------------
         const select = document.getElementById("reg-empleado");
         if (select) {
             try {
                 const token = window.obtenerTokenAuth ? window.obtenerTokenAuth() : (localStorage.getItem('auth_token') || localStorage.getItem('token') || '');
                 const baseUrl = window.API_URL || "http://localhost:8000";
-
                 const headers = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+
                 const resp = typeof window.apiFetch === 'function'
                     ? await window.apiFetch('/api/dashboard-empleados', { headers })
                     : await fetch(`${baseUrl}/api/dashboard-empleados`, { headers });
@@ -263,7 +272,7 @@
                     }];
                 }
 
-                select.innerHTML = '<option value="" disabled>Selecciona un empleado...</option>';
+                select.innerHTML = '<option value="" disabled selected>Selecciona un empleado...</option>';
                 empleados.forEach(emp => {
                     const id = emp.id !== undefined ? emp.id : emp.id_usuario_sistema;
                     const nombre = emp.nombre || emp.nombre_completo || "Empleado";
