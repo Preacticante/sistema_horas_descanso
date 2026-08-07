@@ -119,11 +119,11 @@ function cerrarSesion() {
             headers: construirHeadersAuth({ 'Content-Type': 'application/json' }),
         }).catch(() => {/* ignore errors */}).finally(() => {
             limpiarSesionAuth();
-            window.location.href = '/login.html';
+            window.location.href = getLoginUrl();
         });
     } else {
         limpiarSesionAuth();
-        window.location.href = '/login.html';
+        window.location.href = getLoginUrl();
     }
 }
 
@@ -2066,7 +2066,12 @@ window.apiFetch = async function(path, options = {}) {
             limpiarSesionAuth();
             try { localStorage.setItem('session_expired', '1'); } catch(_){}
             mostrarNotificacion('error', 'Sesión', 'Tu sesión ha expirado. Por favor inicia sesión de nuevo.');
-            window.location.href = '/login.html?expired=1';
+            try {
+                window.location.href = getLoginUrl() + '?expired=1';
+            } catch (e) {
+                // fallback
+                window.location.href = window.location.origin + '/login.html?expired=1';
+            }
             return resp;
         }
         if (!resp.ok) {

@@ -198,7 +198,12 @@
                     const token = window.obtenerTokenAuth ? window.obtenerTokenAuth() : (localStorage.getItem('auth_token') || localStorage.getItem('token') || '');
                     if (!token) {
                         alert("Sesión expirada. Por favor, vuelve a iniciar sesión.");
-                        window.location.href = '/login.html';
+                        if (window.getLoginUrl) {
+                            window.location.href = getLoginUrl();
+                        } else {
+                            const loginUrl = window.location.pathname.includes('/frontend/') ? `${window.location.origin}/frontend/login.html` : `${window.location.origin}/login.html`;
+                            window.location.href = loginUrl;
+                        }
                         return;
                     }
 

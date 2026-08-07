@@ -433,10 +433,12 @@
                     const resp = await fetch(`${base}${path}`, options);
                     // Si el backend responde 401, limpiamos sesión local y redirigimos al login
                     if (resp.status === 401) {
-                        try { sessionStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(AUTH_TOKEN_KEY); } catch(_){}
+                        try { sessionStorage.removeItem(AUTH_TOKEN_KEY); localStorage.removeItem(AUTH_TOKEN_KEY); } catch(_){ }
                         // Marcar expiración para mostrar mensaje en login
-                        try { localStorage.setItem('session_expired', '1'); } catch(_){}
-                        window.location.href = '/login.html';
+                        try { localStorage.setItem('session_expired', '1'); } catch(_){ }
+                        // Redirigir al login de forma robusta (si el proyecto sirve contenido desde /frontend)
+                        const loginUrl = window.location.pathname.includes('/frontend/') ? `${window.location.origin}/frontend/login.html` : `${window.location.origin}/login.html`;
+                        window.location.href = loginUrl;
                         // retornamos para evitar seguir con otros intentos
                         return resp;
                     }
