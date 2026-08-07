@@ -1,347 +1,672 @@
-<header class="top-bar-header">
-    <div class="top-bar-top">
-        <span class="top-bar-user">
-            Bienvenido
-        </span>
-    </div>
-    <div class="top-bar-content">
-        <h1>Registros</h1>
-        <p>Consulta el historial completo de registros de horas</p>
-    </div>
-</header>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitudes de Reposición - UCO</title>
 
-<div class="card" style="background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
-    <h1 style="margin-top: 0; margin-bottom: 0.5rem; color: #1f2d19; font-size: 1.8rem; font-weight: 600;">Solicitudes de reposición</h1>
-    <p style="margin-top: 0; margin-bottom: 2rem; color: #64748b;">Registra solicitudes de reposición de horas.</p>
+    <style>
+        :root { 
+            --forest: #0B290E; 
+            --white-pure: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.75);
 
-    <form id="registroForm">
-        <!-- Empleado -->
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Empleado</label>
-            <select id="reg-empleado" name="reg-empleado" required style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; font-family: 'Inter', sans-serif; cursor: pointer; box-sizing: border-box; appearance: auto;">
-                <option value="" disabled selected>Cargando empleados...</option>
-            </select>
-        </div>
-
-        <!-- Horas disponibles -->
-        <div id="horas-actuales" style="margin-bottom: 2rem; padding: 1rem; background: linear-gradient(135deg, rgba(47, 88, 47, 0.08) 0%, rgba(170, 127, 31, 0.08) 100%); border-left: 4px solid #2f582f; border-radius: 8px; font-size: 0.95rem; color: #2f582f; font-weight: 500;">
-            Horas extra disponibles: <strong style="color: #AA7F31;">0.00 hrs</strong>
-        </div>
-
-        <!-- Horas por día -->
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Horas por día</label>
-            <input type="number" id="reg-horas" step="0.5" min="0.5" required style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; font-family: 'Inter', sans-serif; box-sizing: border-box;">
-        </div>
-
-        <!-- Motivo -->
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Motivo</label>
-            <textarea id="reg-motivo" required rows="3" maxlength="500" placeholder="Describe brevemente el motivo de la reposición" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; font-family: 'Inter', sans-serif; box-sizing: border-box;"></textarea>
-        </div>
-
-        <!-- Autorizadores -->
-        <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; margin-bottom: 2rem;">
-            <div>
-                <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">ID jefe directo (opcional)</label>
-                <input type="number" id="reg-jefe-directo" min="1" placeholder="Si se omite, se toma de la jerarquía" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; box-sizing: border-box;">
-            </div>
-            <div>
-                <label style="display: block; margin-bottom: 0.75rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">ID jefe superior (opcional)</label>
-                <input type="number" id="reg-jefe-superior" min="1" placeholder="Si se omite, se toma de la jerarquía" style="width:100%; padding: 12px 14px; border-radius: 10px; border: 2px solid #e0e0e0; background: white; color: #1f2d19; font-size: 0.95rem; box-sizing: border-box;">
-            </div>
-        </div>
-
-        <!-- Calendario -->
-        <div style="margin-bottom: 2rem;">
-            <label style="display: block; margin-bottom: 1rem; color: #2f582f; font-weight: 600; font-size: 0.95rem;">Selecciona los días en el calendario</label>
-            <div id="reg-calendar-container" style="margin: 0 auto; width:100%; max-width:560px; background: white; padding: 1.5rem; border-radius: 12px; border: 1px solid #e8e8e8; box-shadow: 0 2px 8px rgba(0,0,0,0.04);"></div>
-            <div id="reg-fechas-seleccionadas" style="margin-top: 1.5rem; padding: 0.75rem 1rem; background: #f0f4f0; border-left: 4px solid #AA7F31; border-radius: 6px; font-size: 0.95rem; color: #2f582f;">No hay fechas seleccionadas.</div>
-        </div>
-
-        <!-- Botón para crear -->
-        <button type="submit" class="btn" style="background: linear-gradient(135deg, #AA7F31 0%, #8b6a2a 100%); color: white; padding: 14px 28px; font-size: 0.95rem; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; transition: all 0.3s ease; width: 100%; max-width: 260px; box-shadow: 0 4px 12px rgba(170, 127, 31, 0.3);">Crear solicitud(es)</button>
-    </form>
-</div>
-
-<script>
-(function() {
-    setTimeout(async function() {
+            /* Bento Glow variables (Tarjetas Blancas Translúcidas) */
+            --uco-border: rgba(255, 255, 255, 0.35);
+            --uco-card-bg: rgba(255, 255, 255, 0.12); /* Fondo blanco vidrio */
+            --uco-white-glow: rgba(255, 255, 255, 0.5); /* Glow blanco */
+        }
         
-        // -------------------------------------------------------------
-        // 1. RENDERIZADOR DEL CALENDARIO
-        // -------------------------------------------------------------
-        const calendarContainer = document.getElementById("reg-calendar-container");
-        const fechasText = document.getElementById("reg-fechas-seleccionadas");
-
-        if (!calendarContainer) {
-            console.error("No se encontró el contenedor #reg-calendar-container");
-            return;
+        * { 
+            box-sizing: border-box; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        html, body { 
+            width: 100%;
+            height: 100%; 
+            overflow: hidden; 
+        }
+        
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            background: #000000; 
+            color: #ffffff; 
         }
 
-        let currentDate = new Date();
-        let selectedDates = []; // Mantiene las fechas acumuladas
+        /* --- CANVA DE FONDO FLUIDO CANONICO (DESENFOCADO) --- */
+        #fluid-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(80px);
+            transform: scale(1.1);
+        }
+        
+        /* --- LAYOUT PRINCIPAL --- */
+        .app-layout {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
 
-        window.renderCalendarApp = function() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
+        /* --- SIDEBAR --- */
+        .sidebar { 
+            width: 280px;
+            background: rgba(6, 20, 7, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: white;
+            padding: 1.5rem 1.2rem;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 1000;
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+        }
 
-            const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
-            const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+        .logo-container { text-align: center; margin-bottom: 2rem; }
+        .logo-container h2 { font-size: 1.5rem; }
+        
+        .menu-wrapper { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+        
+        .sidebar .menu-item { 
+            padding: 12px 16px; 
+            color: var(--text-muted); 
+            text-decoration: none; 
+            border-radius: 12px; 
+            transition: all 0.25s ease; 
+            display: flex; 
+            align-items: center; 
+            font-weight: 500; 
+            font-size: 0.92rem; 
+            gap: 12px;
+        }
+        
+        .sidebar .menu-item:hover { background: rgba(255, 255, 255, 0.15); color: #ffffff; } 
+        .sidebar .menu-item.active { 
+            background: rgba(255, 255, 255, 0.25); 
+            color: #ffffff; 
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
 
-            const firstDayIndex = new Date(year, month, 1).getDay();
-            const totalDays = new Date(year, month + 1, 0).getDate();
+        .logout-btn, #logout-link { 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            text-align: center;
+            justify-content: center; 
+            border-radius: 12px; 
+            padding: 12px 16px; 
+            text-decoration: none; 
+            font-weight: 600;
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+            display: block;
+        }
+        
+        .logout-btn:hover, #logout-link:hover {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+            color: #ffffff;
+        }
 
-            let html = `
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                    <button type="button" id="prev-month-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">&lt;</button>
-                    <span style="font-weight: 700; color: #ffffff; font-size: 1.1rem;">${monthNames[month]} ${year}</span>
-                    <button type="button" id="next-month-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-weight: bold;">&gt;</button>
+        /* --- VISTA DASHBOARD DERECHA --- */
+        .dashboard-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER */
+        .top-bar-header {
+            background: rgba(6, 20, 7, 0.82);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            color: white;
+            padding: 24px 36px;
+        }
+
+        .top-bar-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dashboard-content { 
+            flex: 1; 
+            padding: 28px 36px; 
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2); 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+        }
+
+        /* --- TARJETA BENTO FORMULARIO --- */
+        .solicitudes-card {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding: 2.2rem;
+            border-radius: 20px;
+            border: 1px solid var(--uco-border);
+            background: var(--uco-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            color: #ffffff;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            max-width: 950px;
+            margin: 0 auto;
+        }
+
+        .solicitudes-card:hover {
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45), 0 0 20px var(--uco-white-glow);
+        }
+
+        .card-header-title {
+            margin-top: 0;
+            margin-bottom: 6px;
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .card-header-subtitle {
+            margin-top: 0;
+            margin-bottom: 2rem;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.92rem;
+        }
+
+        /* FORMULARIO Y CONTROLES GLASS */
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #ffffff;
+            font-weight: 600;
+            font-size: 0.82rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.25);
+            color: #ffffff;
+            font-size: 0.92rem;
+            font-family: inherit;
+            outline: none;
+            transition: all 0.25s ease;
+        }
+
+        .form-control:focus {
+            border-color: #ffffff;
+            background: rgba(0, 0, 0, 0.45);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+        }
+
+        .form-control::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        select.form-control option {
+            background-color: #061407;
+            color: #ffffff;
+        }
+
+        /* Banner Horas Disponibles */
+        .horas-banner {
+            margin-bottom: 1.5rem;
+            padding: 1rem 1.2rem;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-left: 4px solid #fbbf24;
+            border-radius: 12px;
+            font-size: 0.92rem;
+            color: rgba(255, 255, 255, 0.9);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .horas-banner strong {
+            color: #fbbf24;
+            font-weight: 700;
+        }
+
+        .grid-autorizadores {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1.2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        /* CALENDARIO ESTILIZADO GLASS */
+        .calendar-box {
+            margin: 0 auto;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 1.5rem;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-sizing: border-box;
+        }
+
+        .cal-day-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            user-select: none;
+        }
+
+        .fechas-status {
+            margin-top: 1rem;
+            padding: 0.8rem 1rem;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-left: 4px solid #ffffff;
+            border-radius: 10px;
+            font-size: 0.88rem;
+            color: rgba(255, 255, 255, 0.85);
+        }
+
+        /* BOTÓN PRINCIPAL ESTILO BENTO GLOW */
+        .btn-submit {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+            padding: 14px 28px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            max-width: 280px;
+            display: block;
+            margin-top: 1rem;
+        }
+
+        .btn-submit:hover {
+            background: rgba(255, 255, 255, 0.35);
+            box-shadow: 0 0 20px var(--uco-white-glow);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CANVAS DE FONDO FLUIDO -->
+    <canvas id="fluid-canvas"></canvas>
+
+    <div class="app-layout">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <h2 style="color: #ffffff; font-weight: 900; text-shadow: 0 0 10px rgba(255,255,255,0.3);">UCO PREPA</h2>
+            </div>
+            <nav class="menu-wrapper">
+                <a href="#" class="menu-item">📊 Panel Principal</a>
+                <a href="#" class="menu-item">👥 Empleados</a>
+                <a href="#" class="menu-item active">📄 Registros</a>
+                <a href="#" class="menu-item">🔔 Notificaciones</a>
+                <a href="#" class="menu-item">📊 Reportes</a>
+                <a href="#" class="menu-item" style="margin-top: 20px;">⚙️ Configuración</a>
+                <a href="#" class="menu-item">👤 Perfil</a>
+            </nav>
+            <a href="#" class="logout-btn">Cerrar Sesión</a>
+        </aside>
+
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="dashboard-container">
+            
+            <header class="top-bar-header">
+                <div class="top-bar-row">
+                    <h2 style="font-size: 1.3rem; font-weight: 800;">Registros</h2>
+                    <span class="status-badge">Bienvenido</span>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 4px; font-weight: 600; color: rgba(255,255,255,0.7); margin-bottom: 8px; font-size: 0.85rem;">
-                    ${dayNames.map(d => `<div>${d}</div>`).join('')}
+                <div style="margin-top: 16px;">
+                    <h1 style="font-size: 1.85rem; font-weight: 800;">Solicitudes de reposición</h1>
+                    <p style="margin-top: 4px; color: rgba(255,255,255,0.7); font-size: 0.92rem;">
+                        Consulta el historial completo y gestiona solicitudes de reposición de horas.
+                    </p>
                 </div>
-                <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center;">
-            `;
+            </header>
 
-            for (let i = 0; i < firstDayIndex; i++) {
-                html += `<div></div>`;
-            }
+            <div class="dashboard-content">
+                
+                <div class="solicitudes-card">
+                    <h1 class="card-header-title">Generar Solicitud</h1>
+                    <p class="card-header-subtitle">Completa los campos requeridos y selecciona los días a reponer en el calendario.</p>
 
-            for (let day = 1; day <= totalDays; day++) {
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const isSelected = selectedDates.includes(dateStr);
+                    <form id="registroForm">
+                        <!-- Empleado -->
+                        <div class="form-group">
+                            <label class="form-label" for="reg-empleado">Empleado</label>
+                            <select id="reg-empleado" name="reg-empleado" required class="form-control">
+                                <option value="" disabled selected>Cargando empleados...</option>
+                            </select>
+                        </div>
 
-                const style = isSelected
-                    ? "background: #ffffff; color: #000; border-radius: 8px; font-weight: bold; cursor: pointer; padding: 10px 0; border: 1px solid #ffffff; transition: all 0.2s;"
-                    : "background: rgba(255,255,255,0.08); color: #ffffff; border-radius: 8px; cursor: pointer; padding: 10px 0; border: 1px solid rgba(255,255,255,0.15); transition: all 0.2s;";
+                        <!-- Horas disponibles -->
+                        <div id="horas-actuales" class="horas-banner">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fbbf24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                            <span>Horas extra disponibles: <strong id="horas-count-strong">0.00 hrs</strong></span>
+                        </div>
 
-                html += `<div class="cal-day-item" data-date="${dateStr}" style="${style}">${day}</div>`;
-            }
+                        <!-- Horas por día -->
+                        <div class="form-group">
+                            <label class="form-label" for="reg-horas">Horas por día</label>
+                            <input type="number" id="reg-horas" step="0.5" min="0.5" required class="form-control" placeholder="Ej. 2.5">
+                        </div>
 
-            html += `</div>`;
-            calendarContainer.innerHTML = html;
+                        <!-- Motivo -->
+                        <div class="form-group">
+                            <label class="form-label" for="reg-motivo">Motivo</label>
+                            <textarea id="reg-motivo" required rows="3" maxlength="500" placeholder="Describe brevemente el motivo de la reposición" class="form-control"></textarea>
+                        </div>
 
-            // Navegación de meses
-            const prevBtn = document.getElementById("prev-month-btn");
-            const nextBtn = document.getElementById("next-month-btn");
+                        <!-- Autorizadores -->
+                        <div class="grid-autorizadores">
+                            <div>
+                                <label class="form-label" for="reg-jefe-directo">ID jefe directo (opcional)</label>
+                                <input type="number" id="reg-jefe-directo" min="1" placeholder="Si se omite, se toma de la jerarquía" class="form-control">
+                            </div>
+                            <div>
+                                <label class="form-label" for="reg-jefe-superior">ID jefe superior (opcional)</label>
+                                <input type="number" id="reg-jefe-superior" min="1" placeholder="Si se omite, se toma de la jerarquía" class="form-control">
+                            </div>
+                        </div>
 
-            if (prevBtn) {
-                prevBtn.onclick = (e) => {
+                        <!-- Calendario -->
+                        <div class="form-group">
+                            <label class="form-label">Selecciona los días en el calendario</label>
+                            <div id="reg-calendar-container" class="calendar-box"></div>
+                            <div id="reg-fechas-seleccionadas" class="fechas-status">No hay fechas seleccionadas.</div>
+                        </div>
+
+                        <!-- Botón para crear -->
+                        <button type="submit" class="btn-submit">Crear solicitud(es)</button>
+                    </form>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPT DEL CALENDARIO Y FORMULARIO -->
+    <script>
+    (function() {
+        setTimeout(async function() {
+            
+            const calendarContainer = document.getElementById("reg-calendar-container");
+            const fechasText = document.getElementById("reg-fechas-seleccionadas");
+
+            if (!calendarContainer) return;
+
+            let currentDate = new Date();
+            let selectedDates = []; 
+
+            window.renderCalendarApp = function() {
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth();
+
+                const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                const dayNames = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
+
+                const firstDayIndex = new Date(year, month, 1).getDay();
+                const totalDays = new Date(year, month + 1, 0).getDate();
+
+                let html = `
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.2rem;">
+                        <button type="button" id="prev-month-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: bold;">&lt;</button>
+                        <span style="font-weight: 700; color: #ffffff; font-size: 1rem;">${monthNames[month]} ${year}</span>
+                        <button type="button" id="next-month-btn" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-weight: bold;">&gt;</button>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; gap: 6px; font-weight: 600; color: rgba(255,255,255,0.6); margin-bottom: 8px; font-size: 0.78rem;">
+                        ${dayNames.map(d => `<div>${d}</div>`).join('')}
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center;">
+                `;
+
+                for (let i = 0; i < firstDayIndex; i++) {
+                    html += `<div></div>`;
+                }
+
+                for (let day = 1; day <= totalDays; day++) {
+                    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                    const isSelected = selectedDates.includes(dateStr);
+
+                    const style = isSelected
+                        ? "background: rgba(255,255,255,0.35); color: #ffffff; border-radius: 8px; font-weight: 800; cursor: pointer; padding: 8px 0; border: 1px solid #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.4);"
+                        : "background: rgba(255,255,255,0.05); color: #ffffff; border-radius: 8px; cursor: pointer; padding: 8px 0; border: 1px solid rgba(255,255,255,0.1);";
+
+                    html += `<div class="cal-day-item" data-date="${dateStr}" style="${style}">${day}</div>`;
+                }
+
+                html += `</div>`;
+                calendarContainer.innerHTML = html;
+
+                document.getElementById("prev-month-btn").onclick = (e) => {
                     e.preventDefault();
                     currentDate.setMonth(currentDate.getMonth() - 1);
                     window.renderCalendarApp();
                 };
-            }
-            
-            if (nextBtn) {
-                nextBtn.onclick = (e) => {
+                
+                document.getElementById("next-month-btn").onclick = (e) => {
                     e.preventDefault();
                     currentDate.setMonth(currentDate.getMonth() + 1);
                     window.renderCalendarApp();
                 };
-            }
 
-            // Evento selección/deselección
-            document.querySelectorAll(".cal-day-item").forEach(el => {
-                el.onclick = function(e) {
-                    e.preventDefault();
-                    const date = this.getAttribute("data-date");
-                    
-                    if (selectedDates.includes(date)) {
-                        selectedDates = selectedDates.filter(d => d !== date);
-                    } else {
-                        selectedDates.push(date);
-                    }
-                    
-                    selectedDates.sort();
-
-                    if (fechasText) {
-                        fechasText.innerHTML = selectedDates.length === 0 
-                            ? "No hay fechas seleccionadas." 
-                            : `<strong>Fechas seleccionadas (${selectedDates.length}):</strong> ${selectedDates.join(', ')}`;
-                    }
-
-                    window.renderCalendarApp();
-                };
-            });
-        };
-
-        // Render inicial
-        window.renderCalendarApp();
-
-        // -------------------------------------------------------------
-        // 2. ENVÍO DE FORMULARIO (CORREGIDO)
-        // -------------------------------------------------------------
-        const form = document.getElementById("registroForm");
-        if (form) {
-            form.addEventListener("submit", async (e) => {
-                e.preventDefault();
-                
-                if (selectedDates.length === 0) {
-                    alert("Selecciona al menos una fecha en el calendario.");
-                    return;
-                }
-
-                const empleadoId = document.getElementById("reg-empleado")?.value;
-                const horas = parseFloat(document.getElementById("reg-horas")?.value);
-                const motivo = document.getElementById("reg-motivo")?.value;
-                const jefeDirecto = document.getElementById("reg-jefe-directo")?.value || null;
-                const jefeSuperior = document.getElementById("reg-jefe-superior")?.value || null;
-                
-                if (!empleadoId || !horas || !motivo) {
-                    alert("Completa todos los campos requeridos.");
-                    return;
-                }
-
-                try {
-                    const token = window.obtenerTokenAuth ? window.obtenerTokenAuth() : (localStorage.getItem('auth_token') || localStorage.getItem('token') || '');
-                    if (!token) {
-                        alert("Sesión expirada. Por favor, vuelve a iniciar sesión.");
-                        if (window.getLoginUrl) {
-                            window.location.href = getLoginUrl();
+                document.querySelectorAll(".cal-day-item").forEach(el => {
+                    el.onclick = function(e) {
+                        e.preventDefault();
+                        const date = this.getAttribute("data-date");
+                        
+                        if (selectedDates.includes(date)) {
+                            selectedDates = selectedDates.filter(d => d !== date);
                         } else {
-                            const loginUrl = window.location.pathname.includes('/frontend/') ? `${window.location.origin}/frontend/login.html` : `${window.location.origin}/login.html`;
-                            window.location.href = loginUrl;
+                            selectedDates.push(date);
                         }
+                        
+                        selectedDates.sort();
+
+                        if (fechasText) {
+                            fechasText.innerHTML = selectedDates.length === 0 
+                                ? "No hay fechas seleccionadas." 
+                                : `<strong style="color: #ffffff;">Fechas seleccionadas (${selectedDates.length}):</strong> ${selectedDates.join(', ')}`;
+                        }
+
+                        window.renderCalendarApp();
+                    };
+                });
+            };
+
+            window.renderCalendarApp();
+
+            // Submit Form
+            const form = document.getElementById("registroForm");
+            if (form) {
+                form.addEventListener("submit", async (e) => {
+                    e.preventDefault();
+                    if (selectedDates.length === 0) {
+                        alert("Selecciona al menos una fecha en el calendario.");
                         return;
                     }
 
-                    const baseUrl = window.API_URL || "http://localhost:8000";
-                    const urlPath = `/api/registros/solicitudes`;
-                    const headers = { 
-                        "Authorization": `Bearer ${token}`, 
-                        "Content-Type": "application/json" 
-                    };
+                    const empleadoId = document.getElementById("reg-empleado")?.value;
+                    const horas = parseFloat(document.getElementById("reg-horas")?.value);
+                    const motivo = document.getElementById("reg-motivo")?.value;
+                    const jefeDirecto = document.getElementById("reg-jefe-directo")?.value || null;
+                    const jefeSuperior = document.getElementById("reg-jefe-superior")?.value || null;
 
-                    // Crear petición por cada fecha seleccionada
-                    for (const fecha of selectedDates) {
-                        const payload = {
-                            id_empleado: parseInt(empleadoId),
-                            fecha: fecha,
-                            horas_solicitadas: horas,
-                            motivo: motivo,
-                            id_jefe_directo: jefeDirecto ? parseInt(jefeDirecto) : null,
-                            id_jefe_superior: jefeSuperior ? parseInt(jefeSuperior) : null
-                        };
+                    try {
+                        const token = window.obtenerTokenAuth ? window.obtenerTokenAuth() : (localStorage.getItem('auth_token') || localStorage.getItem('token') || '');
+                        const baseUrl = window.API_URL || "http://localhost:8000";
+                        const urlPath = `/api/registros/solicitudes`;
+                        const headers = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
 
-                        const response = typeof window.apiFetch === 'function'
-                            ? await window.apiFetch(urlPath, { method: 'POST', headers, body: JSON.stringify(payload) })
-                            : await fetch(`${baseUrl}${urlPath}`, { method: 'POST', headers, body: JSON.stringify(payload) });
+                        for (const fecha of selectedDates) {
+                            const payload = {
+                                id_empleado: parseInt(empleadoId),
+                                fecha: fecha,
+                                horas_solicitadas: horas,
+                                motivo: motivo,
+                                id_jefe_directo: jefeDirecto ? parseInt(jefeDirecto) : null,
+                                id_jefe_superior: jefeSuperior ? parseInt(jefeSuperior) : null
+                            };
 
-                        if (!response || !response.ok) {
-                            const errorText = await response?.text().catch(() => 'Error en la solicitud');
-                            throw new Error(`Error (${response?.status || '??'}): ${errorText}`);
+                            const response = typeof window.apiFetch === 'function'
+                                ? await window.apiFetch(urlPath, { method: 'POST', headers, body: JSON.stringify(payload) })
+                                : await fetch(`${baseUrl}${urlPath}`, { method: 'POST', headers, body: JSON.stringify(payload) });
+
+                            if (!response || !response.ok) {
+                                throw new Error(`Error en el servidor`);
+                            }
                         }
-                    }
 
-                    alert(`¡Se crearon ${selectedDates.length} solicitud(es) exitosamente!`);
-                    form.reset();
-                    selectedDates = [];
-                    window.renderCalendarApp();
-                    if (fechasText) fechasText.innerHTML = "No hay fechas seleccionadas.";
+                        alert(`¡Se crearon ${selectedDates.length} solicitud(es) exitosamente!`);
+                        form.reset();
+                        selectedDates = [];
+                        window.renderCalendarApp();
+                        if (fechasText) fechasText.innerHTML = "No hay fechas seleccionadas.";
 
-                } catch (err) {
-                    console.error("Error al guardar solicitudes:", err);
-                    if (window.mostrarNotificacion) {
-                        window.mostrarNotificacion('error', 'Registro', 'No se pudieron guardar las solicitudes. Intenta de nuevo.');
-                    } else {
+                    } catch (err) {
+                        console.error("Error al guardar solicitudes:", err);
                         alert('No se pudieron guardar las solicitudes. Intenta de nuevo.');
                     }
-                }
-            });
-        }
-
-        // -------------------------------------------------------------
-        // 3. LÓGICA DE CARGA DE EMPLEADOS
-        // -------------------------------------------------------------
-        const select = document.getElementById("reg-empleado");
-        if (select) {
-            try {
-                const token = window.obtenerTokenAuth ? window.obtenerTokenAuth() : (localStorage.getItem('auth_token') || localStorage.getItem('token') || '');
-                const baseUrl = window.API_URL || "http://localhost:8000";
-                const headers = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
-
-                const resp = typeof window.apiFetch === 'function'
-                    ? await window.apiFetch('/api/dashboard-empleados', { headers })
-                    : await fetch(`${baseUrl}/api/dashboard-empleados`, { headers });
-
-                let empleados = (resp && resp.ok) ? await resp.json() : [];
-
-                if (!Array.isArray(empleados) || empleados.length === 0) {
-                    const userRaw = localStorage.getItem('usuario') || localStorage.getItem('user');
-                    const user = userRaw ? JSON.parse(userRaw) : null;
-                    empleados = [{
-                        id: user?.id || user?.id_usuario || 1,
-                        nombre: user?.nombre || user?.nombre_completo || "Luis Francisco Valencia Villasana"
-                    }];
-                }
-
-                select.innerHTML = '<option value="" disabled selected>Selecciona un empleado...</option>';
-                empleados.forEach(emp => {
-                    const id = emp.id !== undefined ? emp.id : emp.id_usuario_sistema;
-                    const nombre = emp.nombre || emp.nombre_completo || "Empleado";
-                    const opt = document.createElement("option");
-                    opt.value = id;
-                    opt.textContent = nombre;
-                    select.appendChild(opt);
                 });
-
-                if (empleados.length >= 1 && select.options.length > 1) {
-                    select.selectedIndex = 1;
-                }
-            } catch (err) {
-                console.error("Error al cargar empleados:", err);
             }
+
+            // Cargar lista de empleados
+            const select = document.getElementById("reg-empleado");
+            if (select) {
+                try {
+                    const token = window.obtenerTokenAuth ? window.obtenerTokenAuth() : (localStorage.getItem('auth_token') || localStorage.getItem('token') || '');
+                    const baseUrl = window.API_URL || "http://localhost:8000";
+                    const headers = { "Authorization": `Bearer ${token}`, "Content-Type": "application/json" };
+
+                    const resp = typeof window.apiFetch === 'function'
+                        ? await window.apiFetch('/api/dashboard-empleados', { headers })
+                        : await fetch(`${baseUrl}/api/dashboard-empleados`, { headers });
+
+                    let empleados = (resp && resp.ok) ? await resp.json() : [];
+
+                    if (!Array.isArray(empleados) || empleados.length === 0) {
+                        const userRaw = localStorage.getItem('usuario') || localStorage.getItem('user');
+                        const user = userRaw ? JSON.parse(userRaw) : null;
+                        empleados = [{
+                            id: user?.id || user?.id_usuario || 1,
+                            nombre: user?.nombre || user?.nombre_completo || "Luis Francisco Valencia Villasana"
+                        }];
+                    }
+
+                    select.innerHTML = '<option value="" disabled selected>Selecciona un empleado...</option>';
+                    empleados.forEach(emp => {
+                        const id = emp.id !== undefined ? emp.id : emp.id_usuario_sistema;
+                        const nombre = emp.nombre || emp.nombre_completo || "Empleado";
+                        const opt = document.createElement("option");
+                        opt.value = id;
+                        opt.textContent = nombre;
+                        select.appendChild(opt);
+                    });
+
+                    if (empleados.length >= 1 && select.options.length > 1) {
+                        select.selectedIndex = 1;
+                    }
+                } catch (err) {
+                    console.error("Error al cargar empleados:", err);
+                }
+            }
+
+        }, 100);
+    })();
+    </script>
+
+    <!-- SCRIPT DE FONDO FLUIDO ANIMADO -->
+    <script>
+        const canvas = document.getElementById('fluid-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth / 2;
+            canvas.height = window.innerHeight / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const blobs = [
+            { x: 0.2, y: 0.3, r: 0.4, vx: 0.0015, vy: 0.001, color: '#2d6a37' },
+            { x: 0.8, y: 0.7, r: 0.5, vx: -0.001, vy: -0.0012, color: '#1a4323' },
+            { x: 0.5, y: 0.2, r: 0.35, vx: 0.0008, vy: 0.0015, color: '#3f8a4e' },
+            { x: 0.3, y: 0.8, r: 0.45, vx: -0.0012, vy: 0.0008, color: '#0f2913' },
+            { x: 0.7, y: 0.4, r: 0.4, vx: 0.001, vy: -0.0014, color: '#25582e' }
+        ];
+
+        function animate() {
+            ctx.fillStyle = '#050a06';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            blobs.forEach(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+
+                if (b.x < 0.1 || b.x > 0.9) b.vx *= -1;
+                if (b.y < 0.1 || b.y > 0.9) b.vy *= -1;
+
+                const bx = b.x * w;
+                const by = b.y * h;
+                const radius = b.r * Math.min(w, h);
+
+                const grad = ctx.createRadialGradient(bx, by, 0, bx, by, radius);
+                grad.addColorStop(0, b.color);
+                grad.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(bx, by, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(animate);
         }
 
-    }, 100);
-})();
-</script>
-
-<style>
-.top-bar-header{
-    background:#124416;
-    color:#fff;
-    padding:25px 32px;
-    margin:-60px -60px 60px -60px;
-    box-shadow:0 4px 12px rgba(0,0,0,.12);
-}
-
-.top-bar-top{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.top-bar-title{
-    margin:0;
-    font-size:1.4rem;
-    font-weight:800;
-    color:#fff;
-}
-
-.top-bar-user{
-    background:rgba(255,255,255,.15);
-    padding:8px 16px;
-    border-radius:20px;
-    font-weight:600;
-}
-
-.top-bar-content{
-    margin-top:18px;
-}
-
-.top-bar-content h1{
-    margin:0;
-    color:#fff;
-    font-size:2rem;
-    font-weight:800;
-}
-
-.top-bar-content p{
-    margin-top:6px;
-    color:rgba(255,255,255,.85);
-    font-size:.95rem;
-}
-</style>
+        animate();
+    </script>
+</body>
+</html>

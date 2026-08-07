@@ -1,115 +1,511 @@
-<header class="top-bar-header">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificaciones de Salida - UCO</title>
 
-    <div style="margin-bottom: 2rem;">
-        <h1 style="margin-top: 0; margin-bottom: 0.5rem; color: #ffffff; font-size: 1.8rem; font-weight: 700;">Notificaciones de salida</h1>
-        <p style="margin: 0; color: #ffffff; font-size: 0.95rem;">Aquí se muestran las solicitudes de salida pendientes para autorizar o rechazar.</p>
+    <style>
+        :root { 
+            --forest: #0B290E; 
+            --white-pure: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.75);
+
+            /* Bento Glow variables (Estilo Vidrio Translucido) */
+            --uco-border: rgba(255, 255, 255, 0.25);
+            --uco-card-bg: rgba(255, 255, 255, 0.10); 
+            --uco-white-glow: rgba(255, 255, 255, 0.4);
+        }
+        
+        * { 
+            box-sizing: border-box; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        html, body { 
+            width: 100%;
+            height: 100%; 
+            overflow: hidden; 
+        }
+        
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            background: #000000; 
+            color: #ffffff; 
+        }
+
+        /* --- CANVAS DE FONDO FLUIDO (DESENFOCADO) --- */
+        #fluid-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(80px);
+            transform: scale(1.1);
+        }
+        
+        /* --- LAYOUT PRINCIPAL --- */
+        .app-layout {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar { 
+            width: 280px;
+            background: rgba(6, 20, 7, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: white;
+            padding: 1.5rem 1.2rem;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 1000;
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .logo-container { text-align: center; margin-bottom: 2rem; }
+        
+        .menu-wrapper { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+        
+        .sidebar .menu-item { 
+            padding: 12px 16px; 
+            color: var(--text-muted); 
+            text-decoration: none; 
+            border-radius: 12px; 
+            transition: all 0.25s ease; 
+            display: flex; 
+            align-items: center; 
+            font-weight: 500; 
+            font-size: 0.92rem; 
+            gap: 12px;
+        }
+        
+        .sidebar .menu-item:hover { background: rgba(255, 255, 255, 0.15); color: #ffffff; } 
+        .sidebar .menu-item.active { 
+            background: rgba(255, 255, 255, 0.25); 
+            color: #ffffff; 
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .logout-btn { 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            text-align: center;
+            justify-content: center; 
+            border-radius: 12px; 
+            padding: 12px 16px; 
+            text-decoration: none; 
+            font-weight: 600;
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+            display: block;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+            color: #ffffff;
+        }
+
+        /* --- CONTENEDOR DERECHO --- */
+        .dashboard-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- CABECERA VERDE GLOBAL --- */
+        .top-bar-header {
+            background: rgba(6, 20, 7, 0.82);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            padding: 24px 36px;
+        }
+
+        .top-bar-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .top-bar-title {
+            margin: 0;
+            font-size: 1.4rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .top-bar-user {
+            background: rgba(255, 255, 255, 0.15);
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .top-bar-content {
+            margin-top: 15px;
+        }
+
+        .top-bar-content h1 {
+            margin: 0;
+            color: #fff;
+            font-size: 1.9rem;
+            font-weight: 800;
+        }
+
+        .top-bar-content p {
+            margin-top: 6px;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.95rem;
+        }
+
+        .dashboard-content { 
+            flex: 1; 
+            padding: 28px 36px; 
+        }
+
+        /* --- CARD ESTILO BENTO / VIDRIO --- */
+        .card {
+            padding: 32px;
+            border-radius: 24px;
+            background: var(--uco-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--uco-border);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        /* CONTROLES (SELECT Y BOTÓN) */
+        #notificaciones-filtro-estado {
+            width: auto; 
+            min-width: 160px; 
+            padding: 10px 14px; 
+            border-radius: 12px; 
+            border: 1px solid rgba(255, 255, 255, 0.25) !important; 
+            background: rgba(0, 0, 0, 0.4) !important; 
+            color: #ffffff !important; 
+            font-weight: 600;
+            outline: none;
+            backdrop-filter: blur(8px);
+            cursor: pointer;
+            transition: all 0.25s ease;
+        }
+
+        #notificaciones-filtro-estado option {
+            background: #0c180e;
+            color: #ffffff;
+        }
+
+        #notificaciones-filtro-estado:focus {
+            border-color: rgba(255, 255, 255, 0.8) !important;
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+        }
+
+        #btn-recargar-notificaciones {
+            background: rgba(46, 125, 50, 0.8) !important; 
+            color: #fff !important; 
+            padding: 10px 20px !important; 
+            border-radius: 12px !important; 
+            cursor: pointer; 
+            border: 1px solid rgba(74, 222, 128, 0.4) !important; 
+            font-weight: 700;
+            transition: all 0.25s ease;
+        }
+
+        #btn-recargar-notificaciones:hover {
+            background: rgba(46, 125, 50, 1) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+        }
+
+        /* TABLA DE NOTIFICACIONES VIDRIO */
+        .table-container {
+            overflow-x: auto; 
+            border: 1px solid rgba(255, 255, 255, 0.15); 
+            border-radius: 16px; 
+            background: rgba(255, 255, 255, 0.03);
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%; 
+            border-collapse: collapse; 
+            min-width: 860px;
+        }
+
+        thead tr {
+            background: rgba(255, 255, 255, 0.12) !important; 
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
+        }
+
+        th {
+            padding: 16px 14px; 
+            text-align: left;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        #notificaciones-solicitudes-body tr {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+            transition: all 0.2s ease;
+        }
+
+        #notificaciones-solicitudes-body tr:hover {
+            background: rgba(255, 255, 255, 0.12) !important;
+        }
+
+        #notificaciones-solicitudes-body td {
+            padding: 16px 14px !important;
+            color: rgba(255, 255, 255, 0.9) !important;
+            vertical-align: middle;
+            font-size: 0.93rem;
+        }
+
+        #notificaciones-solicitudes-body td:last-child {
+            white-space: nowrap;
+        }
+
+        /* Estilos de Botones de Acción dentro de la Tabla */
+        .btn-accion-aprobar {
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: rgba(18, 68, 22, 0.8);
+            color: #fff;
+            border: 1px solid rgba(74, 222, 128, 0.4);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            margin-right: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .btn-accion-aprobar:hover {
+            background: rgba(18, 68, 22, 1);
+            box-shadow: 0 0 10px rgba(74, 222, 128, 0.4);
+        }
+
+        .btn-accion-rechazar {
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: rgba(153, 27, 27, 0.8);
+            color: #fff;
+            border: 1px solid rgba(248, 113, 113, 0.4);
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-accion-rechazar:hover {
+            background: rgba(153, 27, 27, 1);
+            box-shadow: 0 0 10px rgba(248, 113, 113, 0.4);
+        }
+
+        /* Badges de Estado */
+        .badge-status {
+            display: inline-flex;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.82rem;
+            font-weight: 700;
+        }
+        .badge-pendiente { background: rgba(251, 191, 36, 0.2); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.4); }
+        .badge-aprobado { background: rgba(74, 222, 128, 0.2); color: #4ade80; border: 1px solid rgba(74, 222, 128, 0.4); }
+        .badge-rechazado { background: rgba(248, 113, 113, 0.2); color: #f87171; border: 1px solid rgba(248, 113, 113, 0.4); }
+    </style>
+</head>
+<body>
+
+    <!-- CANVAS FONDO FLUIDO -->
+    <canvas id="fluid-canvas"></canvas>
+
+    <div class="app-layout">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <h2 style="color: #ffffff; font-weight: 900; letter-spacing: 1px;">UCO PREPA</h2>
+            </div>
+            <nav class="menu-wrapper">
+                <a href="#" class="menu-item">📊 Panel Principal</a>
+                <a href="#" class="menu-item">👥 Empleados</a>
+                <a href="#" class="menu-item">📄 Registros</a>
+                <a href="#" class="menu-item active">🔔 Notificaciones</a>
+                <a href="#" class="menu-item">📊 Reportes</a>
+                <a href="#" class="menu-item" style="margin-top: 20px;">⚙️ Configuración</a>
+            </nav>
+            <a href="#" class="logout-btn">Cerrar Sesión</a>
+        </aside>
+
+        <!-- CONTENEDOR DERECHO -->
+        <main class="dashboard-container">
+            
+            <!-- CABECERA VERDE GLOBAL -->
+            <header class="top-bar-header">
+                <div class="top-bar-top">
+                    <h2 class="top-bar-title">Control de Horas</h2>
+                    <span class="top-bar-user">Bienvenido</span>
+                </div>
+                <div class="top-bar-content">
+                    <h1>Notificaciones de salida</h1>
+                    <p>Aquí se muestran las solicitudes de salida pendientes para autorizar o rechazar.</p>
+                </div>
+            </header>
+
+            <div class="dashboard-content">
+                
+                <div class="card">
+                    
+                    <!-- Filtro y Botón de Recargar -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 1.5rem; flex-wrap: wrap;">
+                        <h2 style="margin:0; color:#ffffff; font-size:1.3rem; font-weight: 700;">Bandeja de solicitudes</h2>
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <select id="notificaciones-filtro-estado">
+                                <option value="">Todos los estados</option>
+                                <option value="pendiente" selected>Pendientes</option>
+                                <option value="aprobado">Aprobadas</option>
+                                <option value="rechazado">Rechazadas</option>
+                            </select>
+                            <button type="button" id="btn-recargar-notificaciones" class="btn" onclick="cargarSolicitudesNotificaciones()">Recargar</button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Notificaciones -->
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Empleado</th>
+                                    <th>Fecha</th>
+                                    <th>Horas</th>
+                                    <th>Estado JD</th>
+                                    <th>Estado JS</th>
+                                    <th>Final</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="notificaciones-solicitudes-body">
+                                <tr>
+                                    <td colspan="8" style="text-align:center; padding: 20px !important; color: rgba(255,255,255,0.6) !important;">Cargando solicitudes...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </main>
     </div>
 
-</header>
-
-<div class="card" style="padding: 24px; border-radius: 24px;">
-   
-    <!-- Filtro y Botón de Recargar -->
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom: 1.5rem; flex-wrap: wrap;">
-        <h2 style="margin:0; color:#1f2d19; font-size:1.2rem;">Bandeja de solicitudes</h2>
-        <div style="display:flex; gap:8px; align-items:center;">
-            <select id="notificaciones-filtro-estado" style="width:auto; min-width: 150px; padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; background:#fff; color:#1f2937; font-weight:600;">
-                <option value="">Todos los estados</option>
-                <option value="pendiente" selected>Pendientes</option>
-                <option value="aprobado">Aprobadas</option>
-                <option value="rechazado">Rechazadas</option>
-            </select>
-            <button type="button" id="btn-recargar-notificaciones" class="btn" onclick="cargarSolicitudesNotificaciones()" style="background:#2f582f; color:#fff; padding: 10px 16px; border-radius: 10px; cursor: pointer; border:none; font-weight:700;">Recargar</button>
-        </div>
-    </div>
-
-    <!-- Tabla de Notificaciones -->
-    <div style="overflow-x:auto; border:1px solid #e2e8f0; border-radius:16px; background:#fff;">
-        <table style="width: 100%; border-collapse: collapse; min-width: 860px;">
-            <thead>
-                <tr style="background: linear-gradient(90deg, rgba(18,68,22,0.08), rgba(170,127,49,0.08)); border-bottom: 2px solid #e2e8f0;">
-                    <th style="padding: 12px; text-align: left;">ID</th>
-                    <th style="padding: 12px; text-align: left;">Empleado</th>
-                    <th style="padding: 12px; text-align: left;">Fecha</th>
-                    <th style="padding: 12px; text-align: left;">Horas</th>
-                    <th style="padding: 12px; text-align: left;">Estado JD</th>
-                    <th style="padding: 12px; text-align: left;">Estado JS</th>
-                    <th style="padding: 12px; text-align: left;">Final</th>
-                    <th style="padding: 12px; text-align: left;">Acciones</th>
-                </tr>
-            </thead>
-            <tbody id="notificaciones-solicitudes-body">
+    <!-- FUNCIÓN MOCK DE PRUEBA (Reemplazar/conectar con tu script JS real) -->
+    <script>
+        function cargarSolicitudesNotificaciones() {
+            const tbody = document.getElementById('notificaciones-solicitudes-body');
+            tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align:center; padding: 14px;">Cargando solicitudes...</td>
+                    <td>#101</td>
+                    <td>Luis Fernando Gómez</td>
+                    <td>2026-03-30</td>
+                    <td>2.5 hrs</td>
+                    <td><span class="badge-status badge-aprobado">Aprobado</span></td>
+                    <td><span class="badge-status badge-pendiente">Pendiente</span></td>
+                    <td><span class="badge-status badge-pendiente">Pendiente</span></td>
+                    <td>
+                        <button class="btn-accion-aprobar">Aprobar</button>
+                        <button class="btn-accion-rechazar">Rechazar</button>
+                    </td>
                 </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-<style>
-   /*=========================================
-  CABECERA VERDE GLOBAL
-=========================================*/
-.top-bar-header{
-    background:#124416;
-    color:#fff;
-    padding:25px 32px;
-    margin:-60px -60px 60px -60px;
-    box-shadow:0 4px 12px rgba(0,0,0,.12);
-}
+                <tr>
+                    <td>#102</td>
+                    <td>Cecilia Morales</td>
+                    <td>2026-03-31</td>
+                    <td>1.0 hr</td>
+                    <td><span class="badge-status badge-pendiente">Pendiente</span></td>
+                    <td><span class="badge-status badge-pendiente">Pendiente</span></td>
+                    <td><span class="badge-status badge-pendiente">Pendiente</span></td>
+                    <td>
+                        <button class="btn-accion-aprobar">Aprobar</button>
+                        <button class="btn-accion-rechazar">Rechazar</button>
+                    </td>
+                </tr>
+            `;
+        }
+    </script>
 
-.top-bar-top{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
+    <!-- SCRIPT ANIMACIÓN FLUIDA DE FONDO -->
+    <script>
+        const canvas = document.getElementById('fluid-canvas');
+        const ctx = canvas.getContext('2d');
 
-.top-bar-title{
-    margin:0;
-    font-size:1.4rem;
-    font-weight:800;
-    color:#fff;
-}
+        function resize() {
+            canvas.width = window.innerWidth / 2;
+            canvas.height = window.innerHeight / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
 
-.top-bar-user{
-    background:rgba(255,255,255,.15);
-    padding:8px 16px;
-    border-radius:20px;
-    font-weight:600;
-}
+        const blobs = [
+            { x: 0.2, y: 0.3, r: 0.4, vx: 0.0015, vy: 0.001, color: '#2d6a37' },
+            { x: 0.8, y: 0.7, r: 0.5, vx: -0.001, vy: -0.0012, color: '#1a4323' },
+            { x: 0.5, y: 0.2, r: 0.35, vx: 0.0008, vy: 0.0015, color: '#3f8a4e' },
+            { x: 0.3, y: 0.8, r: 0.45, vx: -0.0012, vy: 0.0008, color: '#0f2913' },
+            { x: 0.7, y: 0.4, r: 0.4, vx: 0.001, vy: -0.0014, color: '#25582e' }
+        ];
 
-.top-bar-content{
-    margin-top:18px;
-}
+        function animate() {
+            ctx.fillStyle = '#050a06';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-.top-bar-content h1{
-    margin:0;
-    color:#fff;
-    font-size:2rem;
-    font-weight:800;
-}
+            const w = canvas.width;
+            const h = canvas.height;
 
-.top-bar-content p{
-    margin-top:6px;
-    color:rgba(255,255,255,.85);
-    font-size:.95rem;
-}
+            blobs.forEach(b => {
+                b.x += b.vx;
+                b.y += b.vy;
 
-#notificaciones-solicitudes-body tr {
-    border-bottom: 1px solid #e2e8f0;
-}
+                if (b.x < 0.1 || b.x > 0.9) b.vx *= -1;
+                if (b.y < 0.1 || b.y > 0.9) b.vy *= -1;
 
-#notificaciones-solicitudes-body tr:hover {
-    background: #f8fafc;
-}
+                const bx = b.x * w;
+                const by = b.y * h;
+                const radius = b.r * Math.min(w, h);
 
-#notificaciones-solicitudes-body td {
-    padding: 12px;
-    color: #334155;
-    vertical-align: middle;
-}
+                const grad = ctx.createRadialGradient(bx, by, 0, bx, by, radius);
+                grad.addColorStop(0, b.color);
+                grad.addColorStop(1, 'transparent');
 
-#notificaciones-solicitudes-body td:last-child {
-    white-space: nowrap;
-}
-</style>
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(bx, by, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

@@ -1,192 +1,578 @@
-<header class="top-bar-header">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración - UCO PREPA</title>
 
-    <div class="top-bar-top">
+    <style>
+        :root { 
+            --forest: #0B290E; 
+            --white-pure: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.75);
 
-    </div>
-
-    <div class="top-bar-content">
-
-        <h1>Configuración</h1>
-
-        <p>Administra la configuración del sistema</p>
-
-    </div>
-
-</header>
-
-<div class="card">
-    
-    <form id="config-form">
-        <div class="config-grid">
-            <section class="settings-section">
-                <h2>Compensación de horas extras</h2>
-                <div class="form-group">
-                    <label for="max-horas-mes">Máximo de horas extra por mes</label>
-                    <input id="max-horas-mes" type="number" min="0" step="1">
-                    <small>Límite mensual para detectar exceso y alertar al área de control.</small>
-                </div>
-                <div class="form-group">
-                    <label for="max-horas-diarias">Máximo de horas extra por día</label>
-                    <input id="max-horas-diarias" type="number" min="0" step="0.5">
-                    <small>Límite diario antes de que el exceso se compense con salida anticipada.</small>
-                </div>
-                <div class="form-group">
-                    <label for="min-horas-compensacion">Horas mínimas para compensar</label>
-                    <input id="min-horas-compensacion" type="number" min="0" step="0.25">
-                    <small>Las horas extra deben superar este umbral para generar descanso compensatorio.</small>
-                </div>
-                <div class="form-group">
-                    <label for="horas-descanso-por-hora">Horas de descanso por hora extra</label>
-                    <input id="horas-descanso-por-hora" type="number" min="0" step="0.25">
-                    <small>Cuántas horas de salida anticipada se otorgan por cada hora extra trabajada.</small>
-                </div>
-                <div class="form-group">
-                    <label for="dias-maximos-descanso">Plazo máximo para usar descanso</label>
-                    <input id="dias-maximos-descanso" type="number" min="0" step="1">
-                    <small>Días máximos permitidos para consumir el descanso compensatorio.</small>
-                </div>
-            </section>
-
-            <section class="settings-section">
-                <h2>Ajustes de control</h2>
-                <div class="checkbox-group">
-                    <input id="permitir-recuperacion-otro-dia" type="checkbox">
-                    <label for="permitir-recuperacion-otro-dia">Permitir recuperación en otro día</label>
-                </div>
-                <div class="checkbox-group">
-                    <input id="alertas-exceso" type="checkbox">
-                    <label for="alertas-exceso">Generar alertas al superar límites</label>
-                </div>
-            </section>
-        </div>
-
-        <div class="actions-row">
-            <button class="btn primary" type="submit">Guardar preferencias</button>
-            <button class="btn secondary" type="button" id="btn-reset-config">Restaurar valores predeterminados</button>
-            <button class="btn tertiary" type="button" id="btn-export-config">Exportar JSON</button>
-            <button class="btn tertiary" type="button" id="btn-import-config">Importar JSON</button>
-            <input type="file" id="import-config-file" accept="application/json" style="display:none;" />
-        </div>
-    </form>
-
-    <div id="config-notice" class="notice"></div>
-</div>
-
-<style>
-    .subtitle { margin: 0.5rem 0 1.8rem; color: #55615f; }
-    .config-grid { display: grid; gap: 1.4rem; width: 100%; min-width: 0; }
-    .settings-section { background: #fafafa; border: 1px solid #e3e7ea; border-radius: 18px; padding: 1.4rem; min-width: 0; }
-    .settings-section h2 { margin-top: 0; font-size: 1.05rem; color: #124416; }
-    .form-group { display: flex; flex-direction: column; gap: 0.35rem; margin-bottom: 1rem; min-width: 0; }
-    .form-group label { font-weight: 600; color: #24372d; }
-    .form-group input, .form-group select { width: 100%; max-width: 100%; box-sizing: border-box; padding: 0.95rem 1rem; border: 1px solid #c4cacf; border-radius: 14px; background: white; font-size: 0.96rem; }
-    .form-group small { color: #677279; }
-    .checkbox-group { display: flex; align-items: center; gap: 0.85rem; margin-bottom: 1rem; }
-    .checkbox-group input { width: auto; }
-    .checkbox-group label { margin: 0; font-weight: 500; color: #24372d; }
-    .actions-row { display: flex; flex-wrap: wrap; gap: 0.8rem; margin-top: 1.8rem; }
-    .btn { border: 0; border-radius: 14px; padding: 0.95rem 1.4rem; font-weight: 700; cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease; }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0, 0, 0, 0.12); }
-    .btn.primary { background: #124416; color: white; }
-    .btn.secondary { background: #f5f5f5; color: #124416; }
-    .btn.tertiary { background: transparent; color: #124416; border: 1px solid #c1d8ca; }
-    .notice { margin-top: 1.2rem; padding: 1rem 1.2rem; border-radius: 14px; background: #e7f5eb; color: #164c2f; opacity: 0; transform: translateY(8px); transition: opacity 0.25s ease, transform 0.25s ease; }
-    .notice.show { opacity: 1; transform: translateY(0); }
-    @media (min-width: 900px) { .config-grid { grid-template-columns: 1fr 1fr; } }
-    body.theme-dark { background: #11151f; color: #e6edf6; }
-    body.theme-dark .card { background: #161f2d; border-color: #3c5c55; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28); }
-    body.theme-dark .settings-section { background: #1d2736; border-color: #32415d; }
-    body.theme-dark .form-group input, body.theme-dark .form-group select { background: #111b29; border-color: #2f4560; color: #e6edf6; }
-    body.theme-dark .checkbox-group label, body.theme-dark .form-group label, body.theme-dark .subtitle { color: #dbe6f3; }
-    body.theme-dark .btn.secondary { background: #23303f; color: #e6edf6; }
-    body.theme-dark .btn.tertiary { background: transparent; color: #9db8c9; border-color: #3b566d; }
-    body.theme-dark .notice { background: #203244; color: #d8e5ef; }
-    .top-bar-header{
-    background:#124416;
-    color:#fff;
-    padding:25px 32px;
-    margin:-60px -60px 60px -60px;
-    box-shadow:0 4px 12px rgba(0,0,0,.12);
-}
-
-</style>
-
-<script>
-    (async function() {
-        const valoresPorDefecto = {
-            max_horas_mes: 40,
-            max_horas_diarias: 4,
-            min_horas_compensacion: 1,
-            horas_descanso_por_hora: 1,
-            dias_maximos_descanso: 30,
-            permitir_recuperacion_otro_dia: true,
-            alertas_exceso: true
-        };
-
-        function mostrarAvisoConfig(mensaje, esError = false) {
-            const notice = document.getElementById('config-notice');
-            if (!notice) return;
-            notice.textContent = mensaje;
-            notice.style.background = esError ? '#fde8e8' : '#e7f5eb';
-            notice.style.color = esError ? '#9b1c1c' : '#164c2f';
-            notice.classList.add('show');
-            setTimeout(() => notice.classList.remove('show'), 4000);
+            /* Bento Glow variables */
+            --uco-border: rgba(255, 255, 255, 0.35);
+            --uco-card-bg: rgba(255, 255, 255, 0.12);
+            --uco-white-glow: rgba(255, 255, 255, 0.5);
+        }
+        
+        * { 
+            box-sizing: border-box; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        html, body { 
+            width: 100%;
+            height: 100%; 
+            overflow: hidden; 
+        }
+        
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            background: #000000; 
+            color: #ffffff; 
         }
 
-        function rellenarFormularioConfig(data) {
-            document.getElementById('max-horas-mes').value = data.max_horas_mes ?? valoresPorDefecto.max_horas_mes;
-            document.getElementById('max-horas-diarias').value = data.max_horas_diarias ?? valoresPorDefecto.max_horas_diarias;
-            document.getElementById('min-horas-compensacion').value = data.min_horas_compensacion ?? valoresPorDefecto.min_horas_compensacion;
-            document.getElementById('horas-descanso-por-hora').value = data.horas_descanso_por_hora ?? valoresPorDefecto.horas_descanso_por_hora;
-            document.getElementById('dias-maximos-descanso').value = data.dias_maximos_descanso ?? valoresPorDefecto.dias_maximos_descanso;
-            document.getElementById('permitir-recuperacion-otro-dia').checked = Boolean(data.permitir_recuperacion_otro_dia ?? valoresPorDefecto.permitir_recuperacion_otro_dia);
-            document.getElementById('alertas-exceso').checked = Boolean(data.alertas_exceso ?? valoresPorDefecto.alertas_exceso);
+        /* --- CANVAS DE FONDO FLUIDO --- */
+        #fluid-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(80px);
+            transform: scale(1.1);
+        }
+        
+        /* --- LAYOUT PRINCIPAL --- */
+        .app-layout {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            width: 100vw;
+            height: 100vh;
         }
 
-        async function cargarConfiguracionSistema() {
-            try {
+        /* --- SIDEBAR --- */
+        .sidebar { 
+            width: 280px;
+            background: rgba(6, 20, 7, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: white;
+            padding: 1.5rem 1.2rem;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 1000;
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .logo-container { text-align: center; margin-bottom: 2rem; }
+        .logo-container h2 { font-size: 1.5rem; letter-spacing: 0.5px; }
+        
+        .menu-wrapper { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+        
+        .sidebar .menu-item { 
+            padding: 12px 16px; 
+            color: var(--text-muted); 
+            text-decoration: none; 
+            border-radius: 12px; 
+            transition: all 0.25s ease; 
+            display: flex; 
+            align-items: center; 
+            font-weight: 500; 
+            font-size: 0.92rem; 
+            gap: 12px;
+        }
+        
+        .sidebar .menu-item:hover { background: rgba(255, 255, 255, 0.15); color: #ffffff; } 
+        .sidebar .menu-item.active { 
+            background: rgba(255, 255, 255, 0.25); 
+            color: #ffffff; 
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .logout-btn { 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            text-align: center;
+            justify-content: center; 
+            border-radius: 12px; 
+            padding: 12px 16px; 
+            text-decoration: none; 
+            font-weight: 600;
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+            display: block;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+            color: #ffffff;
+        }
+
+        /* --- DASHBOARD CONTAINER --- */
+        .dashboard-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* HEADER */
+        .top-bar-header {
+            background: rgba(6, 20, 7, 0.82);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            color: white;
+            padding: 24px 36px;
+        }
+
+        .top-bar-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-badge {
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2); 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+            text-transform: uppercase;
+        }
+
+        .dashboard-content { 
+            flex: 1; 
+            padding: 28px 36px; 
+        }
+
+        /* --- TARJETA BENTO CONFIGURACIÓN --- */
+        .config-card {
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            padding: 2.2rem;
+            border-radius: 24px;
+            border: 1px solid var(--uco-border);
+            background: var(--uco-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            color: #ffffff;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+
+        .config-card:hover {
+            border-color: rgba(255, 255, 255, 0.6);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45), 0 0 20px var(--uco-white-glow);
+        }
+
+        .config-grid { 
+            display: grid; 
+            gap: 1.5rem; 
+            width: 100%; 
+            grid-template-columns: 1fr;
+        }
+
+        @media (min-width: 900px) { 
+            .config-grid { grid-template-columns: 1fr 1fr; } 
+        }
+
+        /* SECCIONES GLASSMÓRFICAS */
+        .settings-section { 
+            background: rgba(0, 0, 0, 0.25); 
+            border: 1px solid rgba(255, 255, 255, 0.2); 
+            border-radius: 18px; 
+            padding: 1.5rem; 
+            display: flex;
+            flex-direction: column;
+            gap: 1.2rem;
+            transition: border-color 0.3s ease;
+        }
+
+        .settings-section:hover {
+            border-color: rgba(255, 255, 255, 0.4);
+        }
+
+        .settings-section h2 { 
+            margin-top: 0; 
+            font-size: 1.1rem; 
+            color: #6ee7b7; /* Menta vibrante */
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+
+        /* FORMULARIOS */
+        .form-group { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 0.4rem; 
+        }
+
+        .form-group label { 
+            font-weight: 600; 
+            color: #ffffff; 
+            font-size: 0.9rem;
+        }
+
+        .form-group input { 
+            width: 100%; 
+            padding: 0.85rem 1rem; 
+            border: 1px solid rgba(255, 255, 255, 0.3); 
+            border-radius: 12px; 
+            background: rgba(0, 0, 0, 0.35); 
+            color: #ffffff; 
+            font-size: 0.95rem; 
+            outline: none;
+            transition: all 0.25s ease;
+            font-family: inherit;
+        }
+
+        .form-group input:focus {
+            border-color: #ffffff;
+            background: rgba(0, 0, 0, 0.55);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+        }
+
+        .form-group small { 
+            color: rgba(255, 255, 255, 0.7); 
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+
+        /* CHECKBOXES */
+        .checkbox-group { 
+            display: flex; 
+            align-items: center; 
+            gap: 0.85rem; 
+            padding: 6px 0;
+        }
+
+        .checkbox-group input[type="checkbox"] { 
+            width: 18px; 
+            height: 18px;
+            cursor: pointer;
+            accent-color: #a855f7;
+        }
+
+        .checkbox-group label { 
+            margin: 0; 
+            font-weight: 500; 
+            color: #ffffff; 
+            font-size: 0.95rem;
+            cursor: pointer;
+        }
+
+        /* BOTONES GLASSMÓRFICOS */
+        .actions-row { 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 0.85rem; 
+            margin-top: 2rem; 
+            align-items: center;
+        }
+
+        .btn { 
+            border: 0; 
+            border-radius: 12px; 
+            padding: 0.85rem 1.4rem; 
+            font-weight: 700; 
+            font-size: 0.9rem;
+            cursor: pointer; 
+            transition: all 0.25s ease; 
+            font-family: inherit;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn.primary { 
+            background: rgba(255, 255, 255, 0.25); 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn.primary:hover { 
+            background: rgba(255, 255, 255, 0.4);
+            box-shadow: 0 0 20px var(--uco-white-glow);
+            transform: translateY(-2px);
+        }
+
+        .btn.secondary { 
+            background: rgba(88, 28, 135, 0.45); 
+            color: #ffffff; 
+            border: 1px solid rgba(192, 132, 252, 0.4);
+        }
+
+        .btn.secondary:hover { 
+            background: rgba(88, 28, 135, 0.7); 
+            border-color: rgba(192, 132, 252, 0.7);
+            transform: translateY(-2px);
+        }
+
+        .btn.tertiary { 
+            background: rgba(255, 255, 255, 0.08); 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.3); 
+        }
+
+        .btn.tertiary:hover { 
+            background: rgba(255, 255, 255, 0.18); 
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: translateY(-2px);
+        }
+
+        /* NOTIFICACIÓN / NOTICE */
+        .notice { 
+            margin-top: 1.5rem; 
+            padding: 1rem 1.2rem; 
+            border-radius: 12px; 
+            background: rgba(16, 185, 129, 0.25); 
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            color: #a7f3d0; 
+            opacity: 0; 
+            transform: translateY(8px); 
+            transition: opacity 0.3s ease, transform 0.3s ease; 
+            font-size: 0.92rem;
+            font-weight: 600;
+        }
+
+        .notice.show { 
+            opacity: 1; 
+            transform: translateY(0); 
+        }
+
+        @media (max-width: 960px) {
+            .dashboard-content { padding: 20px 16px; }
+            .top-bar-header { padding: 20px 20px; }
+            .actions-row { flex-direction: column; align-items: stretch; }
+            .btn { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- CANVAS DE FONDO FLUIDO -->
+    <canvas id="fluid-canvas"></canvas>
+
+    <div class="app-layout">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <h2 style="color: #ffffff; font-weight: 900; text-shadow: 0 0 10px rgba(255,255,255,0.3);">UCO PREPA</h2>
+            </div>
+            <nav class="menu-wrapper">
+                <a href="#" class="menu-item">📊 Panel Principal</a>
+                <a href="#" class="menu-item">👥 Empleados</a>
+                <a href="#" class="menu-item">📄 Registros</a>
+                <a href="#" class="menu-item">🔔 Notificaciones</a>
+                <a href="#" class="menu-item">📊 Reportes</a>
+                <a href="#" class="menu-item active" style="margin-top: 20px;">⚙️ Configuración</a>
+                <a href="#" class="menu-item">👤 Perfil</a>
+            </nav>
+            <a href="#" class="logout-btn">Cerrar Sesión</a>
+        </aside>
+
+        <!-- DASHBOARD CONTAINER -->
+        <main class="dashboard-container">
+            
+            <!-- HEADER -->
+            <header class="top-bar-header">
+                <div class="top-bar-row">
+                    <h2 style="font-size: 1.3rem; font-weight: 800;">Panel del Sistema</h2>
+                    <span class="status-badge">Configuración</span>
+                </div>
+                <div style="margin-top: 16px;">
+                    <h1 style="font-size: 1.85rem; font-weight: 800;">Configuración de Parámetros</h1>
+                    <p style="margin-top: 4px; color: rgba(255,255,255,0.75); font-size: 0.92rem;">
+                        Administra las reglas de horas extras, compensaciones y ajustes de control general.
+                    </p>
+                </div>
+            </header>
+
+            <!-- CONTENIDO PRINCIPAL -->
+            <div class="dashboard-content">
+                
+                <div class="config-card">
+                    <form id="config-form">
+                        <div class="config-grid">
+                            
+                            <!-- SECCIÓN 1: COMPENSACIÓN -->
+                            <section class="settings-section">
+                                <h2>Compensación de horas extras</h2>
+                                
+                                <div class="form-group">
+                                    <label for="max-horas-mes">Máximo de horas extra por mes</label>
+                                    <input id="max-horas-mes" type="number" min="0" step="1">
+                                    <small>Límite mensual para detectar exceso y alertar al área de control.</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="max-horas-diarias">Máximo de horas extra por día</label>
+                                    <input id="max-horas-diarias" type="number" min="0" step="0.5">
+                                    <small>Límite diario antes de que el exceso se compense con salida anticipada.</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="min-horas-compensacion">Horas mínimas para compensar</label>
+                                    <input id="min-horas-compensacion" type="number" min="0" step="0.25">
+                                    <small>Las horas extra deben superar este umbral para generar descanso compensatorio.</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="horas-descanso-por-hora">Horas de descanso por hora extra</label>
+                                    <input id="horas-descanso-por-hora" type="number" min="0" step="0.25">
+                                    <small>Cuántas horas de salida anticipada se otorgan por cada hora extra trabajada.</small>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="dias-maximos-descanso">Plazo máximo para usar descanso</label>
+                                    <input id="dias-maximos-descanso" type="number" min="0" step="1">
+                                    <small>Días máximos permitidos para consumir el descanso compensatorio.</small>
+                                </div>
+                            </section>
+
+                            <!-- SECCIÓN 2: AJUSTES DE CONTROL -->
+                            <section class="settings-section">
+                                <h2>Ajustes de control</h2>
+                                
+                                <div class="checkbox-group">
+                                    <input id="permitir-recuperacion-otro-dia" type="checkbox">
+                                    <label for="permitir-recuperacion-otro-dia">Permitir recuperación en otro día</label>
+                                </div>
+                                
+                                <div class="checkbox-group">
+                                    <input id="alertas-exceso" type="checkbox">
+                                    <label for="alertas-exceso">Generar alertas al superar límites</label>
+                                </div>
+                            </section>
+                        </div>
+
+                        <!-- BOTONES DE ACCIÓN -->
+                        <div class="actions-row">
+                            <button class="btn primary" type="submit">Guardar preferencias</button>
+                            <button class="btn secondary" type="button" id="btn-reset-config">Restaurar predeterminados</button>
+                            <button class="btn tertiary" type="button" id="btn-export-config">Exportar JSON</button>
+                            <button class="btn tertiary" type="button" id="btn-import-config">Importar JSON</button>
+                            <input type="file" id="import-config-file" accept="application/json" style="display:none;" />
+                        </div>
+                    </form>
+
+                    <div id="config-notice" class="notice"></div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- SCRIPT DE FUNCIONALIDAD DEL FORMULARIO Y CONFIGURACIÓN -->
+    <script>
+        (async function() {
+            const valoresPorDefecto = {
+                max_horas_mes: 40,
+                max_horas_diarias: 4,
+                min_horas_compensacion: 1,
+                horas_descanso_por_hora: 1,
+                dias_maximos_descanso: 30,
+                permitir_recuperacion_otro_dia: true,
+                alertas_exceso: true
+            };
+
+            function mostrarAvisoConfig(mensaje, esError = false) {
+                const notice = document.getElementById('config-notice');
+                if (!notice) return;
+                notice.textContent = mensaje;
+                
+                if (esError) {
+                    notice.style.background = 'rgba(239, 68, 68, 0.25)';
+                    notice.style.borderColor = 'rgba(239, 68, 68, 0.5)';
+                    notice.style.color = '#fca5a5';
+                } else {
+                    notice.style.background = 'rgba(16, 185, 129, 0.25)';
+                    notice.style.borderColor = 'rgba(16, 185, 129, 0.5)';
+                    notice.style.color = '#a7f3d0';
+                }
+
+                notice.classList.add('show');
+                setTimeout(() => notice.classList.remove('show'), 4000);
+            }
+
+            function rellenarFormularioConfig(data) {
+                document.getElementById('max-horas-mes').value = data.max_horas_mes ?? valoresPorDefecto.max_horas_mes;
+                document.getElementById('max-horas-diarias').value = data.max_horas_diarias ?? valoresPorDefecto.max_horas_diarias;
+                document.getElementById('min-horas-compensacion').value = data.min_horas_compensacion ?? valoresPorDefecto.min_horas_compensacion;
+                document.getElementById('horas-descanso-por-hora').value = data.horas_descanso_por_hora ?? valoresPorDefecto.horas_descanso_por_hora;
+                document.getElementById('dias-maximos-descanso').value = data.dias_maximos_descanso ?? valoresPorDefecto.dias_maximos_descanso;
+                document.getElementById('permitir-recuperacion-otro-dia').checked = Boolean(data.permitir_recuperacion_otro_dia ?? valoresPorDefecto.permitir_recuperacion_otro_dia);
+                document.getElementById('alertas-exceso').checked = Boolean(data.alertas_exceso ?? valoresPorDefecto.alertas_exceso);
+            }
+
+            async function cargarConfiguracionSistema() {
+                try {
                     const resp = (typeof window !== 'undefined' && window.apiFetch)
-                        ? await window.apiFetch('/api/configuracion', { headers: construirHeadersAuth() })
-                        : await fetch(`${API_URL}/api/configuracion`, { headers: construirHeadersAuth() });
+                        ? await window.apiFetch('/api/configuracion', { headers: typeof construirHeadersAuth === 'function' ? construirHeadersAuth() : {} })
+                        : await fetch(`/api/configuracion`, { headers: typeof construirHeadersAuth === 'function' ? construirHeadersAuth() : {} });
+                    
                     if (resp && resp.ok) {
                         const data = await resp.json();
                         rellenarFormularioConfig(data);
                         return;
                     }
-            } catch (err) {
-                console.warn('Conexión con servidor no disponible, cargando respaldo local:', err);
+                } catch (err) {
+                    console.warn('Conexión con servidor no disponible, cargando respaldo local:', err);
+                }
+
+                const local = localStorage.getItem('sistema_configuracion');
+                if (local) {
+                    try {
+                        rellenarFormularioConfig(JSON.parse(local));
+                        return;
+                    } catch (e) { /* ignorar */ }
+                }
+                rellenarFormularioConfig(valoresPorDefecto);
             }
 
-            const local = localStorage.getItem('sistema_configuracion');
-            if (local) {
-                try {
-                    rellenarFormularioConfig(JSON.parse(local));
-                    return;
-                } catch (e) { /* ignorar */ }
-            }
-            rellenarFormularioConfig(valoresPorDefecto);
-        }
+            await cargarConfiguracionSistema();
 
-        await cargarConfiguracionSistema();
+            const formConfig = document.getElementById('config-form');
+            if (formConfig) {
+                formConfig.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const payload = {
+                        max_horas_mes: parseFloat(document.getElementById('max-horas-mes').value) || 0,
+                        max_horas_diarias: parseFloat(document.getElementById('max-horas-diarias').value) || 0,
+                        min_horas_compensacion: parseFloat(document.getElementById('min-horas-compensacion').value) || 0,
+                        horas_descanso_por_hora: parseFloat(document.getElementById('horas-descanso-por-hora').value) || 0,
+                        dias_maximos_descanso: parseInt(document.getElementById('dias-maximos-descanso').value, 10) || 0,
+                        permitir_recuperacion_otro_dia: document.getElementById('permitir-recuperacion-otro-dia').checked,
+                        alertas_exceso: document.getElementById('alertas-exceso').checked
+                    };
 
-        const formConfig = document.getElementById('config-form');
-        if (formConfig) {
-            formConfig.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const payload = {
-                    max_horas_mes: parseFloat(document.getElementById('max-horas-mes').value) || 0,
-                    max_horas_diarias: parseFloat(document.getElementById('max-horas-diarias').value) || 0,
-                    min_horas_compensacion: parseFloat(document.getElementById('min-horas-compensacion').value) || 0,
-                    horas_descanso_por_hora: parseFloat(document.getElementById('horas-descanso-por-hora').value) || 0,
-                    dias_maximos_descanso: parseInt(document.getElementById('dias-maximos-descanso').value, 10) || 0,
-                    permitir_recuperacion_otro_dia: document.getElementById('permitir-recuperacion-otro-dia').checked,
-                    alertas_exceso: document.getElementById('alertas-exceso').checked
-                };
-
-                try {
-                    const resp = (typeof window !== 'undefined' && window.apiFetch)
-                        ? await window.apiFetch('/api/configuracion', { method: 'POST', headers: construirHeadersAuth({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload) })
-                        : await fetch(`${API_URL}/api/configuracion`, { method: 'POST', headers: construirHeadersAuth({ 'Content-Type': 'application/json' }), body: JSON.stringify(payload) });
+                    try {
+                        const headers = typeof construirHeadersAuth === 'function' ? construirHeadersAuth({ 'Content-Type': 'application/json' }) : { 'Content-Type': 'application/json' };
+                        const resp = (typeof window !== 'undefined' && window.apiFetch)
+                            ? await window.apiFetch('/api/configuracion', { method: 'POST', headers, body: JSON.stringify(payload) })
+                            : await fetch(`/api/configuracion`, { method: 'POST', headers, body: JSON.stringify(payload) });
 
                         if (resp && resp.ok) {
                             localStorage.setItem('sistema_configuracion', JSON.stringify(payload));
@@ -195,67 +581,123 @@
                             const errData = await resp.json().catch(() => ({}));
                             mostrarAvisoConfig(errData.detail || 'Error al guardar la configuración.', true);
                         }
-                } catch (error) {
-                    localStorage.setItem('sistema_configuracion', JSON.stringify(payload));
-                    mostrarAvisoConfig('Configuración guardada localmente (sin conexión al servidor).');
-                }
-            });
-        }
-
-        const btnReset = document.getElementById('btn-reset-config');
-        if (btnReset) {
-            btnReset.addEventListener('click', () => {
-                if (confirm('¿Deseas restaurar todos los valores predeterminados?')) {
-                    rellenarFormularioConfig(valoresPorDefecto);
-                    localStorage.removeItem('sistema_configuracion');
-                    mostrarAvisoConfig('Valores predeterminados restaurados.');
-                }
-            });
-        }
-
-        const btnExport = document.getElementById('btn-export-config');
-        if (btnExport) {
-            btnExport.addEventListener('click', () => {
-                const configActual = {
-                    max_horas_mes: parseFloat(document.getElementById('max-horas-mes').value) || 0,
-                    max_horas_diarias: parseFloat(document.getElementById('max-horas-diarias').value) || 0,
-                    min_horas_compensacion: parseFloat(document.getElementById('min-horas-compensacion').value) || 0,
-                    horas_descanso_por_hora: parseFloat(document.getElementById('horas-descanso-por-hora').value) || 0,
-                    dias_maximos_descanso: parseInt(document.getElementById('dias-maximos-descanso').value, 10) || 0,
-                    permitir_recuperacion_otro_dia: document.getElementById('permitir-recuperacion-otro-dia').checked,
-                    alertas_exceso: document.getElementById('alertas-exceso').checked
-                };
-                const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(configActual, null, 2));
-                const downloadAnchor = document.createElement('a');
-                downloadAnchor.setAttribute("href", dataStr);
-                downloadAnchor.setAttribute("download", `configuracion_${new Date().toISOString().slice(0,10)}.json`);
-                document.body.appendChild(downloadAnchor);
-                downloadAnchor.click();
-                downloadAnchor.remove();
-                mostrarAvisoConfig('Configuración exportada a JSON.');
-            });
-        }
-
-        const btnImport = document.getElementById('btn-import-config');
-        const inputFile = document.getElementById('import-config-file');
-        if (btnImport && inputFile) {
-            btnImport.addEventListener('click', () => inputFile.click());
-            inputFile.addEventListener('change', (e) => {
-                const archivo = e.target.files[0];
-                if (!archivo) return;
-                const lector = new FileReader();
-                lector.onload = function(event) {
-                    try {
-                        const parsed = JSON.parse(event.target.result);
-                        rellenarFormularioConfig(parsed);
-                        mostrarAvisoConfig('Configuración importada. Haz clic en "Guardar preferencias" para aplicarla.');
-                    } catch (err) {
-                        mostrarAvisoConfig('El archivo JSON no es válido.', true);
+                    } catch (error) {
+                        localStorage.setItem('sistema_configuracion', JSON.stringify(payload));
+                        mostrarAvisoConfig('Configuración guardada localmente (sin conexión al servidor).');
                     }
-                };
-                lector.readAsText(archivo);
-                inputFile.value = '';
-            });
+                });
+            }
+
+            const btnReset = document.getElementById('btn-reset-config');
+            if (btnReset) {
+                btnReset.addEventListener('click', () => {
+                    if (confirm('¿Deseas restaurar todos los valores predeterminados?')) {
+                        rellenarFormularioConfig(valoresPorDefecto);
+                        localStorage.removeItem('sistema_configuracion');
+                        mostrarAvisoConfig('Valores predeterminados restaurados.');
+                    }
+                });
+            }
+
+            const btnExport = document.getElementById('btn-export-config');
+            if (btnExport) {
+                btnExport.addEventListener('click', () => {
+                    const configActual = {
+                        max_horas_mes: parseFloat(document.getElementById('max-horas-mes').value) || 0,
+                        max_horas_diarias: parseFloat(document.getElementById('max-horas-diarias').value) || 0,
+                        min_horas_compensacion: parseFloat(document.getElementById('min-horas-compensacion').value) || 0,
+                        horas_descanso_por_hora: parseFloat(document.getElementById('horas-descanso-por-hora').value) || 0,
+                        dias_maximos_descanso: parseInt(document.getElementById('dias-maximos-descanso').value, 10) || 0,
+                        permitir_recuperacion_otro_dia: document.getElementById('permitir-recuperacion-otro-dia').checked,
+                        alertas_exceso: document.getElementById('alertas-exceso').checked
+                    };
+                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(configActual, null, 2));
+                    const downloadAnchor = document.createElement('a');
+                    downloadAnchor.setAttribute("href", dataStr);
+                    downloadAnchor.setAttribute("download", `configuracion_${new Date().toISOString().slice(0,10)}.json`);
+                    document.body.appendChild(downloadAnchor);
+                    downloadAnchor.click();
+                    downloadAnchor.remove();
+                    mostrarAvisoConfig('Configuración exportada a JSON.');
+                });
+            }
+
+            const btnImport = document.getElementById('btn-import-config');
+            const inputFile = document.getElementById('import-config-file');
+            if (btnImport && inputFile) {
+                btnImport.addEventListener('click', () => inputFile.click());
+                inputFile.addEventListener('change', (e) => {
+                    const archivo = e.target.files[0];
+                    if (!archivo) return;
+                    const lector = new FileReader();
+                    lector.onload = function(event) {
+                        try {
+                            const parsed = JSON.parse(event.target.result);
+                            rellenarFormularioConfig(parsed);
+                            mostrarAvisoConfig('Configuración importada. Haz clic en "Guardar preferencias" para aplicarla.');
+                        } catch (err) {
+                            mostrarAvisoConfig('El archivo JSON no es válido.', true);
+                        }
+                    };
+                    lector.readAsText(archivo);
+                    inputFile.value = '';
+                });
+            }
+        })();
+    </script>
+
+    <!-- SCRIPT DE FONDO FLUIDO ANIMADO -->
+    <script>
+        const canvas = document.getElementById('fluid-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth / 2;
+            canvas.height = window.innerHeight / 2;
         }
-    })();
-</script>
+        window.addEventListener('resize', resize);
+        resize();
+
+        const blobs = [
+            { x: 0.2, y: 0.3, r: 0.4, vx: 0.0015, vy: 0.001, color: '#2d6a37' },
+            { x: 0.8, y: 0.7, r: 0.5, vx: -0.001, vy: -0.0012, color: '#1a4323' },
+            { x: 0.5, y: 0.2, r: 0.35, vx: 0.0008, vy: 0.0015, color: '#3f8a4e' },
+            { x: 0.3, y: 0.8, r: 0.45, vx: -0.0012, vy: 0.0008, color: '#0f2913' },
+            { x: 0.7, y: 0.4, r: 0.4, vx: 0.001, vy: -0.0014, color: '#25582e' }
+        ];
+
+        function animate() {
+            ctx.fillStyle = '#050a06';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            blobs.forEach(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+
+                if (b.x < 0.1 || b.x > 0.9) b.vx *= -1;
+                if (b.y < 0.1 || b.y > 0.9) b.vy *= -1;
+
+                const bx = b.x * w;
+                const by = b.y * h;
+                const radius = b.r * Math.min(w, h);
+
+                const grad = ctx.createRadialGradient(bx, by, 0, bx, by, radius);
+                grad.addColorStop(0, b.color);
+                grad.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(bx, by, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>

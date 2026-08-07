@@ -1,418 +1,594 @@
-<header class="top-bar-header">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Empleados - UCO</title>
 
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-        <h2 style="margin:0;color:#fff;font-size:1.4rem;font-weight:800;">
-            Control de Horas
-        </h2>
-
-        <span style="background:rgba(255,255,255,.15);
-                     padding:8px 16px;
-                     border-radius:20px;
-                     color:#fff;
-                     font-weight:600;">
-            Bienvenido
-        </span>
-    </div>
-
-    <div style="margin-top:15px;">
-        <h1 style="margin:0;color:#fff;font-size:1.9rem;font-weight:800;">
-            Empleados
-        </h1>
-
-        <p style="margin:6px 0 0;color:rgba(255,255,255,.8);">
-            Consulta, administra y edita la información de los empleados.
-        </p>
-    </div>
-
-</header>
-
-<div class="card empleados-card">
     <style>
+        :root { 
+            --forest: #0B290E; 
+            --white-pure: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.75);
 
-        .top-bar-header{
-    background:#124416;
-    color:#fff;
-    padding:25px 32px;
-    margin:-60px -60px 60px -60px;
-    box-shadow:0 4px 12px rgba(0,0,0,.12);
-}
+            /* Bento Glow variables (Estilo Vidrio Translucido) */
+            --uco-border: rgba(255, 255, 255, 0.25);
+            --uco-card-bg: rgba(255, 255, 255, 0.10); 
+            --uco-white-glow: rgba(255, 255, 255, 0.4);
+        }
+        
+        * { 
+            box-sizing: border-box; 
+            margin: 0;
+            padding: 0;
+        }
+        
+        html, body { 
+            width: 100%;
+            height: 100%; 
+            overflow: hidden; 
+        }
+        
+        body { 
+            font-family: 'Inter', system-ui, -apple-system, sans-serif; 
+            background: #000000; 
+            color: #ffffff; 
+        }
+
+        /* --- CANVAS DE FONDO FLUIDO (DESENFOCADO) --- */
+        #fluid-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
+            filter: blur(80px);
+            transform: scale(1.1);
+        }
+        
+        /* --- LAYOUT PRINCIPAL --- */
+        .app-layout {
+            position: relative;
+            z-index: 1;
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* --- SIDEBAR --- */
+        .sidebar { 
+            width: 280px;
+            background: rgba(6, 20, 7, 0.88);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            color: white;
+            padding: 1.5rem 1.2rem;
+            display: flex;
+            flex-direction: column;
+            flex-shrink: 0;
+            z-index: 1000;
+            border-right: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .logo-container { text-align: center; margin-bottom: 2rem; }
+        
+        .menu-wrapper { flex-grow: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+        
+        .sidebar .menu-item { 
+            padding: 12px 16px; 
+            color: var(--text-muted); 
+            text-decoration: none; 
+            border-radius: 12px; 
+            transition: all 0.25s ease; 
+            display: flex; 
+            align-items: center; 
+            font-weight: 500; 
+            font-size: 0.92rem; 
+            gap: 12px;
+        }
+        
+        .sidebar .menu-item:hover { background: rgba(255, 255, 255, 0.15); color: #ffffff; } 
+        .sidebar .menu-item.active { 
+            background: rgba(255, 255, 255, 0.25); 
+            color: #ffffff; 
+            font-weight: 600;
+            border: 1px solid rgba(255, 255, 255, 0.4); 
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .logout-btn { 
+            color: #ffffff; 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+            text-align: center;
+            justify-content: center; 
+            border-radius: 12px; 
+            padding: 12px 16px; 
+            text-decoration: none; 
+            font-weight: 600;
+            margin-top: auto;
+            background: rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+            display: block;
+        }
+        
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 0 12px rgba(255, 255, 255, 0.4);
+            color: #ffffff;
+        }
+
+        /* --- CONTENEDOR DERECHO --- */
+        .dashboard-container {
+            flex-grow: 1;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .top-bar-header {
+            background: rgba(6, 20, 7, 0.82);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+            color: #fff;
+            padding: 24px 36px;
+        }
+
+        .dashboard-content { 
+            flex: 1; 
+            padding: 28px 36px; 
+        }
+
+        /* --- ESTILOS ADAPTADOS A BENTO/TRANSLÚCIDO --- */
         .empleados-card {
             padding: 32px;
-            border-radius: 28px;
-            background: white;
-            box-shadow: 0 24px 70px rgba(15, 23, 42, 0.08);
+            border-radius: 24px;
+            background: var(--uco-card-bg);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid var(--uco-border);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
         }
-        .empleados-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 16px;
-        }
-        .empleados-header h1 {
-            margin: 0;
-            font-size: 2rem;
-            color: #132e1c;
-        }
+
         .empleados-bar {
-            margin-top: 24px;
+            margin-top: 10px;
             display: grid;
             grid-template-columns: minmax(240px, 1fr) auto auto;
             gap: 12px;
             align-items: end;
         }
+
         .empleados-bar label {
             display: block;
             margin-bottom: 10px;
             font-weight: 700;
-            color: #243a29;
+            color: rgba(255, 255, 255, 0.9);
         }
+
         .empleados-bar input {
             width: 100%;
             padding: 14px 16px;
             border-radius: 16px;
-            border: 1px solid #d7e0d6;
-            background: #f8faf8;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: rgba(255, 255, 255, 0.08);
             font-size: 0.95rem;
-            color: #1f2d19;
+            color: #ffffff;
+            backdrop-filter: blur(8px);
         }
+
+        .empleados-bar input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
         .empleados-bar input:focus {
             outline: none;
-            border-color: #2f7a42;
-            box-shadow: 0 0 0 3px rgba(47, 122, 66, 0.12);
+            border-color: rgba(255, 255, 255, 0.8);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
         }
+
         .empleados-btn {
             padding: 13px 24px;
             border-radius: 14px;
-            border: none;
+            border: 1px solid rgba(255, 255, 255, 0.3);
             font-weight: 700;
             cursor: pointer;
-            transition: transform 0.18s ease, background 0.18s ease, box-shadow 0.18s ease;
+            transition: all 0.25s ease;
         }
+
         .empleados-btn:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px);
         }
+
         .empleados-btn-primary {
-            background: var(--forest, #2e7d32);
+            background: rgba(46, 125, 50, 0.8);
             color: white;
+            border-color: rgba(74, 222, 128, 0.4);
         }
+        .empleados-btn-primary:hover {
+            background: rgba(46, 125, 50, 1);
+            box-shadow: 0 0 15px rgba(74, 222, 128, 0.3);
+        }
+
         .empleados-btn-secondary {
-            background: #48515c;
+            background: rgba(255, 255, 255, 0.12);
             color: white;
         }
-        .empleados-table td .empleados-btn {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 16px;
-            min-width: 90px;
-            border-radius: 999px;
-            font-size: 0.88rem;
-            box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
-            margin: 0 0.35rem 0.35rem 0;
-            background: #3f4a58;
+        .empleados-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.25);
         }
-        .empleados-table td .empleados-btn:hover {
-            background: #2f3d49;
-            box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
-        }
-        .empleados-table td .ver-horario-btn {
-            background: #124416;
-        }
-        .empleados-table td .editar-empleado-btn {
-            background: #340C51;
-        }
-        .empleados-table td .eliminar-empleado-btn {
-            background: #AA7F31;
-            color: white;
-        }
-        .empleados-table td .ver-horario-btn:hover {
-            background: #0e3913;
-        }
-        .empleados-table td .editar-empleado-btn:hover {
-            background: #2a093f;
-        }
-        .empleados-table td .eliminar-empleado-btn:hover {
-            background: #8f6f2b;
-        }
+
+        /* TABLA DE EMPLEADOS */
         .empleados-table {
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
             margin-top: 28px;
             overflow: hidden;
-            border-radius: 20px;
-            box-shadow: 0 14px 30px rgba(20, 40, 20, 0.06);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
         }
+
         .empleados-table thead {
-            background: linear-gradient(90deg, rgba(47,122,66,0.12), rgba(86,132,92,0.06));
+            background: rgba(255, 255, 255, 0.12);
         }
+
         .empleados-table th,
         .empleados-table td {
             padding: 18px 20px;
             text-align: left;
-            color: #26382e;
+            color: rgba(255, 255, 255, 0.9);
         }
+
         .empleados-table th {
-            font-size: 0.95rem;
-            letter-spacing: 0.03em;
+            font-size: 0.85rem;
+            letter-spacing: 0.05em;
             text-transform: uppercase;
             font-weight: 700;
+            color: #ffffff;
         }
+
         .empleados-table tbody tr {
-            background: white;
-            border-bottom: 1px solid #f0f2f1;
-            transition: transform 0.2s ease, background 0.2s ease;
+            background: rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.2s ease;
         }
+
         .empleados-table tbody tr:hover {
-            background: #f7f9f7;
-            transform: translateY(-1px);
+            background: rgba(255, 255, 255, 0.12);
         }
-        .empleados-table td:last-child {
-            color: #6b7a6a;
+
+        .empleados-table td .empleados-btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 16px;
+            min-width: 90px;
+            border-radius: 999px;
+            font-size: 0.85rem;
+            margin: 0 0.35rem 0.35rem 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
+
+        .empleados-table td .ver-horario-btn { background: rgba(18, 68, 22, 0.8); color: #fff; }
+        .empleados-table td .ver-horario-btn:hover { background: rgba(18, 68, 22, 1); box-shadow: 0 0 10px rgba(74, 222, 128, 0.4); }
+
+        .empleados-table td .editar-empleado-btn { background: rgba(82, 30, 122, 0.8); color: #fff; }
+        .empleados-table td .editar-empleado-btn:hover { background: rgba(82, 30, 122, 1); box-shadow: 0 0 10px rgba(192, 132, 252, 0.4); }
+
+        .empleados-table td .eliminar-empleado-btn { background: rgba(170, 127, 49, 0.8); color: #fff; }
+        .empleados-table td .eliminar-empleado-btn:hover { background: rgba(170, 127, 49, 1); box-shadow: 0 0 10px rgba(251, 191, 36, 0.4); }
+
         .empleados-table .badge {
             display: inline-flex;
             padding: 6px 12px;
             border-radius: 999px;
-            background: #eff6ee;
-            color: #2f702f;
+            background: rgba(74, 222, 128, 0.2);
+            color: #4ade80;
+            border: 1px solid rgba(74, 222, 128, 0.4);
             font-size: 0.85rem;
             font-weight: 700;
         }
+
+        /* MODALES VIDRIO OSCURO */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+        }
+
+        .modal-card, .modal-confirmation {
+            width: min(92vw, 600px);
+            background: rgba(15, 25, 18, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 24px;
+            padding: 32px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.6);
+            color: #ffffff;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 18px;
+        }
+
+        .modal-header h2 { margin: 0; font-size: 1.5rem; color: #ffffff; }
+
+        .modal-close {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1);
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            cursor: pointer;
+            color: #ffffff;
+            transition: all 0.2s ease;
+        }
+
+        .modal-close:hover { background: rgba(255, 255, 255, 0.25); }
+
+        .modal-body { max-height: 62vh; overflow-y: auto; }
+
+        .modal-body input {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+        }
+
+        .horario-table { width: 100%; border-collapse: collapse; }
+        .horario-table th, .horario-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: left;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        .horario-table th {
+            background: rgba(255, 255, 255, 0.08);
+            font-weight: 700;
+            text-transform: uppercase;
+            font-size: 0.82rem;
+        }
+
+        .modal-confirmation { text-align: center; }
+        .modal-confirmation-icon {
+            width: 60px; height: 60px;
+            margin: 0 auto 20px;
+            border-radius: 50%;
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.4);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 28px; color: #f87171;
+        }
+        .modal-confirmation h3 { margin: 0 0 12px 0; font-size: 1.3rem; color: #ffffff; }
+        .modal-confirmation p { margin: 0 0 24px 0; color: rgba(255, 255, 255, 0.75); font-size: 0.95rem; }
+
+        .modal-confirmation-actions { display: flex; gap: 12px; justify-content: center; }
+        .modal-confirmation-actions button {
+            padding: 12px 24px; border-radius: 14px; border: none; font-weight: 700; cursor: pointer; transition: all 0.2s;
+        }
+        .btn-confirm-danger { background: #dc2626; color: white; }
+        .btn-confirm-danger:hover { background: #b91c1c; box-shadow: 0 0 12px rgba(220, 38, 38, 0.5); }
+        .btn-confirm-cancel { background: rgba(255, 255, 255, 0.15); color: white; }
+        .btn-confirm-cancel:hover { background: rgba(255, 255, 255, 0.25); }
+
         @media (max-width: 900px) {
-            .empleados-bar {
-                grid-template-columns: 1fr;
-            }
+            .empleados-bar { grid-template-columns: 1fr; }
         }
     </style>
+</head>
+<body>
 
-   
-    <div class="empleados-bar">
-        <div>
-            <label for="filtro-nombre">Nombre de empleado</label>
-            <input type="text" id="filtro-nombre" placeholder="Ej. Luis, Omar, Cecilia..." />
-        </div>
-        <button class="empleados-btn empleados-btn-primary" id="btn-buscar-empleados">Buscar</button>
-        <button class="empleados-btn empleados-btn-secondary" id="btn-reset-empleados">Mostrar todos</button>
-    </div>
+    <!-- CANVAS FONDO FLUIDO -->
+    <canvas id="fluid-canvas"></canvas>
 
-    <table class="empleados-table">
-        <thead>
-            <tr>
-                <th>No. Empleado</th>
-                <th>Nombre</th>
-                <th>Horas Saldo</th>
-                <th>Salidas Tempranas</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody id="tabla-empleados">
-            <tr>
-                <td colspan="5" style="padding:18px; text-align:center; color:#5a6857;">Cargando empleados...</td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<div id="modal-horario" class="modal-overlay" style="display:none;">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h2>Horario del empleado</h2>
-            <button id="btn-cerrar-horario" class="modal-close">✕</button>
-        </div>
-        <div class="modal-body">
-            <div id="modal-horario-content">
-                <p style="color:#4b5563;">Cargando horario...</p>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div id="modal-confirmacion" class="modal-overlay" style="display:none;">
-    <div class="modal-confirmation">
-        <div class="modal-confirmation-icon">⚠️</div>
-        <h3 id="confirmacion-titulo">Eliminar empleado</h3>
-        <p id="confirmacion-mensaje">¿Estás seguro de que deseas eliminar este empleado? Esta acción es solo visual.</p>
-        <div class="modal-confirmation-actions">
-            <button type="button" class="btn-confirm-cancel" id="btn-confirmacion-cancelar">Cancelar</button>
-            <button type="button" class="btn-confirm-danger" id="btn-confirmacion-confirmar">Eliminar</button>
-        </div>
-    </div>
-</div>
-
-<div id="modal-empleado" class="modal-overlay" style="display:none;">
-    <div class="modal-card">
-        <div class="modal-header">
-            <h2 id="modal-empleado-titulo">Agregar empleado</h2>
-            <button id="btn-cerrar-empleado" class="modal-close">✕</button>
-        </div>
-        <form id="form-empleado" class="modal-body">
-            <div style="margin-bottom: 18px;">
-                <label for="empleado-id" style="font-weight:700; display:block; margin-bottom:8px; color:#243a29;">ID</label>
-                <input type="text" id="empleado-id" readonly style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid #d7e0d6; background:#f8faf8;" />
-            </div>
-            <div style="margin-bottom: 18px;">
-                <label for="empleado-nombre" style="font-weight:700; display:block; margin-bottom:8px; color:#243a29;">Nombre completo</label>
-                <input type="text" id="empleado-nombre" required style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid #d7e0d6;" />
-            </div>
-            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
-                <div>
-                    <label for="empleado-horas" style="font-weight:700; display:block; margin-bottom:8px; color:#243a29;">Horas Saldo</label>
-                    <input type="number" id="empleado-horas" step="0.25" min="0" style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid #d7e0d6;" />
-                </div>
-                <div>
-                    <label for="empleado-salidas" style="font-weight:700; display:block; margin-bottom:8px; color:#243a29;">Salidas tempranas</label>
-                    <input type="number" id="empleado-salidas" min="0" style="width:100%; padding:12px 14px; border-radius:14px; border:1px solid #d7e0d6;" />
-                </div>
-            </div>
-            <p id="modal-empleado-nota" style="color:#475569; margin-bottom:18px;">Nota: esta edición es visual, no modifica la base de datos.</p>
-            <div style="display:flex; gap:12px; justify-content:flex-end;">
-                <button type="button" class="empleados-btn empleados-btn-secondary" id="btn-cancelar-empleado">Cancelar</button>
-                <button type="submit" class="empleados-btn empleados-btn-primary">Guardar</button>
+    <div class="app-layout">
         
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="logo-container">
+                <h2 style="color: #ffffff; font-weight: 900; letter-spacing: 1px;">UCO PREPA</h2>
             </div>
-        </form>
-    </div>
-</div>
+            <nav class="menu-wrapper">
+                <a href="#" class="menu-item">📊 Panel Principal</a>
+                <a href="#" class="menu-item active">👥 Empleados</a>
+                <a href="#" class="menu-item">📄 Registros</a>
+                <a href="#" class="menu-item">🔔 Notificaciones</a>
+                <a href="#" class="menu-item">📊 Reportes</a>
+                <a href="#" class="menu-item" style="margin-top: 20px;">⚙️ Configuración</a>
+            </nav>
+            <a href="#" class="logout-btn">Cerrar Sesión</a>
+        </aside>
 
-<style>
-    .modal-overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(15, 23, 42, 0.48);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 9999;
-    }
-    .modal-card {
-        width: min(92vw, 640px);
-        background: white;
-        border-radius: 24px;
-        padding: 24px;
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
-    }
-    .modal-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 18px;
-    }
-    .modal-header h2 {
-        margin: 0;
-        font-size: 1.5rem;
-        color: #132e1c;
-    }
-    .modal-close {
-        border: none;
-        background: #f3f4f6;
-        width: 42px;
-        height: 42px;
-        border-radius: 50%;
-        font-size: 1.1rem;
-        cursor: pointer;
-        color: #334155;
-    }
-    .modal-close:hover {
-        background: #e2e8f0;
-    }
-    .modal-body {
-        max-height: 62vh;
-        overflow-y: auto;
-    }
-    .horario-table {
-        width: 100%;
-        border-collapse: collapse;
-    }
-    .horario-table th,
-    .horario-table td {
-        padding: 14px 16px;
-        border-bottom: 1px solid #e5e7eb;
-        text-align: left;
-        color: #24323f;
-    }
-    .horario-table th {
-        background: #f8faf8;
-        font-weight: 700;
-        text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.04em;
-    }
-    .horario-table td {
-        font-size: 0.95rem;
-    }
-    .horario-badge {
-        display: inline-flex;
-        padding: 6px 10px;
-        border-radius: 999px;
-        background: #e6f4ea;
-        color: #166534;
-        font-weight: 700;
-        font-size: 0.85rem;
-    }
-    .modal-confirmation {
-        width: min(92vw, 500px);
-        background: white;
-        border-radius: 24px;
-        padding: 32px;
-        box-shadow: 0 30px 60px rgba(0, 0, 0, 0.12);
-        text-align: center;
-    }
-    .modal-confirmation-icon {
-        width: 60px;
-        height: 60px;
-        margin: 0 auto 20px;
-        border-radius: 50%;
-        background: #fee2e2;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 32px;
-        color: #dc2626;
-    }
-    .modal-confirmation h3 {
-        margin: 0 0 12px 0;
-        font-size: 1.3rem;
-        color: #132e1c;
-        font-weight: 700;
-    }
-    .modal-confirmation p {
-        margin: 0 0 24px 0;
-        color: #475569;
-        font-size: 0.95rem;
-        line-height: 1.5;
-    }
-    .modal-confirmation-actions {
-        display: flex;
-        gap: 12px;
-        justify-content: center;
-    }
-    .modal-confirmation-actions button {
-        padding: 12px 24px;
-        border-radius: 14px;
-        border: none;
-        font-weight: 700;
-        cursor: pointer;
-        transition: transform 0.18s ease, background 0.18s ease;
-        font-size: 0.95rem;
-    }
-    .modal-confirmation-actions button:hover {
-        transform: translateY(-1px);
-    }
-    .btn-confirm-danger {
-        background: #dc2626;
-        color: white;
-    }
-    .btn-confirm-danger:hover {
-        background: #b91c1c;
-    }
-    .btn-confirm-cancel {
-        background: #e5e7eb;
-        color: #374151;
-    }
-    .btn-confirm-cancel:hover {
-        background: #d1d5db;
-    }
-</style>
+        <!-- CONTENIDO PRINCIPAL -->
+        <main class="dashboard-container">
+            
+            <header class="top-bar-header">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <h2 style="margin:0;color:#fff;font-size:1.4rem;font-weight:800;">
+                        Control de Horas
+                    </h2>
+
+                    <span style="background:rgba(255,255,255,.15);
+                                 padding:8px 16px;
+                                 border-radius:20px;
+                                 border: 1px solid rgba(255,255,255,0.3);
+                                 color:#fff;
+                                 font-weight:600;">
+                        Bienvenido
+                    </span>
+                </div>
+
+                <div style="margin-top:15px;">
+                    <h1 style="margin:0;color:#fff;font-size:1.9rem;font-weight:800;">
+                        Empleados
+                    </h1>
+
+                    <p style="margin:6px 0 0;color:rgba(255,255,255,.8);">
+                        Consulta, administra y edita la información de los empleados.
+                    </p>
+                </div>
+            </header>
+
+            <div class="dashboard-content">
+                <div class="card empleados-card">
+                    
+                    <div class="empleados-bar">
+                        <div>
+                            <label for="filtro-nombre">Nombre de empleado</label>
+                            <input type="text" id="filtro-nombre" placeholder="Ej. Luis, Omar, Cecilia..." />
+                        </div>
+                        <button class="empleados-btn empleados-btn-primary" id="btn-buscar-empleados">Buscar</button>
+                        <button class="empleados-btn empleados-btn-secondary" id="btn-reset-empleados">Mostrar todos</button>
+                    </div>
+
+                    <table class="empleados-table">
+                        <thead>
+                            <tr>
+                                <th>No. Empleado</th>
+                                <th>Nombre</th>
+                                <th>Horas Saldo</th>
+                                <th>Salidas Tempranas</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-empleados">
+                            <tr>
+                                <td colspan="5" style="padding:18px; text-align:center; color:rgba(255,255,255,0.6);">Cargando empleados...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODALES INTEGROS DE TU CÓDIGO -->
+
+    <div id="modal-horario" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2>Horario del empleado</h2>
+                <button id="btn-cerrar-horario" class="modal-close">✕</button>
+            </div>
+            <div class="modal-body">
+                <div id="modal-horario-content">
+                    <p style="color:rgba(255,255,255,0.7);">Cargando horario...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-confirmacion" class="modal-overlay" style="display:none;">
+        <div class="modal-confirmation">
+            <div class="modal-confirmation-icon">⚠️</div>
+            <h3 id="confirmacion-titulo">Eliminar empleado</h3>
+            <p id="confirmacion-mensaje">¿Estás seguro de que deseas eliminar este empleado? Esta acción es solo visual.</p>
+            <div class="modal-confirmation-actions">
+                <button type="button" class="btn-confirm-cancel" id="btn-confirmacion-cancelar">Cancelar</button>
+                <button type="button" class="btn-confirm-danger" id="btn-confirmacion-confirmar">Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-empleado" class="modal-overlay" style="display:none;">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="modal-empleado-titulo">Agregar empleado</h2>
+                <button id="btn-cerrar-empleado" class="modal-close">✕</button>
+            </div>
+            <form id="form-empleado" class="modal-body">
+                <div style="margin-bottom: 18px;">
+                    <label for="empleado-id" style="font-weight:700; display:block; margin-bottom:8px; color:rgba(255,255,255,0.9);">ID</label>
+                    <input type="text" id="empleado-id" readonly style="width:100%; padding:12px 14px; border-radius:14px;" />
+                </div>
+                <div style="margin-bottom: 18px;">
+                    <label for="empleado-nombre" style="font-weight:700; display:block; margin-bottom:8px; color:rgba(255,255,255,0.9);">Nombre completo</label>
+                    <input type="text" id="empleado-nombre" required style="width:100%; padding:12px 14px; border-radius:14px;" />
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:18px;">
+                    <div>
+                        <label for="empleado-horas" style="font-weight:700; display:block; margin-bottom:8px; color:rgba(255,255,255,0.9);">Horas Saldo</label>
+                        <input type="number" id="empleado-horas" step="0.25" min="0" style="width:100%; padding:12px 14px; border-radius:14px;" />
+                    </div>
+                    <div>
+                        <label for="empleado-salidas" style="font-weight:700; display:block; margin-bottom:8px; color:rgba(255,255,255,0.9);">Salidas tempranas</label>
+                        <input type="number" id="empleado-salidas" min="0" style="width:100%; padding:12px 14px; border-radius:14px;" />
+                    </div>
+                </div>
+                <p id="modal-empleado-nota" style="color:rgba(255,255,255,0.6); margin-bottom:18px;">Nota: esta edición es visual, no modifica la base de datos.</p>
+                <div style="display:flex; gap:12px; justify-content:flex-end;">
+                    <button type="button" class="empleados-btn empleados-btn-secondary" id="btn-cancelar-empleado">Cancelar</button>
+                    <button type="submit" class="empleados-btn empleados-btn-primary">Guardar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- SCRIPT ANIMACIÓN FLUIDA DE FONDO -->
+    <script>
+        const canvas = document.getElementById('fluid-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resize() {
+            canvas.width = window.innerWidth / 2;
+            canvas.height = window.innerHeight / 2;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        const blobs = [
+            { x: 0.2, y: 0.3, r: 0.4, vx: 0.0015, vy: 0.001, color: '#2d6a37' },
+            { x: 0.8, y: 0.7, r: 0.5, vx: -0.001, vy: -0.0012, color: '#1a4323' },
+            { x: 0.5, y: 0.2, r: 0.35, vx: 0.0008, vy: 0.0015, color: '#3f8a4e' },
+            { x: 0.3, y: 0.8, r: 0.45, vx: -0.0012, vy: 0.0008, color: '#0f2913' },
+            { x: 0.7, y: 0.4, r: 0.4, vx: 0.001, vy: -0.0014, color: '#25582e' }
+        ];
+
+        function animate() {
+            ctx.fillStyle = '#050a06';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const w = canvas.width;
+            const h = canvas.height;
+
+            blobs.forEach(b => {
+                b.x += b.vx;
+                b.y += b.vy;
+
+                if (b.x < 0.1 || b.x > 0.9) b.vx *= -1;
+                if (b.y < 0.1 || b.y > 0.9) b.vy *= -1;
+
+                const bx = b.x * w;
+                const by = b.y * h;
+                const radius = b.r * Math.min(w, h);
+
+                const grad = ctx.createRadialGradient(bx, by, 0, bx, by, radius);
+                grad.addColorStop(0, b.color);
+                grad.addColorStop(1, 'transparent');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.arc(bx, by, radius, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
